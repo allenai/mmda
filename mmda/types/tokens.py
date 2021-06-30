@@ -2,7 +2,7 @@
 
 Dataclass for doing stuff on token streams of a document
 
-@kyle
+@kylel
 
 """
 
@@ -45,39 +45,11 @@ class Span:
         return self.start <= i < self.end
 
 
-class Tag:
-    def __init__(self, span: Span, label: str):
-        self.span = span
-        self.label = label
-
-    def to_json(self):
-        return {'span': self.span.to_json(), 'label': self.label}
-
-    def __repr__(self):
-        return json.dumps(self.to_json())
-
-    def __contains__(self, i: int) -> bool:
-        return i in self.span
+class Row:
+    raise NotImplementedError
 
 
-if __name__ == '__main__':
-    tokens = ['I', 'live', 'in', 'New', 'York', '.', 'I', 'read', 'the', 'New', 'York', 'Times', '.']
-    tokens = [Token.from_text(token) for token in tokens]
-    spans = [Span(3, 5), Span(9, 12)]
-    tags = [Tag(span=span, label='entity') for span in spans]
+class Block:
+    raise NotImplementedError
 
 
-    def get_tag(i: int, tags: List[Tag]) -> Optional[Tag]:
-        for tag in tags:
-            if i in tag:
-                return tag
-        return None
-
-
-    training_data = []
-    for i, token in enumerate(tokens):
-        tag = get_tag(i=i, tags=tags)
-        if tag:
-            training_data.append((token, 1))
-        else:
-            training_data.append((token, 0))
