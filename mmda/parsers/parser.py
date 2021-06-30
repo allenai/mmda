@@ -8,16 +8,6 @@ Dataclass for creating token streams from a document
 
 
 class Parser:
-    def __init__(self):
+    def parse(self, infile: str, outdir: str):
         raise NotImplementedError
 
-    def predict(self):
-        raise NotImplementedError
-
-
-class TextParser(Parser):
-    pass
-
-
-class VisionParser(Parser):
-    pass
