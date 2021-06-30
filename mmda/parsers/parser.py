@@ -2,7 +2,7 @@
 
 Dataclass for creating token streams from a document
 
-@kyle
+@kylel
 
 """
 

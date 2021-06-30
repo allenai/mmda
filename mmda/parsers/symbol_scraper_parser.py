@@ -2,7 +2,7 @@
 
 Dataclass for creating token streams from a document via SymbolScraper
 
-@kyle
+@kylel
 
 """
 
@@ -25,6 +25,17 @@ class SymbolScraperParser(Parser):
         self.sscraper_bin_path = sscraper_bin_path
 
     def parse(self, infile: str, outdir: str):
+        xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
+        sscraper_json = self._parse_sscraper_xml(xmlfile=xmlfile)
+        outfile = os.path.join(outdir, infile.replace('.pdf', '.json'))
+        with open(outfile, 'w') as f_out:
+            json.dump(f_out, sscraper_json, indent=4)
+
+    #
+    #   methods for interacting with SymbolScraper binary
+    #
+    def _run_sscraper(self, infile: str, outdir: str) -> str:
+        """Returns xmlpath of parsed output"""
         if not infile.endswith('.pdf'):
             raise FileNotFoundError(f'{infile} doesnt end in .pdf extension, which {self} expected')
         os.makedirs(outdir, exist_ok=True)
@@ -34,10 +45,7 @@ class SymbolScraperParser(Parser):
         if not os.path.exists(xmlfile):
             raise FileNotFoundError(f'Parsing {infile} may have failed. Cant find {xmlfile}.')
         else:
-            sscraper_json = self._parse_sscraper_xml(xmlfile=xmlfile)
-            outfile = os.path.join(outdir, infile.replace('.pdf', '.json'))
-            with open(outfile, 'w') as f_out:
-                json.dump(f_out, sscraper_json, indent=4)
+            return xmlfile
 
     #
     #   methods for building bbox from sscraper XML
@@ -189,5 +197,3 @@ class SymbolScraperParser(Parser):
             }
         }
 
-
-if __name__ == '__main__':
