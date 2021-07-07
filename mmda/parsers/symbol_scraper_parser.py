@@ -15,7 +15,8 @@ import subprocess
 import re
 from collections import defaultdict
 
-from mmda.types.tokens import Token, Span, Tag
+from mmda.types.span import Span
+from mmda.types.document import Document
 from mmda.types.boundingbox import BoundingBox
 from mmda.parsers.parser import Parser
 
@@ -24,12 +25,19 @@ class SymbolScraperParser(Parser):
     def __init__(self, sscraper_bin_path: str):
         self.sscraper_bin_path = sscraper_bin_path
 
-    def parse(self, infile: str, outdir: str):
+    def parse(self, infile: str, outdir: str) -> str:
         xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
         sscraper_json = self._parse_sscraper_xml(xmlfile=xmlfile)
         outfile = os.path.join(outdir, infile.replace('.pdf', '.json'))
         with open(outfile, 'w') as f_out:
             json.dump(f_out, sscraper_json, indent=4)
+        return outfile
+
+    def load(self, infile: str) -> Document:
+        with open(infile) as f_in:
+            doc_json = json.load(f_in)
+            doc = Document.from_json(doc_json=doc_json)
+            return doc
 
     #
     #   methods for interacting with SymbolScraper binary
@@ -196,4 +204,5 @@ class SymbolScraperParser(Parser):
                 page, row_to_words in page_to_row_to_words.items()
             }
         }
+
 

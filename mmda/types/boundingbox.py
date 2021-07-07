@@ -6,7 +6,7 @@ Dataclass for doing stuff on bounding boxes
 
 """
 
-from typing import List
+from typing import List, Dict
 
 import json
 
@@ -37,13 +37,18 @@ class BoundingBox:
 
     @classmethod
     def from_null(cls):
-        """Creates an empty bbox"""
+        """Creates an empty bbox; mostly useful for quick tests"""
         bbox = cls.__new__(cls)
-        bbox.x = None
-        bbox.y = None
+        bbox.l = None
+        bbox.t = None
         bbox.w = None
         bbox.h = None
         bbox.page = None
+        return bbox
+
+    @classmethod
+    def from_json(cls, bbox_json: Dict) -> 'BoundingBox':
+        bbox = BoundingBox(**bbox_json)
         return bbox
 
     def to_json(self):

@@ -11,7 +11,7 @@ from typing import List, Optional
 import json
 
 
-from mmda.types.tokens import Token, Span
+from mmda.types.span import Span
 from mmda.types.boundingbox import BoundingBox
 
 
@@ -50,10 +50,16 @@ if __name__ == '__main__':
 
     # In this example, we construct a sequence tagger training dataset using these classes.
 
-    tokens = ['I', 'live', 'in', 'New', 'York', '.', 'I', 'read', 'the', 'New', 'York', 'Times', '.']
-    tokens = [Token.from_text(token) for token in tokens]
-    spans = [Span(3, 5), Span(9, 12)]
-    tags = [SpanAnnotation(span=span, label='entity') for span in spans]
+    text = 'I live in New York. I read the New York Times.'
+    tokens = [(0, 1), (2, 6), (7, 9), (10, 13), (14, 18), (18, 19),
+              (20, 21), (22, 26), (27, 30), (31, 34), (35, 39), (40, 45), (45, 46)]
+    tokens = [Span(start=start, end=end) for start, end in tokens]
+    for token in tokens:
+        print(text[token.start:token.end])
+
+    tags = [Span(start=10, end=19, attr=['entity']), Span(start=31, end=46, attr=['entity'])]
+    for tag in tags:
+        print(f'{text[tag.start:tag.end]}\t{tag.tags}')
 
     def get_label(i: int, tags: List[SpanAnnotation]) -> Optional[str]:
         for tag in tags:

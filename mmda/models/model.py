@@ -2,9 +2,15 @@
 
 Dataclass for any sort of modeling
 
-@kyle
+@kylel
 
 """
 
+from typing import Union, List
+
+from mmda.types.annotations import Annotation
+from mmda.types.document import Document
+
 class Model:
-    pass
+    def predict(self, document: Document, annotations: List[Annotation]) -> List[Annotation]:
+        raise NotImplementedError
