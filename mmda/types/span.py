@@ -14,10 +14,11 @@ import json
 
 
 class Span:
-    def __init__(self, start: int, end: int, id: Optional[int] = None,
+    def __init__(self, start: int, end: int, id: Optional[int] = None, type: Optional[str] = None,
                  text: Optional[str] = None, bbox: Optional[BoundingBox] = None):
         self.start = start
         self.end = end
+        self.type = type
         self.id = id
         self.text = text
         self.bbox = bbox
@@ -25,18 +26,20 @@ class Span:
     @classmethod
     def from_json(cls, span_json: Dict):
         bbox = BoundingBox.from_json(bbox_json=span_json['bbox']) if 'bbox' in span_json else None
-        span = Span(start=span_json['start'], end=span_json['end'], text=span_json.get('text'), bbox=bbox)
+        span = cls(start=span_json['start'], end=span_json['end'], id=span_json.get('id'),
+                   type=span_json.get('type'), text=span_json.get('text'), bbox=bbox)
         return span
 
     def to_json(self):
         return {'start': self.start,
                 'end': self.end,
+                'type': self.type if self.type else None,
                 'id': self.id if self.id else None,
                 'text': self.text if self.text else None,
                 'bbox': self.bbox.to_json() if self.bbox else None}
 
     def __repr__(self):
-        return json.dumps(self.to_json())
+        return json.dumps({k: v for k, v in self.to_json().items() if v is not None})
 
     def __contains__(self, val: Union[int, BoundingBox]) -> bool:
         """Checks whether an index value `i` is within the span"""

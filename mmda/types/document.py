@@ -15,80 +15,22 @@ from mmda.types.annotations import Annotation, SpanAnnotation, BoundingBoxAnnota
 from mmda.types.span import Span
 
 
-class DocumentSpan(Span):
-    def __init__(self, start: int, end: int, doc: Document, id: Optional[int] = None,
-                 text: Optional[str] = None, bbox: Optional[BoundingBox] = None):
-        super().__init__(start=start, end=end, id=id, text=text, bbox=bbox)
-        self.doc = doc
-
-    @property
-    def tokens(self) -> List[Token]:
-        if type(self) == Token:
-            raise ValueError(f'{self} is a Token and cant lookup other Tokens')
-        else:
-            return self.doc.find(query=self, type=Token)
-
-    @property
-    def pages(self) -> List[Page]:
-        if type(self) == Page:
-            raise ValueError(f'{self} is a Page and cant lookup other Pages')
-        else:
-            return self.doc.find(query=self, type=Page)
-
-    @property
-    def rows(self) -> List[Row]:
-        if type(self) == Row:
-            raise ValueError(f'{self} is a Row and cant lookup other Rows')
-        else:
-            return self.doc.find(query=self, type=Row)
-
-    @property
-    def sents(self) -> List[Sentence]:
-        if type(self) == Sentence:
-            raise ValueError(f'{self} is a Sentence and cant lookup other Sentences')
-        else:
-            return self.doc.find(query=self, type=Sentence)
-
-    @property
-    def blocks(self) -> List[Block]:
-        if type(self) == Block:
-            raise ValueError(f'{self} is a Block and cant lookup other Blocks')
-        else:
-            return self.doc.find(query=self, type=Block)
-
-
-class Token(DocumentSpan):
-    pass
-
-class Page(DocumentSpan):
-    pass
-
-class Row(DocumentSpan):
-    pass
-
-class Sentence(DocumentSpan):
-    pass
-
-class Block(DocumentSpan):
-    pass
-
-
 class Document:
     def __init__(self, text: str):
         self.text = text
 
-        self._pages: Optional[List[Page]] = None
-        self._tokens: Optional[List[Token]] = None
-        self._rows: Optional[List[Row]] = None
-        self._sents: Optional[List[Sentence]] = None
-        self._blocks: Optional[List[Block]] = None
+        self._pages: Optional[List[Span]] = None
+        self._tokens: Optional[List[Span]] = None
+        self._rows: Optional[List[Span]] = None
+        self._sents: Optional[List[Span]] = None
+        self._blocks: Optional[List[Span]] = None
 
         self._span_type_to_spans: Dict[Type, Optional[Span]] = {
-            Page: self._pages,
-            Token: self._tokens,
-            Row: self._rows,
-            Sentence: self._sents,
-            Block: self._blocks
+            'page': self._pages,
+            'token': self._tokens,
+            'row': self._rows,
+            'sent': self._sents,
+            'block': self._blocks
         }
 
         self._index_pages: Optional[IntervalTree] = None
@@ -98,31 +40,37 @@ class Document:
         self._index_blocks: Optional[IntervalTree] = None
 
         self._span_type_to_index: Dict[Type, Optional[IntervalTree]] = {
-            Page: self._index_pages,
-            Token: self._index_tokens,
-            Row: self._index_rows,
-            Sentence: self._index_sents,
-            Block: self._index_blocks
+            'page': self._index_pages,
+            'token': self._index_tokens,
+            'row': self._index_rows,
+            'sent': self._index_sents,
+            'block': self._index_blocks
         }
 
     @classmethod
     def from_json(cls, doc_json: Dict) -> 'Document':
         doc = Document(text=doc_json['text'])
-        if 'pages' in doc_json:
-            pages = [Page.from_json(span_json=page_json) for page_json in doc_json['pages']]
-            doc.load_pages(pages=pages)
-        if 'tokens' in doc_json:
-            tokens = [Token.from_json(span_json=token_json) for token_json in doc_json['tokens']]
-            doc.load_tokens(tokens=tokens)
-        if 'rows' in doc_json:
-            rows = [Row.from_json(span_json=row_json) for row_json in doc_json['rows']]
-            doc.load_rows(rows=rows)
-        if 'sents' in doc_json:
-            tokens = [Sentence.from_json(span_json=token_json) for token_json in doc_json['tokens']]
-            doc.load_tokens(tokens=tokens)
-        if 'blocks' in doc_json:
-            blocks = [Block.from_json(span_json=block_json) for block_json in doc_json['blocks']]
-            doc.load_blocks(blocks=blocks)
+        for span_type in ['page', 'token', 'row', 'sent', 'block']:
+            if span_type in doc_json:
+                spans = []
+                for span_json in doc_json[span_type]:
+                    span = Span.from_json(span_json=span_json)
+                    span.type = span_type                           # not usually part of serialization
+                    span.text = doc.text[span.start:span.end]       # not usually part of serialization
+                    spans.append(span)
+                doc_spans = [DocSpan.from_span(span=span, doc=doc) for span in spans]
+                if span_type == 'page':
+                    doc.load_pages(pages=doc_spans)
+                elif span_type == 'token':
+                    doc.load_tokens(tokens=doc_spans)
+                elif span_type == 'row':
+                    doc.load_rows(rows=doc_spans)
+                elif span_type == 'sent':
+                    doc.load_sents(sents=doc_spans)
+                elif span_type == 'block':
+                    doc.load_blocks(blocks=doc_spans)
+                else:
+                    raise Exception(f'Should never reach here')
         return doc
 
     def to_json(self):
@@ -145,47 +93,47 @@ class Document:
 
     def _build_span_type_to_spans(self):
         self._span_type_to_spans: Dict[Type, Optional[Span]] = {
-            Page: self._pages,
-            Token: self._tokens,
-            Row: self._rows,
-            Sentence: self._sents,
-            Block: self._blocks
+            'page': self._pages,
+            'token': self._tokens,
+            'row': self._rows,
+            'sent': self._sents,
+            'block': self._blocks
         }
 
     def _build_span_type_to_index(self):
         self._span_type_to_index: Dict[Type, Optional[IntervalTree]] = {
-            Page: self._index_pages,
-            Token: self._index_tokens,
-            Row: self._index_rows,
-            Sentence: self._index_sents,
-            Block: self._index_blocks
+            'page': self._index_pages,
+            'token': self._index_tokens,
+            'row': self._index_rows,
+            'sent': self._index_sents,
+            'block': self._index_blocks
         }
 
-    def load_pages(self, pages: List[Page]):
+    def load_pages(self, pages: List[Span]):
         self._pages = pages
         self._index_pages = self._index_spans(spans=pages)
         self._build_span_type_to_spans()
         self._build_span_type_to_index()
 
-    def load_tokens(self, tokens: List[Token]):
+    def load_tokens(self, tokens: List[Span]):
         self._tokens = tokens
         self._index_tokens = self._index_spans(spans=tokens)
         self._build_span_type_to_spans()
         self._build_span_type_to_index()
 
-    def load_rows(self, rows: List[Row]):
+    def load_rows(self, rows: List[Span]):
         self._rows = rows
         self._index_rows = self._index_spans(spans=rows)
         self._build_span_type_to_spans()
         self._build_span_type_to_index()
 
-    def load_sents(self, sents: List[Sentence]):
+    def load_sents(self, sents: List[Span]):
         self._sents = sents
         self._index_sents = self._index_spans(spans=sents)
         self._build_span_type_to_spans()
         self._build_span_type_to_index()
 
-    def load_blocks(self, blocks: List[Block]):
+    def load_blocks(self, blocks: List[Span]):
         self._blocks = blocks
         self._index_blocks = self._index_spans(spans=blocks)
         self._build_span_type_to_spans()
@@ -195,23 +143,23 @@ class Document:
     #   don't mess with Document internals
     #
     @property
-    def pages(self) -> List[Page]:
+    def pages(self) -> List[Span]:
         return self._pages
 
     @property
-    def tokens(self) -> List[Token]:
+    def tokens(self) -> List[Span]:
         return self._tokens
 
     @property
-    def rows(self) -> List[Row]:
+    def rows(self) -> List[Span]:
         return self._rows
 
     @property
-    def sents(self) -> List[Sentence]:
+    def sents(self) -> List[Span]:
         return self._sents
 
     @property
-    def blocks(self) -> List[Block]:
+    def blocks(self) -> List[Span]:
         return self._blocks
 
     #
@@ -220,8 +168,8 @@ class Document:
     # TODO: how should `containment` lookups be handled in this library? intersection is symmetric but containment isnt
     # TODO: @lru.cache or some memoization might improve performance
     # TODO: cleaner interface would be to make this private, make Token/Page/Block/Sentence/Row aware of Document & use `.<classname>` interface
-    def find(self, query: Span, type: Type) -> List[Span]:
-        index = self._span_type_to_index[type]
+    def find(self, query: Span, types: str) -> List[Span]:
+        index = self._span_type_to_index[types]
         return sorted([interval.data for interval in index[query.start:query.end]])
 
     # TODO: what happens to the document data when annotate?
@@ -234,4 +182,54 @@ class Document:
             else:
                 pass
         raise NotImplementedError
+
+
+
+class DocSpan(Span):
+    def __init__(self, start: int, end: int, doc: Document,
+                 id: Optional[int] = None, type: Optional[str] = None,
+                 text: Optional[str] = None, bbox: Optional[BoundingBox] = None):
+        super().__init__(start=start, end=end, id=id, type=type, text=text, bbox=bbox)
+        self.doc = doc
+
+    @property
+    def tokens(self) -> List:
+        if self.type == 'token':
+            raise ValueError(f'{self} is a Token and cant lookup other Tokens')
+        else:
+            return self.doc.find(query=self, types='token')
+
+    @property
+    def pages(self) -> List:
+        if self.type == 'page':
+            raise ValueError(f'{self} is a Page and cant lookup other Pages')
+        else:
+            return self.doc.find(query=self, types='page')
+
+    @property
+    def rows(self) -> List:
+        if self.type == 'row':
+            raise ValueError(f'{self} is a Row and cant lookup other Rows')
+        else:
+            return self.doc.find(query=self, types='row')
+
+    @property
+    def sents(self) -> List:
+        if self.type == 'sent':
+            raise ValueError(f'{self} is a Sentence and cant lookup other Sentences')
+        else:
+            return self.doc.find(query=self, types='sent')
+
+    @property
+    def blocks(self) -> List:
+        if self.type == 'block':
+            raise ValueError(f'{self} is a Block and cant lookup other Blocks')
+        else:
+            return self.doc.find(query=self, types='block')
+
+    @classmethod
+    def from_span(cls, span: Span, doc: Document) -> 'DocSpan':
+        doc_span = cls(start=span.start, end=span.end, doc=doc,
+                       type=span.type, id=span.id, text=span.text, bbox=span.bbox)
+        return doc_span
 
