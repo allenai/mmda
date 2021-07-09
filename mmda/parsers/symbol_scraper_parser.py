@@ -16,7 +16,7 @@ import re
 from collections import defaultdict
 
 from mmda.types.span import Span
-from mmda.types.document import Document
+from mmda.types.document import Document, Page, Token, Row, Sent, Block, Text
 from mmda.types.boundingbox import BoundingBox
 from mmda.parsers.parser import Parser
 
@@ -25,23 +25,18 @@ class SymbolScraperParser(Parser):
     def __init__(self, sscraper_bin_path: str):
         self.sscraper_bin_path = sscraper_bin_path
 
-    # TODO:
-    def _parse(self, infile: str, outdir: Optional[str]) -> Union[str, Document]:
+    def parse(self, infile: str, outdir: Optional[str] = None, outfname: Optional[str] = None) -> Document:
         if outdir:
-            # do write to disk
-            pass
+            if not outfname:
+                raise ValueError(f'Specifying `outdir` requires also specifying `outfname`')
+            xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
+            doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
+            outfile = os.path.join(outdir, outfname)
+            with open(outfile, 'w') as f_out:
+                json.dump(f_out, doc.to_json(), indent=4)
+            return doc
         else:
-            # do return Doc in Python
-            pass
-
-    def parse(self, infile: str, outdir: str) -> str:
-        xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
-        sscraper_json = self._parse_sscraper_xml(xmlfile=xmlfile)
-        # TODO upgrade
-        outfile = os.path.join(outdir, infile.replace('.pdf', '.json'))
-        with open(outfile, 'w') as f_out:
-            json.dump(f_out, sscraper_json, indent=4)
-        return outfile
+            raise NotImplementedError(f'Sscraper needs somewhere to output temp XML files')
 
     def load(self, infile: str) -> Document:
         with open(infile) as f_in:
@@ -227,15 +222,15 @@ class SymbolScraperParser(Parser):
                         bbox=BoundingBox.union_bboxes(bboxes=[row.bbox for row in page_rows]))
             pages.append(page)
         return {
-            'text': text,
-            'page': [page.to_json() for page in pages],
-            'token': [token.to_json() for token in tokens],
-            'row': [row.to_json() for row in rows],
-            'sent': [],
-            'block': []
+            Text: text,
+            Page: [page.to_json() for page in pages],
+            Token: [token.to_json() for token in tokens],
+            Row: [row.to_json() for row in rows],
+            Sent: [],
+            Block: []
         }
 
-    def _parse_sscraper_xml(self, xmlfile: str) -> Document:
+    def _parse_xml_to_doc(self, xmlfile: str) -> Document:
 
         with open(xmlfile, 'r') as f_in:
             xml_lines = [line.strip() for line in f_in]
