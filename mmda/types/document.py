@@ -73,8 +73,15 @@ class Document:
                     raise Exception(f'Should never reach here')
         return doc
 
-    def to_json(self):
-        raise NotImplementedError
+    def to_json(self) -> Dict:
+        return {
+            'text': self.text,
+            'page': [page.to_json(exclude=['text', 'type']) for page in self.pages],
+            'token': [token.to_json(exclude=['text', 'type']) for token in self.tokens],
+            'row': [row.to_json(exclude=['text', 'type']) for row in self.rows],
+            'sent': [sent.to_json(exclude=['text', 'type']) for sent in self.sents],
+            'block': [block.to_json(exclude=['text', 'type']) for block in self.blocks]
+        }
 
     #
     #   methods for building Document

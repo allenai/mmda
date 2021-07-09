@@ -52,4 +52,7 @@ class TestSymbolScraperParser(unittest.TestCase):
         assert [sent.tokens for sent in doc.sents]
         assert [token.pages for token in doc.tokens]
         assert [token.sents for token in doc.tokens]
-        
+
+    def test_to_json(self):
+        doc = Document.from_json(self.doc_json)
+        self.assertDictEqual(d1=doc.to_json(), d2=self.doc_json)

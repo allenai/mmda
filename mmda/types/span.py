@@ -30,13 +30,15 @@ class Span:
                    type=span_json.get('type'), text=span_json.get('text'), bbox=bbox)
         return span
 
-    def to_json(self):
-        return {'start': self.start,
-                'end': self.end,
-                'type': self.type if self.type else None,
-                'id': self.id if self.id else None,
-                'text': self.text if self.text else None,
-                'bbox': self.bbox.to_json() if self.bbox else None}
+    def to_json(self, exclude: List[str] = []) -> Dict:
+        full_json = {'start': self.start,
+                     'end': self.end,
+                     'type': self.type,
+                     'id': self.id,
+                     'text': self.text,
+                     'bbox': self.bbox.to_json() if self.bbox else None}
+        # the `is not None` is to save serialization space for empty fields
+        return {k: v for k, v in full_json.items() if k not in exclude and v is not None}
 
     def __repr__(self):
         return json.dumps({k: v for k, v in self.to_json().items() if v is not None})
