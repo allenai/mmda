@@ -24,9 +24,9 @@ class TestSymbolScraperParser(unittest.TestCase):
                 <pagewidth>612.0</pagewidth>
                 <pageheight>792.0</pageheight>
                 <no>0</no>
-                <lines>2</lines>
-                <words>4</words>
-                <characters>21</characters>
+                <lines>555</lines>
+                <words>888</words>
+                <characters>999</characters>
         </page>
         </pagemetrics>
         <Page id="0">
@@ -46,9 +46,22 @@ class TestSymbolScraperParser(unittest.TestCase):
                         <Char id="9" mergeId="0" BBOX="241.80536 678.712 6.9033756 8.3839" RGB = "[0.0]">e</Char>
                         <Char id="10" mergeId="0" BBOX="249.44899 678.712 8.762639 11.878627" RGB = "[0.0]">d</Char>
                 </Word>
+                <Word id="2">
+                        <Char id="11" mergeId="0" BBOX="263.16968 678.953 10.053794 11.63761" RGB = "[0.0]">P</Char>
+                        <Char id="12" mergeId="0" BBOX="273.49893 678.712 7.764146 8.3839" RGB = "[0.0]">o</Char>
+                        <Char id="13" mergeId="0" BBOX="282.10663 678.712 5.7843747 8.3839" RGB = "[0.0]">s</Char>
+                        <Char id="14" mergeId="0" BBOX="288.8034 678.712 5.7843747 8.3839" RGB = "[0.0]">s</Char>
+                        <Char id="15" mergeId="0" BBOX="295.34525 678.953 4.114481 11.895842" RGB = "[0.0]">i</Char>
+                        <Char id="16" mergeId="0" BBOX="300.14835 678.712 8.676562 11.878627" RGB = "[0.0]">b</Char>
+                        <Char id="17" mergeId="0" BBOX="309.7029 678.953 4.114481 11.895842" RGB = "[0.0]">i</Char>
+                        <Char id="18" mergeId="0" BBOX="314.4888 678.953 4.114481 11.63761" RGB = "[0.0]">l</Char>
+                        <Char id="19" mergeId="0" BBOX="319.2747 678.953 4.114481 11.895842" RGB = "[0.0]">i</Char>
+                        <Char id="20" mergeId="0" BBOX="324.12943 678.7464 5.371205 11.052287" RGB = "[0.0]">t</Char>
+                        <Char id="21" mergeId="0" BBOX="329.7933 675.4238 7.987946 11.465457" RGB = "[0.0]">y</Char>
+                </Word>
         </Line>
         <Line id="1" BBOX="223.505 623.184 388.49564 623.184">
-                <Word id="2">
+                <Word id="3">
                         <Char id="36" mergeId="0" BBOX="223.69429 623.184 6.166849 6.7347174" RGB = "[0.0]">C</Char>
                         <Char id="37" mergeId="0" BBOX="230.30946 623.184 2.3810613 6.884156" RGB = "[0.0]">u</Char>
                         <Char id="38" mergeId="0" BBOX="233.20857 623.184 4.034853 4.71231" RGB = "[0.0]">r</Char>
@@ -56,21 +69,50 @@ class TestSymbolScraperParser(unittest.TestCase):
                         <Char id="40" mergeId="0" BBOX="242.35425 623.184 5.160627 4.71231" RGB = "[0.0]">e</Char>
                         <Char id="41" mergeId="0" BBOX="247.96318 621.1317 4.532983 6.764605" RGB = "[0.0]">s</Char>
                 </Word>
-                <Word id="3">
+                <Word id="4">
                         <Char id="42" mergeId="0" BBOX="255.31558 623.184 6.8044558 6.7347174" RGB = "[0.0]">F</Char>
                         <Char id="43" mergeId="0" BBOX="262.50858 623.184 2.3810613 6.884156" RGB = "[0.0]">l</Char>
                         <Char id="44" mergeId="0" BBOX="265.36783 623.04456 4.612684 4.851786" RGB = "[0.0]">o</Char>
                         <Char id="45" mergeId="0" BBOX="270.48862 621.39075 1.8331183 3.337471" RGB = "[0.0]">w</Char>
                 </Word>
+                <Word id="5">
+                        <Char id="46" mergeId="0" BBOX="275.34042 623.184 6.864231 6.7347174" RGB = "[0.0]">R</Char>
+                        <Char id="47" mergeId="0" BBOX="282.43378 623.184 5.818158 6.7347174" RGB = "[0.0]">P</Char>
+                        <Char id="48" mergeId="0" BBOX="288.5608 623.184 3.4869099 6.7347174" RGB = "[0.0]">I</Char>
+                        <Char id="49" mergeId="0" BBOX="292.62555 621.39075 1.8331183 3.337471" RGB = "[0.0]">,</Char>
+                </Word>
         </Line>
         </Page>
         </Document>"""
         cls.xml_lines = [line.strip() for line in cls.xml.splitlines()]
-        cls.page_to_metrics = {0: {'height': 792.0, 'width': 612.0, 'rows': 2, 'words': 4, 'chars': 21}}
-        cls.page_to_row_to_words = {0: {0: [{'text': 'The', 'bbox': None}, {'text': 'Smoothed', 'bbox': None}],
-                                        1: [{'text': 'Curves', 'bbox': None}, {'text': 'Flow', 'bbox': None}]}}
+        cls.page_to_metrics = {0: {'height': 792.0, 'width': 612.0, 'rows': 555, 'words': 888, 'chars': 999}}
+        cls.page_to_row_to_words = {0: {
+            0: [
+                {'text': 'The', 'bbox': [0.24914161764705883, 0.14273611111111115, 0.045513914379084974, 0.014693952020202017]},
+                {'text': 'Smoothed', 'bbox': [0.3031788235294118, 0.14273611111111115, 0.11873560294117647, 0.015867739267676734]},
+                {'text': 'Possibility', 'bbox': [0.4300158169934641, 0.14273611111111115, 0.12191432352941173, 0.018932647727272683]}
+            ],
+            1: [
+                {'text': 'Curves', 'bbox': [0.365513545751634, 0.2131515151515152, 0.04706188398692812, 0.011132455808080727]},
+                {'text': 'Flow', 'bbox': [0.4171823202614379, 0.2131515151515152, 0.027787840359477123, 0.008692116161616165]},
+                {'text': 'RPI,', 'bbox': [0.44990264705882355, 0.2131515151515152, 0.03123896781045743, 0.008503431060606054]}
+            ]}
+        }
+        cls.doc_json = {
+            'text': 'The Smoothed Possibility\nCurves Flow RPI,\n',
+            'page': [{'start': 0, 'end': 41, 'id': 0, 'bbox': [0.24914161764705883, 0.14273611111111115, 0.302788522875817, 0.08154785984848478]}],
+            'token': [{'start': 0, 'end': 3, 'id': 0, 'bbox': [0.24914161764705883, 0.14273611111111115, 0.045513914379084974, 0.014693952020202017]},
+                      {'start': 4, 'end': 12, 'id': 1, 'bbox': [0.3031788235294118, 0.14273611111111115, 0.11873560294117647, 0.015867739267676734]},
+                      {'start': 13, 'end': 24, 'id': 2, 'bbox': [0.4300158169934641, 0.14273611111111115, 0.12191432352941173, 0.018932647727272683]},
+                      {'start': 25, 'end': 31, 'id': 3, 'bbox': [0.365513545751634, 0.2131515151515152, 0.04706188398692812, 0.011132455808080727]},
+                      {'start': 32, 'end': 36, 'id': 4, 'bbox': [0.4171823202614379, 0.2131515151515152, 0.027787840359477123, 0.008692116161616165]},
+                      {'start': 37, 'end': 41, 'id': 5, 'bbox': [0.44990264705882355, 0.2131515151515152, 0.03123896781045743, 0.008503431060606054]}],
+            'row': [{'start': 0, 'end': 24, 'id': 0, 'bbox': [0.24914161764705883, 0.14273611111111115, 0.302788522875817, 0.018932647727272683]},
+                    {'start': 25, 'end': 41, 'id': 1, 'bbox': [0.365513545751634, 0.2131515151515152, 0.115628069117647, 0.011132455808080727]}],
+            'sent': [],
+            'block': []
+        }
         # TODO - test the bboxes too
-
 
     def test_build_from_sscraper_bbox(self):
         pass
@@ -108,17 +150,17 @@ class TestSymbolScraperParser(unittest.TestCase):
         assert len(page_to_row_to_words[0][1]) == len(self.page_to_row_to_words[0][1])  # second row
         assert page_to_row_to_words[0][0][0]['text'] == self.page_to_row_to_words[0][0][0]['text']  # first word
         assert page_to_row_to_words[0][0][1]['text'] == self.page_to_row_to_words[0][0][1]['text']  # second word
+        assert page_to_row_to_words[0][0][2]['text'] == self.page_to_row_to_words[0][0][2]['text']  # third word
         assert page_to_row_to_words[0][1][0]['text'] == self.page_to_row_to_words[0][1][0]['text']  # first word
         assert page_to_row_to_words[0][1][1]['text'] == self.page_to_row_to_words[0][1][1]['text']  # second word
+        assert page_to_row_to_words[0][1][2]['text'] == self.page_to_row_to_words[0][1][2]['text']  # third word
         # self.assertDictEqual(d1=page_to_row_to_words, d2=self.page_to_row_to_words)
 
-    def test_convert_words_to_spans(self):
-        words = [{'text': 'The', 'bbox': None}, {'text': 'Smoothed', 'bbox': None}]
-        result = self.sscraper_parser._convert_words_to_spans(words=words)
-        assert result['text'] == 'The Smoothed'
-        spans = result['spans']
-        assert spans[0].start == 0
-        assert spans[0].end == 3
-        assert spans[1].start == 4
-        assert spans[1].end == 12
+    def test_convert_nested_text_to_doc_json(self):
+        page_to_row_to_words = self.sscraper_parser._parse_page_to_row_to_words(xml_lines=self.xml_lines,
+                                                                                page_to_metrics=self.page_to_metrics)
+        doc_json = self.sscraper_parser._convert_nested_text_to_doc_json(page_to_row_to_words=page_to_row_to_words)
+        self.assertDictEqual(doc_json, self.doc_json)
 
+    def test_parse_sscraper_xml(self):
+        pass

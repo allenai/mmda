@@ -184,23 +184,45 @@ class SymbolScraperParser(Parser):
             for page, row_to_words in page_to_row_to_words.items()
         }
 
-    def _convert_nested_text_to_spans(self, page_to_row_to_words: Dict):
-        pass
-
-    def _convert_words_to_spans(self, words: List) -> Dict:
+    def _convert_nested_text_to_doc_json(self, page_to_row_to_words: Dict) -> Dict:
         text = ''
-        spans = []
+        pages: List[Span] = []
+        tokens: List[Span] = []
+        rows: List[Span] = []
         start = 0
-        for word in words:
-            text += word['text']
-            end = start + len(word['text'])
-            span = Span(start=start, end=end, bbox=word['bbox'])
-            spans.append(span)
-            text += ' '
-            start = end + 1
+        for i, (page, row_to_words) in enumerate(page_to_row_to_words.items()):
+            page_rows = []
+            for j, (row, words) in enumerate(row_to_words.items()):
+                # process tokens in this row
+                row_tokens = []
+                for k, word in enumerate(words):
+                    text += word['text']
+                    end = start + len(word['text'])
+                    # make token
+                    token = Span(start=start, end=end, id=len(tokens), bbox=word['bbox'])
+                    row_tokens.append(token)
+                    tokens.append(token)
+                    if k < len(words) - 1:
+                        text += ' '
+                    else:
+                        text += '\n'
+                    start = end + 1
+                # make row
+                row = Span(start=row_tokens[0].start, end=row_tokens[-1].end, id=len(rows),
+                           bbox=BoundingBox.union_bboxes(bboxes=[token.bbox for token in row_tokens]))
+                page_rows.append(row)
+                rows.append(row)
+            # make page
+            page = Span(start=page_rows[0].start, end=page_rows[-1].end, id=i,
+                        bbox=BoundingBox.union_bboxes(bboxes=[row.bbox for row in page_rows]))
+            pages.append(page)
         return {
-            'text': text[:-1],   # remove extra ' ' at end
-            'spans': spans
+            'text': text,
+            'page': [page.to_json() for page in pages],
+            'token': [token.to_json() for token in tokens],
+            'row': [row.to_json() for row in rows],
+            'sent': [],
+            'block': []
         }
 
     def _parse_sscraper_xml(self, xmlfile: str) -> Document:
@@ -224,13 +246,11 @@ class SymbolScraperParser(Parser):
         # get token stream (grouped by page & row)
         page_to_row_to_words = self._parse_page_to_row_to_words(xml_lines=xml_lines, page_to_metrics=page_to_metrics)
 
-
-        # convert to span indices
-
+        # convert to spans
+        doc_json = self._convert_nested_text_to_doc_json(page_to_row_to_words=page_to_row_to_words)
 
         # build Document
-        doc = Document(text='')
-
+        doc = Document.from_json(doc_json=doc_json)
         return doc
 
 
