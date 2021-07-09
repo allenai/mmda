@@ -48,11 +48,12 @@ class BoundingBox:
 
     @classmethod
     def from_json(cls, bbox_json: Dict) -> 'BoundingBox':
-        bbox = BoundingBox(**bbox_json)
+        l, t, w, h, page = bbox_json
+        bbox = BoundingBox(l=l, t=t, w=w, h=h, page=page)
         return bbox
 
     def to_json(self):
-        return [self.l, self.t, self.w, self.h]
+        return [self.l, self.t, self.w, self.h, self.page]
 
     def __repr__(self):
         return json.dumps(self.to_json())

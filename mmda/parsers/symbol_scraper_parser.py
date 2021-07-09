@@ -33,7 +33,7 @@ class SymbolScraperParser(Parser):
             doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
             outfile = os.path.join(outdir, outfname)
             with open(outfile, 'w') as f_out:
-                json.dump(f_out, doc.to_json(), indent=4)
+                json.dump(doc.to_json(), f_out, indent=4)
             return doc
         else:
             raise NotImplementedError(f'Sscraper needs somewhere to output temp XML files')
@@ -54,7 +54,7 @@ class SymbolScraperParser(Parser):
         os.makedirs(outdir, exist_ok=True)
         cmd = [self.sscraper_bin_path, '-b', infile, outdir]
         subprocess.run(cmd)
-        xmlfile = os.path.join(outdir, infile.replace('.pdf', '.xml'))
+        xmlfile = os.path.join(outdir, os.path.basename(infile).replace('.pdf', '.xml'))
         if not os.path.exists(xmlfile):
             raise FileNotFoundError(f'Parsing {infile} may have failed. Cant find {xmlfile}.')
         else:
