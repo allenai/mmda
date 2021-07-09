@@ -14,14 +14,16 @@ import json
 
 
 class Span:
-    def __init__(self, start: int, end: int, text: Optional[str] = None, bbox: Optional[BoundingBox] = None):
+    def __init__(self, start: int, end: int, id: Optional[int] = None,
+                 text: Optional[str] = None, bbox: Optional[BoundingBox] = None):
         self.start = start
         self.end = end
+        self.id = id
         self.text = text
         self.bbox = bbox
 
     @classmethod
-    def from_json(cls, span_json: Dict) -> 'Span':
+    def from_json(cls, span_json: Dict):
         bbox = BoundingBox.from_json(bbox_json=span_json['bbox']) if 'bbox' in span_json else None
         span = Span(start=span_json['start'], end=span_json['end'], text=span_json.get('text'), bbox=bbox)
         return span
@@ -29,6 +31,7 @@ class Span:
     def to_json(self):
         return {'start': self.start,
                 'end': self.end,
+                'id': self.id if self.id else None,
                 'text': self.text if self.text else None,
                 'bbox': self.bbox.to_json() if self.bbox else None}
 
@@ -46,3 +49,8 @@ class Span:
         else:
             raise ValueError(f'{val} of type {type(val)} not supported for __contains__')
 
+    def __lt__(self, other: 'Span'):
+        if self.id and other.id:
+            return self.id < other.id
+        else:
+            return self.start < other.start

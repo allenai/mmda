@@ -119,49 +119,33 @@ class SymbolScraperParser(Parser):
         return {'id': match.group(1), 'bbox': match.group(3), 'text': match.group(5)}
 
     #
-    #   main parsing method
+    #   main parsing methods
     #
-    def _parse_sscraper_xml(self, xmlfile: str) -> Dict:
-
-        with open(xmlfile, 'r') as f_in:
-            xml_lines = [line.strip() for line in f_in]
-
-        # get runtime
-        runtime = int(self._find_one_and_extract(my_list=xml_lines, start_tag='<runtime>', end_tag='</runtime>'))
-        if runtime is None:
-            raise ValueError(f'No Runtime for {xmlfile}')
-
-        # get page metrics
+    def _parse_page_to_metrics(self, xml_lines: List[str]) -> Dict:
         start, end = self._split_list_by_start_end_tags(my_list=xml_lines,
                                                         start_tag='<pagemetrics>',
                                                         end_tag='</pagemetrics>')[0]  # just one of them exists
         pagemetrics = xml_lines[start:end]
 
         page_to_metrics = {}
-        for start, end in self._split_list_by_start_end_tags(my_list=pagemetrics,
-                                                             start_tag='<page>',
-                                                             end_tag='</page>'):
+        for start, end in self._split_list_by_start_end_tags(my_list=pagemetrics, start_tag='<page>', end_tag='</page>'):
             partition = pagemetrics[start:end]
             page_num = int(self._find_one_and_extract(my_list=partition, start_tag='<no>', end_tag='</no>'))
-            page_width = float(
-                self._find_one_and_extract(my_list=partition, start_tag='<pagewidth>', end_tag='</pagewidth>'))
-            page_height = float(
-                self._find_one_and_extract(my_list=partition, start_tag='<pageheight>', end_tag='</pageheight>'))
-            page_num_lines = int(
-                self._find_one_and_extract(my_list=partition, start_tag='<lines>', end_tag='</lines>'))
-            page_num_words = int(
-                self._find_one_and_extract(my_list=partition, start_tag='<words>', end_tag='</words>'))
-            page_num_chars = int(
-                self._find_one_and_extract(my_list=partition, start_tag='<characters>', end_tag='</characters>'))
+            page_width = float(self._find_one_and_extract(my_list=partition, start_tag='<pagewidth>', end_tag='</pagewidth>'))
+            page_height = float(self._find_one_and_extract(my_list=partition, start_tag='<pageheight>', end_tag='</pageheight>'))
+            page_num_rows = int(self._find_one_and_extract(my_list=partition, start_tag='<lines>', end_tag='</lines>'))
+            page_num_words = int(self._find_one_and_extract(my_list=partition, start_tag='<words>', end_tag='</words>'))
+            page_num_chars = int(self._find_one_and_extract(my_list=partition, start_tag='<characters>', end_tag='</characters>'))
             page_to_metrics[page_num] = {
                 'height': page_height,
                 'width': page_width,
-                'lines': page_num_lines,
+                'rows': page_num_rows,
                 'words': page_num_words,
                 'chars': page_num_chars
             }
+        return page_to_metrics
 
-        # get token stream (grouped by page & row)
+    def _parse_page_to_row_to_words(self, xml_lines: List[str], page_to_metrics: Dict) -> Dict:
         page_to_row_to_words = defaultdict(lambda: defaultdict(list))
         for page_start, page_end in self._split_list_by_start_end_tags(my_list=xml_lines,
                                                                        start_tag='<Page',
@@ -194,10 +178,35 @@ class SymbolScraperParser(Parser):
                         continue
                     else:
                         word_bbox = BoundingBox.union_bboxes(bboxes=char_bboxes)
-                        page_to_row_to_words[page_id][row_id].append(Token(text=word, bbox=word_bbox))
+                        page_to_row_to_words[page_id][row_id].append({'text': word, 'bbox': word_bbox})
+        return {
+            page: {row: words for row, words in row_to_words.items()}
+            for page, row_to_words in page_to_row_to_words.items()
+        }
+
+
+    def _parse_sscraper_xml(self, xmlfile: str) -> Dict:
+
+        with open(xmlfile, 'r') as f_in:
+            xml_lines = [line.strip() for line in f_in]
+
+        # get runtime
+        runtime = int(self._find_one_and_extract(my_list=xml_lines, start_tag='<runtime>', end_tag='</runtime>'))
+        if runtime is None:
+            raise ValueError(f'No Runtime for {xmlfile}')
+        else:
+            print(f'Symbol Scraper took {runtime} sec for {xmlfile}...')
+
+        # get page metrics
+        page_to_metrics = self._parse_page_to_metrics(xml_lines=xml_lines)
+        print(f'\tNum pages: {len(page_to_metrics)}')
+        print(f"\tAvg words: {sum([metric['words'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        print(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+
+        # get token stream (grouped by page & row)
+        page_to_row_to_words = self._parse_page_to_row_to_words(xml_lines=xml_lines, page_to_metrics=page_to_metrics)
 
         return {
-            'runtime': runtime,
             'page_to_metrics': page_to_metrics,
             'page_to_row_to_words': {
                 page: {row: words for row, words in row_to_words.items()} for
