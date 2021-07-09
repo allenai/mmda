@@ -184,6 +184,25 @@ class SymbolScraperParser(Parser):
             for page, row_to_words in page_to_row_to_words.items()
         }
 
+    def _convert_nested_text_to_spans(self, page_to_row_to_words: Dict):
+        pass
+
+    def _convert_words_to_spans(self, words: List) -> Dict:
+        text = ''
+        spans = []
+        start = 0
+        for word in words:
+            text += word['text']
+            end = start + len(word['text'])
+            span = Span(start=start, end=end, bbox=word['bbox'])
+            spans.append(span)
+            text += ' '
+            start = end + 1
+        return {
+            'text': text[:-1],   # remove extra ' ' at end
+            'spans': spans
+        }
+
     def _parse_sscraper_xml(self, xmlfile: str) -> Document:
 
         with open(xmlfile, 'r') as f_in:
@@ -206,8 +225,11 @@ class SymbolScraperParser(Parser):
         page_to_row_to_words = self._parse_page_to_row_to_words(xml_lines=xml_lines, page_to_metrics=page_to_metrics)
 
 
+        # convert to span indices
+
+
         # build Document
-        doc = Document(text=)
+        doc = Document(text='')
 
         return doc
 
