@@ -15,76 +15,92 @@ from mmda.types.annotations import Annotation, SpanAnnotation, BoundingBoxAnnota
 from mmda.types.span import Span
 
 
+Text = 'text'
+Page = 'page'
+Token = 'token'
+Row = 'row'
+Sent = 'sent'
+Block = 'block'
+
+
 class Document:
 
-    valid_types = ['page', 'token', 'row', 'sent', 'block']
+    valid_types = [Page, Token, Row, Sent, Block]
 
     def __init__(self, text: str):
         self.text = text
 
-        self._pages: Optional[List[Span]] = None
-        self._tokens: Optional[List[Span]] = None
-        self._rows: Optional[List[Span]] = None
-        self._sents: Optional[List[Span]] = None
-        self._blocks: Optional[List[Span]] = None
+        # TODO: if have span_type Map, do still need these?
+        self._pages: List[Span] = []
+        self._tokens: List[Span] = []
+        self._rows: List[Span] = []
+        self._sents: List[Span] = []
+        self._blocks: List[Span] = []
 
-        self._span_type_to_spans: Dict[Type, Optional[Span]] = {
-            'page': self._pages,
-            'token': self._tokens,
-            'row': self._rows,
-            'sent': self._sents,
-            'block': self._blocks
+        self._span_type_to_spans: Dict[Type, List[Span]] = {
+            Page: self._pages,
+            Token: self._tokens,
+            Row: self._rows,
+            Sent: self._sents,
+            Block: self._blocks
         }
 
-        self._index_pages: Optional[IntervalTree] = None
-        self._index_tokens: Optional[IntervalTree] = None
-        self._index_rows: Optional[IntervalTree] = None
-        self._index_sents: Optional[IntervalTree] = None
-        self._index_blocks: Optional[IntervalTree] = None
+        self._page_index: IntervalTree = IntervalTree()
+        self._token_index: IntervalTree = IntervalTree()
+        self._row_index: IntervalTree = IntervalTree()
+        self._sent_index: IntervalTree = IntervalTree()
+        self._block_index: IntervalTree = IntervalTree()
 
-        self._span_type_to_index: Dict[Type, Optional[IntervalTree]] = {
-            'page': self._index_pages,
-            'token': self._index_tokens,
-            'row': self._index_rows,
-            'sent': self._index_sents,
-            'block': self._index_blocks
+        self._span_type_to_index: Dict[Type, IntervalTree] = {
+            Page: self._page_index,
+            Token: self._token_index,
+            Row: self._row_index,
+            Sent: self._sent_index,
+            Block: self._block_index
         }
 
     @classmethod
     def from_json(cls, doc_json: Dict) -> 'Document':
-        doc = Document(text=doc_json['text'])
+        doc = Document(text=doc_json[Text])
+        pages = []
+        tokens = []
+        rows = []
+        sents = []
+        blocks = []
         for span_type in cls.valid_types:
             if span_type in doc_json:
                 doc_spans = [DocSpan.from_span(span=Span.from_json(span_json=span_json), doc=doc, span_type=span_type)
                              for span_json in doc_json[span_type]]
-                if span_type == 'page':
-                    doc.load_pages(pages=doc_spans)
-                elif span_type == 'token':
-                    doc.load_tokens(tokens=doc_spans)
-                elif span_type == 'row':
-                    doc.load_rows(rows=doc_spans)
-                elif span_type == 'sent':
-                    doc.load_sents(sents=doc_spans)
-                elif span_type == 'block':
-                    doc.load_blocks(blocks=doc_spans)
+                if span_type == Page:
+                    pages = doc_spans
+                elif span_type == Token:
+                    tokens = doc_spans
+                elif span_type == Row:
+                    rows = doc_spans
+                elif span_type == Sent:
+                    sents = doc_spans
+                elif span_type == Block:
+                    blocks = doc_spans
                 else:
                     raise Exception(f'Should never reach here')
+        doc.load(pages=pages, tokens=tokens, rows=rows, sents=sents, blocks=blocks)
         return doc
 
+    # TODO: consider simpler more efficient method (e.g. JSONL; text)
     def to_json(self) -> Dict:
         return {
-            'text': self.text,
-            'page': [page.to_json(exclude=['text', 'type']) for page in self.pages],
-            'token': [token.to_json(exclude=['text', 'type']) for token in self.tokens],
-            'row': [row.to_json(exclude=['text', 'type']) for row in self.rows],
-            'sent': [sent.to_json(exclude=['text', 'type']) for sent in self.sents],
-            'block': [block.to_json(exclude=['text', 'type']) for block in self.blocks]
+            Text: self.text,
+            Page: [page.to_json(exclude=['text', 'type']) for page in self.pages],
+            Token: [token.to_json(exclude=['text', 'type']) for token in self.tokens],
+            Row: [row.to_json(exclude=['text', 'type']) for row in self.rows],
+            Sent: [sent.to_json(exclude=['text', 'type']) for sent in self.sents],
+            Block: [block.to_json(exclude=['text', 'type']) for block in self.blocks]
         }
 
     #
     #   methods for building Document
     #
-    def _index_spans(self, spans: List[Span]) -> IntervalTree:
+    def _build_span_index(self, spans: List[Span]) -> IntervalTree:
         """Builds index for a collection of spans"""
         index = IntervalTree()
         for span in spans:
@@ -97,50 +113,43 @@ class Document:
         return index
 
     def _build_span_type_to_spans(self):
-        self._span_type_to_spans: Dict[Type, Optional[Span]] = {
-            'page': self._pages,
-            'token': self._tokens,
-            'row': self._rows,
-            'sent': self._sents,
-            'block': self._blocks
+        self._span_type_to_spans: Dict[Type, List[Span]] = {
+            Page: self._pages,
+            Token: self._tokens,
+            Row: self._rows,
+            Sent: self._sents,
+            Block: self._blocks
         }
 
     def _build_span_type_to_index(self):
-        self._span_type_to_index: Dict[Type, Optional[IntervalTree]] = {
-            'page': self._index_pages,
-            'token': self._index_tokens,
-            'row': self._index_rows,
-            'sent': self._index_sents,
-            'block': self._index_blocks
+        self._span_type_to_index: Dict[Type, IntervalTree] = {
+            Page: self._page_index,
+            Token: self._token_index,
+            Row: self._row_index,
+            Sent: self._sent_index,
+            Block: self._block_index
         }
 
-    def load_pages(self, pages: List[Span]):
-        self._pages = pages
-        self._index_pages = self._index_spans(spans=pages)
-        self._build_span_type_to_spans()
-        self._build_span_type_to_index()
-
-    def load_tokens(self, tokens: List[Span]):
-        self._tokens = tokens
-        self._index_tokens = self._index_spans(spans=tokens)
-        self._build_span_type_to_spans()
-        self._build_span_type_to_index()
-
-    def load_rows(self, rows: List[Span]):
-        self._rows = rows
-        self._index_rows = self._index_spans(spans=rows)
-        self._build_span_type_to_spans()
-        self._build_span_type_to_index()
-
-    def load_sents(self, sents: List[Span]):
-        self._sents = sents
-        self._index_sents = self._index_spans(spans=sents)
-        self._build_span_type_to_spans()
-        self._build_span_type_to_index()
-
-    def load_blocks(self, blocks: List[Span]):
-        self._blocks = blocks
-        self._index_blocks = self._index_spans(spans=blocks)
+    def load(self, pages: Optional[List[Span]] = None,
+             tokens: Optional[List[Span]] = None,
+             rows: Optional[List[Span]] = None,
+             sents: Optional[List[Span]] = None,
+             blocks: Optional[List[Span]] = None):
+        if pages:
+            self._pages = pages
+            self._page_index = self._build_span_index(spans=pages)
+        if tokens:
+            self._tokens = tokens
+            self._token_index = self._build_span_index(spans=tokens)
+        if rows:
+            self._rows = rows
+            self._row_index = self._build_span_index(spans=rows)
+        if sents:
+            self._sents = sents
+            self._sent_index = self._build_span_index(spans=sents)
+        if blocks:
+            self._blocks = blocks
+            self._block_index = self._build_span_index(spans=blocks)
         self._build_span_type_to_spans()
         self._build_span_type_to_index()
 
@@ -172,7 +181,6 @@ class Document:
     #
     # TODO: how should `containment` lookups be handled in this library? intersection is symmetric but containment isnt
     # TODO: @lru.cache or some memoization might improve performance
-    # TODO: cleaner interface would be to make this private, make Token/Page/Block/Sentence/Row aware of Document & use `.<classname>` interface
     def find(self, query: Span, types: str) -> List[Span]:
         index = self._span_type_to_index[types]
         return sorted([interval.data for interval in index[query.start:query.end]])
@@ -187,6 +195,7 @@ class Document:
             else:
                 pass
         raise NotImplementedError
+
 
 
 

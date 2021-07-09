@@ -6,7 +6,7 @@ Dataclass for creating token streams from a document via SymbolScraper
 
 """
 
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Union
 
 import os
 import json
@@ -25,9 +25,19 @@ class SymbolScraperParser(Parser):
     def __init__(self, sscraper_bin_path: str):
         self.sscraper_bin_path = sscraper_bin_path
 
+    # TODO:
+    def _parse(self, infile: str, outdir: Optional[str]) -> Union[str, Document]:
+        if outdir:
+            # do write to disk
+            pass
+        else:
+            # do return Doc in Python
+            pass
+
     def parse(self, infile: str, outdir: str) -> str:
         xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
         sscraper_json = self._parse_sscraper_xml(xmlfile=xmlfile)
+        # TODO upgrade
         outfile = os.path.join(outdir, infile.replace('.pdf', '.json'))
         with open(outfile, 'w') as f_out:
             json.dump(f_out, sscraper_json, indent=4)

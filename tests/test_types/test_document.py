@@ -12,7 +12,7 @@ import unittest
 from mmda.types.span import Span
 from mmda.types.document import Document, DocSpan
 
-class TestSymbolScraperParser(unittest.TestCase):
+class TestDocument(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -62,7 +62,7 @@ class TestSymbolScraperParser(unittest.TestCase):
         block_jsons = [{'start': 0, 'end': 19, 'id': 0}, {'start': 20, 'end': 46, 'id': 1}]
         blocks = [DocSpan.from_span(span=Span.from_json(span_json=block_json), doc=doc, span_type='block')
                   for block_json in block_jsons]
-        doc.load_blocks(blocks=blocks)
+        doc.load(blocks=blocks)
         # loaded properly
         assert len(doc.blocks) == 2
         # post-hoc added type to all spans, even if not in Doc JSON
