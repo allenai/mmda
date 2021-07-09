@@ -16,6 +16,9 @@ from mmda.types.span import Span
 
 
 class Document:
+
+    valid_types = ['page', 'token', 'row', 'sent', 'block']
+
     def __init__(self, text: str):
         self.text = text
 
@@ -50,15 +53,10 @@ class Document:
     @classmethod
     def from_json(cls, doc_json: Dict) -> 'Document':
         doc = Document(text=doc_json['text'])
-        for span_type in ['page', 'token', 'row', 'sent', 'block']:
+        for span_type in cls.valid_types:
             if span_type in doc_json:
-                spans = []
-                for span_json in doc_json[span_type]:
-                    span = Span.from_json(span_json=span_json)
-                    span.type = span_type                           # not usually part of serialization
-                    span.text = doc.text[span.start:span.end]       # not usually part of serialization
-                    spans.append(span)
-                doc_spans = [DocSpan.from_span(span=span, doc=doc) for span in spans]
+                doc_spans = [DocSpan.from_span(span=Span.from_json(span_json=span_json), doc=doc, span_type=span_type)
+                             for span_json in doc_json[span_type]]
                 if span_type == 'page':
                     doc.load_pages(pages=doc_spans)
                 elif span_type == 'token':
@@ -235,8 +233,13 @@ class DocSpan(Span):
             return self.doc.find(query=self, types='block')
 
     @classmethod
-    def from_span(cls, span: Span, doc: Document) -> 'DocSpan':
+    def from_span(cls, span: Span, doc: Document, span_type: str) -> 'DocSpan':
         doc_span = cls(start=span.start, end=span.end, doc=doc,
                        type=span.type, id=span.id, text=span.text, bbox=span.bbox)
+        # these two fields are optional for `Span` & not often serialized in span_jsons, but are
+        # critical for DocSpan methods to work properly
+        if not doc_span.type:
+            doc_span.type = span_type
+        if not doc_span.text:
+            doc_span.text = doc.text[doc_span.start:doc_span.end]
         return doc_span
-

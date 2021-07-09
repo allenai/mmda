@@ -184,8 +184,7 @@ class SymbolScraperParser(Parser):
             for page, row_to_words in page_to_row_to_words.items()
         }
 
-
-    def _parse_sscraper_xml(self, xmlfile: str) -> Dict:
+    def _parse_sscraper_xml(self, xmlfile: str) -> Document:
 
         with open(xmlfile, 'r') as f_in:
             xml_lines = [line.strip() for line in f_in]
@@ -206,12 +205,10 @@ class SymbolScraperParser(Parser):
         # get token stream (grouped by page & row)
         page_to_row_to_words = self._parse_page_to_row_to_words(xml_lines=xml_lines, page_to_metrics=page_to_metrics)
 
-        return {
-            'page_to_metrics': page_to_metrics,
-            'page_to_row_to_words': {
-                page: {row: words for row, words in row_to_words.items()} for
-                page, row_to_words in page_to_row_to_words.items()
-            }
-        }
+
+        # build Document
+        doc = Document(text=)
+
+        return doc
 
 

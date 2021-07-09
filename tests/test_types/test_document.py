@@ -9,7 +9,8 @@ Tests for Document
 
 import unittest
 
-from mmda.types.document import Document
+from mmda.types.span import Span
+from mmda.types.document import Document, DocSpan
 
 class TestSymbolScraperParser(unittest.TestCase):
 
@@ -26,8 +27,7 @@ class TestSymbolScraperParser(unittest.TestCase):
                        {'start': 35, 'end': 39, 'id': 10}, {'start': 40, 'end': 45, 'id': 11},
                        {'start': 45, 'end': 46, 'id': 12}],
             'row': [],
-            'sent': [{'start': 0, 'end': 19, 'id': 0},
-                      {'start': 20, 'end': 46, 'id': 1}],
+            'sent': [{'start': 0, 'end': 19, 'id': 0}, {'start': 20, 'end': 46, 'id': 1}],
             'block': []
         }
 
@@ -56,3 +56,20 @@ class TestSymbolScraperParser(unittest.TestCase):
     def test_to_json(self):
         doc = Document.from_json(self.doc_json)
         self.assertDictEqual(d1=doc.to_json(), d2=self.doc_json)
+
+    def test_load_spans(self):
+        doc = Document.from_json(self.doc_json)
+        block_jsons = [{'start': 0, 'end': 19, 'id': 0}, {'start': 20, 'end': 46, 'id': 1}]
+        blocks = [DocSpan.from_span(span=Span.from_json(span_json=block_json), doc=doc, span_type='block')
+                  for block_json in block_jsons]
+        doc.load_blocks(blocks=blocks)
+        # loaded properly
+        assert len(doc.blocks) == 2
+        # post-hoc added type to all spans, even if not in Doc JSON
+        assert all([block.type == 'block' for block in doc.blocks])
+        # post-hoc added text to all spans, even if not in Doc JSON
+        assert all([block.text == doc.text[block.start:block.end] for block in doc.blocks])
+        # building of indexes between span types works fine
+        assert [block.pages for block in doc.blocks]
+        assert [block.tokens for block in doc.blocks]
+        assert [block.sents for block in doc.blocks]
