@@ -10,7 +10,7 @@ Tests for Document
 import unittest
 
 from mmda.types.span import Span
-from mmda.types.document import Document, DocSpan
+from mmda.types.document import Document, DocSpan, Token, Page, Row, Sent, Block
 
 class TestDocument(unittest.TestCase):
 
@@ -60,13 +60,17 @@ class TestDocument(unittest.TestCase):
     def test_load_spans(self):
         doc = Document.from_json(self.doc_json)
         block_jsons = [{'start': 0, 'end': 19, 'id': 0}, {'start': 20, 'end': 46, 'id': 1}]
-        blocks = [DocSpan.from_span(span=Span.from_json(span_json=block_json), doc=doc, span_type='block')
-                  for block_json in block_jsons]
+        blocks = [
+            DocSpan.from_span(span=Span.from_json(span_json=block_json),
+                              doc=doc,
+                              span_type=Block)
+            for block_json in block_jsons
+        ]
         doc.load(blocks=blocks)
         # loaded properly
         assert len(doc.blocks) == 2
         # post-hoc added type to all spans, even if not in Doc JSON
-        assert all([block.type == 'block' for block in doc.blocks])
+        assert all([block.type == Block for block in doc.blocks])
         # post-hoc added text to all spans, even if not in Doc JSON
         assert all([block.text == doc.text[block.start:block.end] for block in doc.blocks])
         # building of indexes between span types works fine
