@@ -12,6 +12,7 @@ from intervaltree import IntervalTree
 
 from mmda.types.boundingbox import BoundingBox
 from mmda.types.annotations import Annotation, SpanAnnotation, BoundingBoxAnnotation
+from mmda.types.image import Image
 from mmda.types.span import Span
 
 
@@ -21,6 +22,7 @@ Token = 'token'
 Row = 'row'
 Sent = 'sent'
 Block = 'block'
+DocImage = 'image' # Conflicting the PIL Image naming 
 
 
 class Document:
@@ -28,6 +30,7 @@ class Document:
     valid_types = [Page, Token, Row, Sent, Block]
 
     def __init__(self, text: str):
+
         self.text = text
 
         # TODO: if have span_type Map, do still need these?
@@ -36,6 +39,7 @@ class Document:
         self._rows: List[Span] = []
         self._sents: List[Span] = []
         self._blocks: List[Span] = []
+        self._images: List["PIL.Image"] = []
 
         self._span_type_to_spans: Dict[Type, List[Span]] = {
             Page: self._pages,
@@ -67,6 +71,7 @@ class Document:
         rows = []
         sents = []
         blocks = []
+
         for span_type in cls.valid_types:
             if span_type in doc_json:
                 doc_spans = [DocSpan.from_span(span=Span.from_json(span_json=span_json), doc=doc, span_type=span_type)
@@ -83,7 +88,10 @@ class Document:
                     blocks = doc_spans
                 else:
                     raise Exception(f'Should never reach here')
-        doc.load(pages=pages, tokens=tokens, rows=rows, sents=sents, blocks=blocks)
+        
+        images = [Image.frombase64(image_str) for image_str in doc_json[DocImage]]
+
+        doc.load(pages=pages, tokens=tokens, rows=rows, sents=sents, blocks=blocks, images=images)
         return doc
 
     # TODO: consider simpler more efficient method (e.g. JSONL; text)
@@ -94,7 +102,8 @@ class Document:
             Token: [token.to_json(exclude=['text', 'type']) for token in self.tokens],
             Row: [row.to_json(exclude=['text', 'type']) for row in self.rows],
             Sent: [sent.to_json(exclude=['text', 'type']) for sent in self.sents],
-            Block: [block.to_json(exclude=['text', 'type']) for block in self.blocks]
+            Block: [block.to_json(exclude=['text', 'type']) for block in self.blocks],
+            DocImage: [image.tobase64() for image in self.images]
         }
 
     #
@@ -134,7 +143,9 @@ class Document:
              tokens: Optional[List[Span]] = None,
              rows: Optional[List[Span]] = None,
              sents: Optional[List[Span]] = None,
-             blocks: Optional[List[Span]] = None):
+             blocks: Optional[List[Span]] = None,
+             images: Optional[List["PIL.Image"]] = None):
+
         if pages:
             self._pages = pages
             self._page_index = self._build_span_index(spans=pages)
@@ -150,6 +161,9 @@ class Document:
         if blocks:
             self._blocks = blocks
             self._block_index = self._build_span_index(spans=blocks)
+        if images:
+            self._images = images
+
         self._build_span_type_to_spans()
         self._build_span_type_to_index()
 
@@ -175,6 +189,10 @@ class Document:
     @property
     def blocks(self) -> List[Span]:
         return self._blocks
+
+    @property
+    def images(self) -> List["PIL.Image"]:
+        return self._images
 
     #
     #   methods for using Document

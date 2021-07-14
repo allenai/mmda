@@ -19,7 +19,7 @@ class BaseParser:
 
     @abstractmethod
     def parse(
-        self, infile: str, outdir: Optional[str] = None, outfname: Optional[str] = None
+        self, infile: str, outdir: Optional[str] = None, outfname: Optional[str] = None, load_images=True
     ) -> Union[str, Document]:
         """This is the main entrance point for using the PDF parsers. For a
         given PDF file, this method will return a Document object.

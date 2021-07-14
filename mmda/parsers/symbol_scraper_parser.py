@@ -11,12 +11,13 @@ from typing import Optional, List, Dict, Tuple, Union
 import os
 import json
 import subprocess
+import tempfile
 
 import re
 from collections import defaultdict
 
 from mmda.types.span import Span
-from mmda.types.document import Document, Page, Token, Row, Sent, Block, Text
+from mmda.types.document import Document, Page, Token, Row, Sent, Block, Text, DocImage
 from mmda.types.boundingbox import BoundingBox
 from mmda.parsers.parser import BaseParser
 
@@ -25,14 +26,23 @@ class SymbolScraperParser(BaseParser):
     def __init__(self, sscraper_bin_path: str):
         self.sscraper_bin_path = sscraper_bin_path
 
-    def parse(self, infile: str, outdir: Optional[str] = None, outfname: Optional[str] = None) -> Document:
+    def parse(self, infile: str, outdir: Optional[str] = None, outfname: Optional[str] = None, load_images=True) -> Document:
         
-        xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
-        doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
-        
+        if outdir is None:
+            with tempfile.TemporaryDirectory() as outdir:
+                xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
+                doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
+            outdir = None
+        else:
+            xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
+            doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
+       
+        if load_images:
+            doc.load(images=self.load_images(infile))
+
         if outdir is not None:
-            if outfname is not None:
-                outfname = os.path.join(outdir, os.path.basename(outfname).replace('.pdf', '.json'))
+            if outfname is None:
+                outfname = os.path.join(outdir, os.path.basename(infile).replace('.pdf', '.json'))
 
             outfile = os.path.join(outdir, outfname)
             with open(outfile, 'w') as f_out:
@@ -222,7 +232,8 @@ class SymbolScraperParser(BaseParser):
             Token: [token.to_json() for token in tokens],
             Row: [row.to_json() for row in rows],
             Sent: [],
-            Block: []
+            Block: [],
+            DocImage: [],
         }
 
     def _parse_xml_to_doc(self, xmlfile: str) -> Document:
