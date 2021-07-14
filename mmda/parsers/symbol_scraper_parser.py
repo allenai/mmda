@@ -232,8 +232,7 @@ class SymbolScraperParser(BaseParser):
             Token: [token.to_json() for token in tokens],
             Row: [row.to_json() for row in rows],
             Sent: [],
-            Block: [],
-            DocImage: [],
+            Block: []
         }
 
     def _parse_xml_to_doc(self, xmlfile: str) -> Document:
