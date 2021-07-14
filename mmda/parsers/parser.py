@@ -11,6 +11,7 @@ from typing import Optional, Union, List
 from pdf2image import convert_from_path
 
 from mmda.types.document import Document
+from mmda.types.image import Image
 
 
 class Parser:
