@@ -89,7 +89,7 @@ class Document:
                 else:
                     raise Exception(f'Should never reach here')
         
-        images = [Image.frombase64(image_str) for image_str in doc_json[DocImage]]
+        images = [Image.frombase64(image_str) for image_str in doc_json.get(DocImage,[])]
 
         doc.load(pages=pages, tokens=tokens, rows=rows, sents=sents, blocks=blocks, images=images)
         return doc
