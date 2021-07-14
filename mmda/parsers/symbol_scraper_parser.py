@@ -18,31 +18,26 @@ from collections import defaultdict
 from mmda.types.span import Span
 from mmda.types.document import Document, Page, Token, Row, Sent, Block, Text
 from mmda.types.boundingbox import BoundingBox
-from mmda.parsers.parser import Parser
+from mmda.parsers.parser import BaseParser
 
 
-class SymbolScraperParser(Parser):
+class SymbolScraperParser(BaseParser):
     def __init__(self, sscraper_bin_path: str):
         self.sscraper_bin_path = sscraper_bin_path
 
     def parse(self, infile: str, outdir: Optional[str] = None, outfname: Optional[str] = None) -> Document:
-        if outdir:
-            if not outfname:
-                raise ValueError(f'Specifying `outdir` requires also specifying `outfname`')
-            xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
-            doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
+        
+        xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
+        doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
+        
+        if outdir is not None:
+            if outfname is not None:
+                outfname = os.path.join(outdir, os.path.basename(outfname).replace('.pdf', '.json'))
+
             outfile = os.path.join(outdir, outfname)
             with open(outfile, 'w') as f_out:
                 json.dump(doc.to_json(), f_out, indent=4)
-            return doc
-        else:
-            raise NotImplementedError(f'Sscraper needs somewhere to output temp XML files')
-
-    def load(self, infile: str) -> Document:
-        with open(infile) as f_in:
-            doc_json = json.load(f_in)
-            doc = Document.from_json(doc_json=doc_json)
-            return doc
+        return doc
 
     #
     #   methods for interacting with SymbolScraper binary
