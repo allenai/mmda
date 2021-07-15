@@ -1,3 +1,8 @@
+# Mac Finder Configurations
+.DS_Store
+
+# IDEA configurations
+.idea/
 
 # vscode
 *.vscode

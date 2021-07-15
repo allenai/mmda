@@ -19,7 +19,7 @@ def tobase64(self):
     self.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue())
 
-    return img_str
+    return img_str.decode("utf-8")
 
 def frombase64(img_str):
     # Use the same naming style as the original Image methods
