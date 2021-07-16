@@ -99,13 +99,19 @@ class BoxGroup:
 class DocumentAnnotation:
     """DocumentAnnotation is intended for storing model predictions for a document."""
 
-    doc: "Document" = field(default=False, init=False) 
+    doc: Optional["Document"] = field(default=False, init=False) 
     # Specify an attribute with default value in the parent class
     # Ref: https://stackoverflow.com/a/58525728
 
     @abstractmethod
-    def to_json() -> Dict:
+    def to_json(self) -> Dict:
         pass
+
+    @abstractmethod
+    def annotate(self, doc: "Document"):
+        """Annotate the object itself on a specific document. 
+        It will associate the annotations with the document symbols. 
+        """
 
     def __getattr__(self, field):
         if field in self.fields: 
