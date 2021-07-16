@@ -107,6 +107,11 @@ class DocumentAnnotation:
     def to_json() -> Dict:
         pass
 
+    def __getattr__(self, field):
+        if field in self.fields: 
+            return self.doc.find(self, field)
+        else:
+            return self.__getattribute__(field)
 
 @dataclass
 class DocSpan(DocumentAnnotation):
