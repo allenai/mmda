@@ -22,7 +22,7 @@ class DocumentElement:
 
 @dataclass
 class DocumentPageSymbols(DocumentElement):
-    """Storing the symbols of a document."""
+    """Storing the symbols of a page."""
 
     symbols: str
 
@@ -49,10 +49,12 @@ class DocumentSymbols(DocumentElement):
 
 
 @dataclass
-class DocumentAnnotation(DocumentElement):
+class DocumentAnnotation:
     """DocumentAnnotation is intended for storing model predictions for a document."""
-
-    pass
+    
+    @abstractmethod
+    def to_json() -> Dict:
+        pass
 
 
 @dataclass
@@ -152,10 +154,3 @@ def frombase64(img_str):
 Image.Image.tobase64 = tobase64 # This is the method applied to individual Image classes 
 Image.Image.to_json = tobase64 # Use the same API as the others 
 Image.frombase64 = frombase64 # This is bind to the module, used for loading the images 
-
-@dataclass
-class DocumentImages(DocumentElement):
-    images = List[Image.Image]
-
-    def to_json(self):
-        return [image.to_json() for image in self.images]

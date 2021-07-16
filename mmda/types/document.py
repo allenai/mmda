@@ -8,7 +8,7 @@ class Document:
     def __init__(
         self,
         symbols: DocumentSymbols,
-        images: Optional[DocumentImages] = None,
+        images: Optional["Image"] = None,
         **annotations
     ):
 
