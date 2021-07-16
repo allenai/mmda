@@ -105,8 +105,8 @@ class DocSpan(SpanGroup):
 
     def to_json(self) -> Dict:
         return dict(
-            start=self.start,
-            end=self.end,
+            _type="DocSpan", #Used for differenting between DocSpan and DocBox when loading the json
+            spans=self.spans.to_json(),
             page=self.page,
             text=self.text,
             type=self.type,
@@ -122,10 +122,8 @@ class DocBox(BoxGroup):
 
     def to_json(self) -> Dict:
         return dict(
-            l=self.l,
-            t=self.t,
-            w=self.w,
-            h=self.h,
+            _type="DocBox", #Used for differenting between DocSpan and DocBox when loading the json
+            boxes=self.boxes.to_json(),
             page=self.page,
             text=self.text,
             type=self.type,
