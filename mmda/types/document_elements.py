@@ -49,16 +49,7 @@ class DocumentSymbols(DocumentElement):
 
 
 @dataclass
-class DocumentAnnotation:
-    """DocumentAnnotation is intended for storing model predictions for a document."""
-    
-    @abstractmethod
-    def to_json() -> Dict:
-        pass
-
-
-@dataclass
-class Span(DocumentAnnotation):
+class Span:
     start: int
     end: int
     page: int
@@ -72,7 +63,7 @@ class Span(DocumentAnnotation):
 
 
 @dataclass
-class Box(DocumentAnnotation):
+class Box:
     l: float
     t: float
     w: float
@@ -84,30 +75,60 @@ class Box(DocumentAnnotation):
 
 
 @dataclass
-class BoxGroup(DocumentAnnotation):
+class SpanGroup:
+    spans: List[Span] = field(default_factory=list)
+
+    def to_json(self) -> Dict:
+        return [span.to_json() for span in self.spans]
+    
+    def __get_item__(self, key):
+        return self.spans[key]
+
+
+@dataclass
+class BoxGroup:
     boxes: List[Box] = field(default_factory=list)
 
     def to_json(self) -> Dict:
         return [box.to_json() for box in self.boxes]
 
+    def __get_item__(self, key):
+        return self.boxes[key]
 
 @dataclass
-class SpanGroup(DocumentAnnotation):
-    spans: List[Span] = field(default_factory=list)
+class DocumentAnnotation:
+    """DocumentAnnotation is intended for storing model predictions for a document."""
 
+    doc: Optional["Document"] = field(default=False, init=False) 
+    # Specify an attribute with default value in the parent class
+    # Ref: https://stackoverflow.com/a/58525728
+
+    @abstractmethod
     def to_json(self) -> Dict:
-        return [span.to_json() for span in self.spans]
+        pass
 
+    @abstractmethod
+    def annotate(self, doc: "Document"):
+        """Annotate the object itself on a specific document. 
+        It will associate the annotations with the document symbols. 
+        """
+
+    def __getattr__(self, field):
+        if field in self.fields: 
+            return self.doc.find(self, field)
+        else:
+            return self.__getattribute__(field)
 
 @dataclass
-class DocSpan(SpanGroup):
+class DocSpan(DocumentAnnotation):
+    spans: List[Span] = field(default_factory=list)
     text: Optional[str] = None
     type: Optional[str] = None
     boxes: Optional["BoxGroup"] = None
 
     def to_json(self) -> Dict:
         return dict(
-            _type="DocSpan", #Used for differenting between DocSpan and DocBox when loading the json
+            _type="DocSpan",  # Used for differenting between DocSpan and DocBox when loading the json
             spans=self.spans.to_json(),
             page=self.page,
             text=self.text,
@@ -117,21 +138,21 @@ class DocSpan(SpanGroup):
 
 
 @dataclass
-class DocBox(BoxGroup):
+class DocBox(DocumentAnnotation):
+    boxes: List[Box] = field(default_factory=list)
     text: Optional[str] = None
     type: Optional[str] = None
     spans: Optional["SpanGroup"] = None
 
     def to_json(self) -> Dict:
         return dict(
-            _type="DocBox", #Used for differenting between DocSpan and DocBox when loading the json
+            _type="DocBox",  # Used for differenting between DocSpan and DocBox when loading the json
             boxes=self.boxes.to_json(),
             page=self.page,
             text=self.text,
             type=self.type,
             spans=self.spans.to_json() if self.spans else None,
         )
-
 
 # Monkey patch the PIL.Image methods to add base64 conversion
 
