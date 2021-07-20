@@ -113,8 +113,8 @@ class DocumentAnnotation:
         It will associate the annotations with the document symbols. 
         """
 
-    def __getattr__(self, field):
-        if field in self.fields: 
+    def __getattr__(self, field: str):
+        if field in self.doc.fields: 
             return self.doc.find(self, field)
         else:
             return self.__getattribute__(field)
@@ -175,3 +175,7 @@ def frombase64(img_str):
 Image.Image.tobase64 = tobase64 # This is the method applied to individual Image classes 
 Image.Image.to_json = tobase64 # Use the same API as the others 
 Image.frombase64 = frombase64 # This is bind to the module, used for loading the images 
+
+
+def load_document_element(field_name, field_annotation, document=None):
+    pass
