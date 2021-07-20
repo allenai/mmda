@@ -175,3 +175,7 @@ def frombase64(img_str):
 Image.Image.tobase64 = tobase64 # This is the method applied to individual Image classes 
 Image.Image.to_json = tobase64 # Use the same API as the others 
 Image.frombase64 = frombase64 # This is bind to the module, used for loading the images 
+
+
+def load_document_element(field_name, field_annotation, document=None):
+    pass
