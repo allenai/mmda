@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import List, Optional
 
 from mmda.types.document_elements import *
 
@@ -19,45 +20,53 @@ class Document:
         self._fields = self.DEFAULT_FIELDS
 
     @property
-    def fields(self):  
+    def fields(self):
         return self._fields
 
     def _check_valid_field_name(self, field_name):
-        assert not field_name.startswith("_"), "The field_name should not start with `_`. "
+        assert not field_name.startswith(
+            "_"
+        ), "The field_name should not start with `_`. "
         assert field_name not in ["fields"], "The field_name should not be 'fields'."
-        assert field_name not in dir(self), f"The field_name should not conflict with existing class properties {field_name}"
+        assert field_name not in dir(
+            self
+        ), f"The field_name should not conflict with existing class properties {field_name}"
 
     def _register_field(self, field_name):
         if field_name not in self.fields:
             self._check_valid_field_name(field_name)
             self._fields.append(field)
 
-    def _add(self, name, annotation):
+    def _add(self, field_name, field_annotations):
 
-        assert annotation.doc == self # check that the annotation is associated with the document
-        setattr(self, name, annotation)
-        self._register_field(name)
-
-    def _annotate(self, name, annotation):
+        self._register_field(field_name) # It should do the registration check first
         
-        annotation = annotation.annotate(self)
-        self._add(name, annotation)
+        for annotation in field_annotations:
+            assert annotation.doc == self
+            # check that the annotation is associated with the document
+            
+        setattr(self, field_name, field_annotations)
 
-    def add(self, **annotations):
+    def _annotate(self, field_name, field_annotations):
+
+        for annotation in field_annotations:
+            annotation = annotation.annotate(self)
+        self._add(field_name, field_annotations)
+
+    def add(self, **annotations:List[DocumentAnnotation]):
         """Add document annotations into this document object.
         Note: in this case, the annotations are assumed to be already associated with
         the document symbols.
         """
-        for name, annotation in annotations.items():
-            self._add(name, annotation)
+        for field_name, field_annotations in annotations.items():
+            self._add(field_name, field_annotations)
 
-    def annotate(self, **annotations):
+    def annotate(self, **annotations:List[DocumentAnnotation]):
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
         """
-        for key, value in annotations.items():
-            self._annotate(key, value)
-
+        for field_name, field_annotations in annotations.items():
+            self._annotate(field_name, field_annotations)
     def to_json(self, fields):
         pass
 
