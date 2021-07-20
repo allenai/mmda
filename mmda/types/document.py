@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import List, Optional
 import json
 import os
-import glob
+from glob import glob
 
 from mmda.types.document_elements import *
 
