@@ -113,8 +113,8 @@ class DocumentAnnotation:
         It will associate the annotations with the document symbols. 
         """
 
-    def __getattr__(self, field):
-        if field in self.fields: 
+    def __getattr__(self, field: str):
+        if field in self.doc.fields: 
             return self.doc.find(self, field)
         else:
             return self.__getattribute__(field)
