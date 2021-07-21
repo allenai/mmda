@@ -16,7 +16,7 @@ class DocumentElement:
     """
 
     @abstractmethod
-    def to_json() -> Dict:
+    def to_json(self) -> Dict:
         pass
 
 
@@ -27,7 +27,7 @@ class DocumentPageSymbols(DocumentElement):
     symbols: str
 
     # TODO: Add support for symbol bounding boxes and style
-    def __get_item__(self, key):
+    def __getitem__(self, key):
         return self.symbols[key]
 
     def to_json(self):
@@ -40,7 +40,7 @@ class DocumentSymbols(DocumentElement):
 
     page_symbols: List[DocumentPageSymbols] = field(default_factory=list)
 
-    def __get_item__(self, *indices):
+    def __getitem__(self, *indices):
         page_id, symbol_slices = indices
         return self.page_symbols[page_id][symbol_slices]
 
@@ -78,10 +78,10 @@ class Box:
 class SpanGroup:
     spans: List[Span] = field(default_factory=list)
 
-    def to_json(self) -> Dict:
+    def to_json(self) -> List[Dict]:
         return [span.to_json() for span in self.spans]
     
-    def __get_item__(self, key):
+    def __getitem__(self, key):
         return self.spans[key]
 
 
@@ -89,17 +89,18 @@ class SpanGroup:
 class BoxGroup:
     boxes: List[Box] = field(default_factory=list)
 
-    def to_json(self) -> Dict:
+    def to_json(self) -> List[Dict]:
         return [box.to_json() for box in self.boxes]
 
-    def __get_item__(self, key):
+    def __getitem__(self, key):
         return self.boxes[key]
+
 
 @dataclass
 class DocumentAnnotation:
     """DocumentAnnotation is intended for storing model predictions for a document."""
 
-    doc: Optional["Document"] = field(default=False, init=False) 
+    doc: Optional["Document"] = field(default=False, init=False)
     # Specify an attribute with default value in the parent class
     # Ref: https://stackoverflow.com/a/58525728
 
@@ -119,40 +120,37 @@ class DocumentAnnotation:
         else:
             return self.__getattribute__(field)
 
+
 @dataclass
-class DocSpan(DocumentAnnotation):
-    spans: List[Span] = field(default_factory=list)
+class DocSpanGroup(DocumentAnnotation):
+    span_group: SpanGroup
     text: Optional[str] = None
     type: Optional[str] = None
-    boxes: Optional["BoxGroup"] = None
+    box_group: Optional[BoxGroup] = None
 
     def to_json(self) -> Dict:
         return dict(
-            _type="DocSpan",  # Used for differenting between DocSpan and DocBox when loading the json
-            spans=self.spans.to_json(),
-            page=self.page,
+            _type="DocSpanGroup",  # Used for differenting between DocSpan and DocBox when loading the json
+            span_group=self.span_group.to_json(),
             text=self.text,
             type=self.type,
-            boxes=self.boxes.to_json() if self.boxes else None,
+            box_group=self.box_group.to_json() if self.box_group else None,
         )
 
 
 @dataclass
-class DocBox(DocumentAnnotation):
-    boxes: List[Box] = field(default_factory=list)
-    text: Optional[str] = None
+class DocBoxGroup(DocumentAnnotation):
+    box_group: BoxGroup
     type: Optional[str] = None
-    spans: Optional["SpanGroup"] = None
 
     def to_json(self) -> Dict:
         return dict(
-            _type="DocBox",  # Used for differenting between DocSpan and DocBox when loading the json
-            boxes=self.boxes.to_json(),
-            page=self.page,
-            text=self.text,
-            type=self.type,
-            spans=self.spans.to_json() if self.spans else None,
+            _type="DocBoxGroup",  # Used for differenting between DocSpan and DocBox when loading the json
+            box_group=self.box_group.to_json(),
+            type=self.type
         )
+
+
 
 # Monkey patch the PIL.Image methods to add base64 conversion
 
@@ -163,6 +161,7 @@ def tobase64(self):
     img_str = base64.b64encode(buffered.getvalue())
 
     return img_str.decode("utf-8")
+
 
 def frombase64(img_str):
     # Use the same naming style as the original Image methods
@@ -177,5 +176,5 @@ Image.Image.to_json = tobase64 # Use the same API as the others
 Image.frombase64 = frombase64 # This is bind to the module, used for loading the images 
 
 
-def load_document_element(field_name, field_annotation, document=None):
+def load_document_element(field_name: str, field_annotation: List[DocumentAnnotation], document: Optional["Document"] = None):
     pass

@@ -10,7 +10,7 @@ Tests for Document
 import unittest
 
 from mmda.types.span import Span
-from mmda.types.document import Document, DocSpan, Token, Page, Row, Sent, Block
+from mmda.types.document import Document, DocSpanGroup, Token, Page, Row, Sent, Block
 
 class TestDocument(unittest.TestCase):
 
@@ -61,9 +61,9 @@ class TestDocument(unittest.TestCase):
         doc = Document.from_json(self.doc_json)
         block_jsons = [{'start': 0, 'end': 19, 'id': 0}, {'start': 20, 'end': 46, 'id': 1}]
         blocks = [
-            DocSpan.from_span(span=Span.from_json(span_json=block_json),
-                              doc=doc,
-                              span_type=Block)
+            DocSpanGroup.from_span(span=Span.from_json(span_json=block_json),
+                                   doc=doc,
+                                   span_type=Block)
             for block_json in block_jsons
         ]
         doc.load(blocks=blocks)
