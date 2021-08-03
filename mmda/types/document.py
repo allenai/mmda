@@ -55,35 +55,33 @@ class Document:
 
         # 2) register fields into Document & create span groups
         for field_name, span_groups in kwargs.items():
-            self._fields.append(field_name)                                 # save the name of field in doc
-            self._annotate(span_groups=span_groups, field_name=field_name)  # add span groups to doc + index
-            setattr(self, field_name, span_groups)                          # make a property of doc
+            self._fields.append(field_name)                                       # save the name of field in doc
+            self._annotate_field(span_groups=span_groups, field_name=field_name)  # add span groups to doc + index
+            setattr(self, field_name, span_groups)                                # make a property of doc
 
-    def _annotate(self, span_groups: List[SpanGroup], field_name: str) -> None:
-        """Annotate the object itself on a specific document.
+    def _annotate_field(self, span_groups: List[SpanGroup], field_name: str) -> None:
+        """Annotate the Document using a bunch of span groups.
         It will associate the annotations with the document symbols.
         """
-        doc_field_indexer: DocSpanGroupIndexer = self._create_doc_span_group_indexer()
-
         if any([not isinstance(group, SpanGroup) for group in span_groups]):
             raise NotImplementedError(f'Currently doesnt support anything except `SpanGroup` annotation')
 
-        # check constraints
+        new_doc_span_group_indexer: DocSpanGroupIndexer = self._create_doc_span_group_indexer()
         for span_group in span_groups:
             # 1) create a new DocSpanGroup from SpanGroup
             new_doc_span_group = DocSpanGroup(doc=self, span_group=span_group)
 
-            # 2) Check conflicts against index
             for span in span_group:
-                matched_span_group = doc_field_indexer[span.page_id][span.start:span.end]
+                # 2) Check index if any conflicts (we require disjointness)
+                matched_span_group = new_doc_span_group_indexer[span.page_id][span.start:span.end]
                 if matched_span_group:
-                    raise ValueError(f'Existing SpanGroup {matched_span_group} when attempting index {span}')
+                    raise ValueError(f'Detected overlap with existing SpanGroup {matched_span_group} when attempting index {span}')
 
                 # 3) If no issues, add to index (for each span in span_group)
-                doc_field_indexer[span.page_id][span.start:span.end] = new_doc_span_group
+                new_doc_span_group_indexer[span.page_id][span.start:span.end] = new_doc_span_group
 
-        # add new index
-        self._indexers[field_name] = doc_field_indexer
+        # add new index to Doc
+        self._indexers[field_name] = new_doc_span_group_indexer
 
 
     def to_json(self, fields: Optional[List[str]] = None, with_images=False) -> Dict:
