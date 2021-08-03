@@ -23,7 +23,7 @@ class Document:
     def __init__(
         self,
         symbols: DocumentSymbols,
-        images: Optional["Image.Image"] = None,
+        images: Optional[List["Image.Image"]] = None,
     ):
 
         self.symbols = symbols
@@ -47,7 +47,7 @@ class Document:
     def _register_field(self, field_name):
         if field_name not in self.fields:
             self._check_valid_field_name(field_name)
-            self._fields.append(field)
+            self._fields.append(field_name)
             self._indexers[field_name] = DocumentSpanAnnotationIndexer(num_pages=self.symbols.page_count)
 
     def _annotate(self, field_name, field_annotations):
