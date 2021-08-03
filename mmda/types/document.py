@@ -14,19 +14,19 @@ from glob import glob
 from mmda.types.image import Image
 from mmda.types.document_elements import DocumentSymbols
 from mmda.types.annotation import Annotation, DocSpanGroup, Indexer, DocSpanGroupIndexer
+from mmda.types.names import Symbols, Images
 
 
 @dataclass
 class Document:
 
-    DEFAULT_FIELDS = ["symbols", "images"]
+    DEFAULT_FIELDS = [Symbols, Images]
 
     def __init__(
         self,
         symbols: DocumentSymbols,
         images: Optional[List["Image.Image"]] = None,
     ):
-
         self.symbols = symbols
         self.images = images
         self._fields = self.DEFAULT_FIELDS
@@ -36,28 +36,22 @@ class Document:
     def fields(self):
         return self._fields
 
-    def _check_valid_field_name(self, field_name):
-        assert not field_name.startswith(
-            "_"
-        ), "The field_name should not start with `_`. "
-        assert field_name not in ["fields"], "The field_name should not be 'fields'."
-        assert field_name not in dir(
-            self
-        ), f"The field_name should not conflict with existing class properties {field_name}"
-
     def _register_field(self, field_name):
-        if field_name not in self.fields:
-            self._check_valid_field_name(field_name)
-            self._fields.append(field_name)
-            self._indexers[field_name] = DocSpanGroupIndexer(num_pages=self.symbols.page_count)
+        assert not field_name.startswith("_"), "The field_name should not start with `_`. "
+        assert field_name not in self.fields, "This field name already exists"
+        assert field_name not in ["fields"], "The field_name should not be 'fields'."           # TODO[kylel] whats this
+        assert field_name not in dir(self), \
+            f"The field_name should not conflict with existing class properties {field_name}"
+        self._fields.append(field_name)
+        self._indexers[field_name] = DocSpanGroupIndexer(num_pages=self.symbols.page_count)
 
     def _annotate(self, field_name, field_annotations):
 
         self._register_field(field_name)
-        
+
         for annotation in field_annotations:
             annotation = annotation.annotate(self)
-            
+
         setattr(self, field_name, field_annotations)
 
     def annotate(self, **annotations: List[Annotation]):
@@ -75,7 +69,7 @@ class Document:
         # that field and indexers have already been set in some way before calling 
         # this method. I am not totally sure how this mehtod would be used, but it 
         # is a reasonable assumption for now I believe. 
-        
+
         assert field_name in self._fields
         assert field_name in self._indexers
 
@@ -94,12 +88,23 @@ class Document:
             self._add(field_name, field_annotations)
 
     def to_json(self, fields: Optional[List[str]] = None, with_images=False) -> Dict:
+        """Returns a dictionary that's suitable for serialization
 
+        Use `fields` to specify a subset of groups in the Document to include (e.g. 'sentences')
+        If `with_images` is True, will also turn the Images into base64 strings.  Else, won't include them.
+
+        Output format looks like
+            {
+                Symbols: ["...", "...", ...],
+
+            }
+        """
         fields = self.fields if fields is None else fields
+        if not with_images:
+            fields = [field for field in fields if field != Images]
         return {
-            field: [ele.to_json() for ele in getattr(self, field)]
+            field: [group.to_json() for group in getattr(self, field)]
             for field in fields
-            if field != "images" or with_images
         }
 
     def save(
@@ -131,15 +136,16 @@ class Document:
                 json.dump(doc_json, fp)
 
     @classmethod
-    def from_json(cls, json_data: Dict):
-        fields = json_data.keys()
+    def from_json(cls, doc_dict: Dict):
+        fields = doc_dict.keys()        # TODO[kylel]: this modifies the referenced dict, not copy
 
-        symbols = fields.pop("symbols")  # TODO: avoid hard-coded values
-        images = json_data.pop("images", None)
+        # instantiate Document
+        symbols = fields.pop(Symbols)
+        images = doc_dict.pop(Images, None)
         doc = cls(symbols=symbols, images=images)
 
         # TODO: unclear if should be `annotations` or `annotation` for `load()`
-        for field_name, field_annotations in json_data.items():
+        for field_name, field_annotations in doc_dict.items():
             field_annotations = [
                 DocumentSymbols.load(field_name=field_name, annotations=field_annotation, document=doc)
                 for field_annotation in field_annotations
@@ -176,8 +182,8 @@ class Document:
 
     @classmethod
     def find(self, query: DocSpanGroup, field_name: str):
-        
+
         # As for now query only supports for DocSpanGroup, the function is 
         # just this simple
-        
+
         return self._indexers[field_name].index(query)
