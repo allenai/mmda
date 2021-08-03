@@ -21,6 +21,7 @@ class Document:
         self.symbols = symbols
         self.images = images
         self._fields = self.DEFAULT_FIELDS
+        self._indexers = {}
 
     @property
     def fields(self):
@@ -39,22 +40,41 @@ class Document:
         if field_name not in self.fields:
             self._check_valid_field_name(field_name)
             self._fields.append(field)
+            self._indexers[field_name] = DocumentSpanAnnotationIndexer(num_pages=self.symbols.page_count)
+
+    def _annotate(self, field_name, field_annotations):
+
+        self._register_field(field_name)
+        
+        for annotation in field_annotations:
+            annotation = annotation.annotate(self)
+            
+        setattr(self, field_name, field_annotations)
+
+    def annotate(self, **annotations: List[DocumentAnnotation]):
+        """Annotate the fields for document symbols (correlating the annotations with the
+        symbols) and store them into the papers.
+        """
+        for field_name, field_annotations in annotations.items():
+            self._annotate(field_name, field_annotations)
 
     def _add(self, field_name, field_annotations):
 
-        self._register_field(field_name)  # It should do the registration check first
+        # This is different from annotate:
+        # In add, we assume the annotations are already associated with the symbols
+        # and the association is stored in the indexers. As such, we need to ensure 
+        # that field and indexers have already been set in some way before calling 
+        # this method. I am not totally sure how this mehtod would be used, but it 
+        # is a reasonable assumption for now I believe. 
+        
+        assert field_name in self._fields
+        assert field_name in self._indexers
 
         for annotation in field_annotations:
             assert annotation.doc == self
             # check that the annotation is associated with the document
 
         setattr(self, field_name, field_annotations)
-
-    def _annotate(self, field_name, field_annotations):
-
-        for annotation in field_annotations:
-            annotation = annotation.annotate(self)
-        self._add(field_name, field_annotations)
 
     def add(self, **annotations: List[DocumentAnnotation]):
         """Add document annotations into this document object.
@@ -63,13 +83,6 @@ class Document:
         """
         for field_name, field_annotations in annotations.items():
             self._add(field_name, field_annotations)
-
-    def annotate(self, **annotations: List[DocumentAnnotation]):
-        """Annotate the fields for document symbols (correlating the annotations with the
-        symbols) and store them into the papers.
-        """
-        for field_name, field_annotations in annotations.items():
-            self._annotate(field_name, field_annotations)
 
     def to_json(self, fields: Optional[List[str]] = None, with_images=False):
 
@@ -133,7 +146,9 @@ class Document:
         if os.path.isdir(path):
             json_path = os.path.join(path, "document.json")
             image_files = glob(os.path.join(path, "*.png"))
-            image_files = sorted(image_files, key=lambda x: int(os.path.basename(x)[:-4]))
+            image_files = sorted(
+                image_files, key=lambda x: int(os.path.basename(x)[:-4])
+            )
             images = [Image.load(image_file) for image_file in image_files]
         else:
             json_path = path
