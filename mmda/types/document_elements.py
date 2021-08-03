@@ -38,6 +38,7 @@ class DocumentPageSymbols(DocumentElement):
 class DocumentSymbols(DocumentElement):
     """Storing the symbols of a document."""
 
+    page_count: int
     page_symbols: List[DocumentPageSymbols] = field(default_factory=list)
 
     def __getitem__(self, indices):
@@ -129,6 +130,22 @@ class DocSpanGroup(DocumentAnnotation):
     type: Optional[str] = None
     box_group: Optional[BoxGroup] = None
 
+    def annotate(self, doc: "Document", field_name: str):
+        """Annotate the object itself on a specific document. 
+        It will associate the annotations with the document symbols. 
+        """
+        self.doc = doc
+        doc_field_indexer = doc._indexers[field_name]
+
+        for span in SpanGroup:
+
+            # constraint - all spans disjoint
+            existing = doc_field_indexer[span.page_id][span.start:span.end] 
+            if existing:
+                raise ValueError(f'Existing {existing} when attempting index {span}')
+            # add to index
+            doc_field_indexer[span.page_id][span.start:span.end] = self
+
     def to_json(self) -> Dict:
         return dict(
             _type="DocSpanGroup",  # Used for differenting between DocSpan and DocBox when loading the json
@@ -138,6 +155,25 @@ class DocSpanGroup(DocumentAnnotation):
             box_group=self.box_group.to_json() if self.box_group else None,
         )
 
+@dataclass
+class DocumentSpanAnnotationIndexer:
+
+    num_pages: int
+
+    def __post_init__(self):
+        self._index: List[IntervalTree] = [IntervalTree() for _ in range(self.num_pages)]
+
+    def __getitem__(self, indices):
+        page_id, annotation_slice = indices
+        return [interval.data for interval in self._index[page_id][annotation_slice]]
+
+    def index(self, anno: DocSpanGroup):
+        selected_annotations = []
+        for anno in anno.span_group:
+            for selected_anno in self._index[anno.page_id][anno.start : anno.end]:
+                if selected_anno not in selected_annotations: # Deduplicate
+                    selected_annotations.append(selected_anno) 
+        return selected_annotations
 
 @dataclass
 class DocBoxGroup(DocumentAnnotation):
