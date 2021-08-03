@@ -1,11 +1,17 @@
+"""
+
+Objects that are 'aware' of the Document
+
+"""
+
 from typing import List, Optional, Dict, Tuple, Type
 from abc import abstractmethod
 from dataclasses import dataclass, field
-import base64
-from io import BytesIO
 
 from intervaltree import IntervalTree
-from PIL import Image
+
+from mmda.types.span import Span, SpanGroup
+from mmda.types.box import Box, BoxGroup
 
 
 @dataclass
@@ -41,6 +47,7 @@ class DocumentSymbols(DocumentElement):
     page_count: int
     page_symbols: List[DocumentPageSymbols] = field(default_factory=list)
 
+    # TODO[kylel] - this is more confusing than simply treating it as list[list], like it is == `docsyms[0][2:3]`
     def __getitem__(self, indices):
         page_id, symbol_slices = indices
         assert page_id < len(self.page_symbols), "Page index out of range"
@@ -50,52 +57,9 @@ class DocumentSymbols(DocumentElement):
         return [page_symbols.to_json() for page_symbols in self.page_symbols]
 
 
-@dataclass
-class Span:
-    start: int
-    end: int
-    page: int
-
-    def to_json(self) -> Dict:
-        return dict(
-            start=self.start,
-            end=self.end,
-            page=self.page,
-        )
 
 
-@dataclass
-class Box:
-    l: float
-    t: float
-    w: float
-    h: float
-    page: int
 
-    def to_json(self) -> Dict:
-        return dict(l=self.l, t=self.t, w=self.w, h=self.h, page=self.page)
-
-
-@dataclass
-class SpanGroup:
-    spans: List[Span] = field(default_factory=list)
-
-    def to_json(self) -> List[Dict]:
-        return [span.to_json() for span in self.spans]
-    
-    def __getitem__(self, key):
-        return self.spans[key]
-
-
-@dataclass
-class BoxGroup:
-    boxes: List[Box] = field(default_factory=list)
-
-    def to_json(self) -> List[Dict]:
-        return [box.to_json() for box in self.boxes]
-
-    def __getitem__(self, key):
-        return self.boxes[key]
 
 
 @dataclass
@@ -130,7 +94,7 @@ class DocSpanGroup(DocumentAnnotation):
     type: Optional[str] = None
     box_group: Optional[BoxGroup] = None
 
-    def annotate(self, doc: "Document", field_name: str):
+    def annotate(self, doc: "Document", field_name: str) -> None:
         """Annotate the object itself on a specific document. 
         It will associate the annotations with the document symbols. 
         """
@@ -175,6 +139,7 @@ class DocumentSpanAnnotationIndexer:
                     selected_annotations.append(selected_anno) 
         return selected_annotations
 
+
 @dataclass
 class DocBoxGroup(DocumentAnnotation):
     box_group: BoxGroup
@@ -188,29 +153,6 @@ class DocBoxGroup(DocumentAnnotation):
         )
 
 
-
-# Monkey patch the PIL.Image methods to add base64 conversion
-
-def tobase64(self):
-    # Ref: https://stackoverflow.com/a/31826470
-    buffered = BytesIO()
-    self.save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue())
-
-    return img_str.decode("utf-8")
-
-
-def frombase64(img_str):
-    # Use the same naming style as the original Image methods
-
-    buffered = BytesIO(base64.b64decode(img_str))
-    img = Image.open(buffered)
-    return img  
-
-
-Image.Image.tobase64 = tobase64 # This is the method applied to individual Image classes 
-Image.Image.to_json = tobase64 # Use the same API as the others 
-Image.frombase64 = frombase64 # This is bind to the module, used for loading the images 
 
 
 def load_document_element(field_name: str, field_annotation: List[DocumentAnnotation], document: Optional["Document"] = None):

@@ -1,10 +1,18 @@
+"""
+
+
+
+"""
+
 from abc import abstractmethod
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import List, Optional, Dict
 import json
 import os
 from glob import glob
 
-from mmda.types.document_elements import *
+from mmda.types.image import Image
+from mmda.types.document_elements import DocumentSymbols, DocumentSpanAnnotationIndexer, DocumentAnnotation, DocSpanGroup
 
 
 @dataclass
