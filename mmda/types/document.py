@@ -13,6 +13,7 @@ from glob import glob
 
 from mmda.types.image import Image
 from mmda.types.document_elements import DocumentSymbols
+from mmda.types.span import SpanGroup
 from mmda.types.annotation import Annotation, DocSpanGroup, Indexer, DocSpanGroupIndexer
 from mmda.types.names import Symbols, Images
 
@@ -21,6 +22,7 @@ from mmda.types.names import Symbols, Images
 class Document:
 
     DEFAULT_FIELDS = [Symbols, Images]
+    UNALLOWED_FIELD_NAMES = ['fields']
 
     def __init__(
         self,
@@ -33,33 +35,57 @@ class Document:
         self._indexers: Dict[str, Indexer] = {}
 
     @property
-    def fields(self):
+    def fields(self) -> List[str]:
         return self._fields
 
-    def _register_field(self, field_name):
-        assert not field_name.startswith("_"), "The field_name should not start with `_`. "
-        assert field_name not in self.fields, "This field name already exists"
-        assert field_name not in ["fields"], "The field_name should not be 'fields'."           # TODO[kylel] whats this
-        assert field_name not in dir(self), \
-            f"The field_name should not conflict with existing class properties {field_name}"
-        self._fields.append(field_name)
-        self._indexers[field_name] = DocSpanGroupIndexer(num_pages=self.symbols.page_count)
+    def _create_doc_span_group_indexer(self) -> DocSpanGroupIndexer:
+        return DocSpanGroupIndexer(num_pages=self.symbols.page_count)
 
-    def _annotate(self, field_name, field_annotations):
-
-        self._register_field(field_name)
-
-        for annotation in field_annotations:
-            annotation = annotation.annotate(self)
-
-        setattr(self, field_name, field_annotations)
-
-    def annotate(self, **annotations: List[Annotation]):
+    # TODO: this implementation which sets attribute doesn't allow for adding new annos to existing field
+    def annotate(self, **kwargs: List[SpanGroup]) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
         """
-        for field_name, field_annotations in annotations.items():
-            self._annotate(field_name, field_annotations)
+        # 1) check validity of field names
+        for field_name in kwargs.keys():
+            assert not field_name.startswith("_"), "The field_name should not start with `_`. "
+            assert field_name not in self.fields, "This field name already exists"
+            assert field_name not in self.UNALLOWED_FIELD_NAMES, f"The field_name should not be in {self.UNALLOWED_FIELD_NAMES}."
+            assert field_name not in dir(self), \
+                f"The field_name should not conflict with existing class properties {field_name}"
+
+        # 2) register fields into Document & create span groups
+        for field_name, span_groups in kwargs.items():
+            self._fields.append(field_name)                                 # save the name of field in doc
+            self._annotate(span_groups=span_groups, field_name=field_name)  # add span groups to doc + index
+            setattr(self, field_name, span_groups)                          # make a property of doc
+
+    def _annotate(self, span_groups: List[SpanGroup], field_name: str) -> None:
+        """Annotate the object itself on a specific document.
+        It will associate the annotations with the document symbols.
+        """
+        doc_field_indexer: DocSpanGroupIndexer = self._create_doc_span_group_indexer()
+
+        if any([not isinstance(group, SpanGroup) for group in span_groups]):
+            raise NotImplementedError(f'Currently doesnt support anything except `SpanGroup` annotation')
+
+        # check constraints
+        for span_group in span_groups:
+            # 1) create a new DocSpanGroup from SpanGroup
+            new_doc_span_group = DocSpanGroup(doc=self, span_group=span_group)
+
+            # 2) Check conflicts against index
+            for span in span_group:
+                matched_span_group = doc_field_indexer[span.page_id][span.start:span.end]
+                if matched_span_group:
+                    raise ValueError(f'Existing SpanGroup {matched_span_group} when attempting index {span}')
+
+                # 3) If no issues, add to index (for each span in span_group)
+                doc_field_indexer[span.page_id][span.start:span.end] = new_doc_span_group
+
+        # add new index
+        self._indexers[field_name] = doc_field_indexer
+
 
     def _add(self, field_name, field_annotations):
 

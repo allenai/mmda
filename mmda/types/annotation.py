@@ -29,12 +29,6 @@ class Annotation:
     def to_json(self) -> Dict:
         pass
 
-    @abstractmethod
-    def annotate(self, doc: "Document"):
-        """Annotate the object itself on a specific document.
-        It will associate the annotations with the document symbols.
-        """
-
     # TODO[kylel] - comment explaining
     def __getattr__(self, field: str):
         if field in self.doc.fields:
@@ -49,21 +43,6 @@ class DocSpanGroup(Annotation):
     text: Optional[str] = None
     type: Optional[str] = None
     box_group: Optional[BoxGroup] = None
-
-    def annotate(self, doc: "Document", field_name: str) -> None:
-        """Annotate the object itself on a specific document.
-        It will associate the annotations with the document symbols.
-        """
-        self.doc = doc
-        doc_field_indexer = doc._indexers[field_name]
-
-        for span in SpanGroup:
-            # constraint - all spans disjoint
-            existing = doc_field_indexer[span.page_id][span.start:span.end]
-            if existing:
-                raise ValueError(f'Existing {existing} when attempting index {span}')
-            # add to index
-            doc_field_indexer[span.page_id][span.start:span.end] = self
 
     def to_json(self) -> Dict:
         return dict(
