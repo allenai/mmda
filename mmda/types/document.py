@@ -163,5 +163,9 @@ class Document:
         return doc
 
     @classmethod
-    def find(self, query: Span, field: str):
-        pass
+    def find(self, query: DocSpanGroup, field_name: str):
+        
+        # As for now query only supports for DocSpanGroup, the function is 
+        # just this simple
+        
+        return self._indexers[field_name].index(query)
