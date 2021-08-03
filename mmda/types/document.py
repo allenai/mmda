@@ -18,7 +18,6 @@ from mmda.types.annotation import Annotation, DocSpanGroup, Indexer, DocSpanGrou
 from mmda.types.names import Symbols, Images
 
 
-@dataclass
 class Document:
 
     DEFAULT_FIELDS = [Symbols, Images]
@@ -86,32 +85,6 @@ class Document:
         # add new index
         self._indexers[field_name] = doc_field_indexer
 
-
-    def _add(self, field_name, field_annotations):
-
-        # This is different from annotate:
-        # In add, we assume the annotations are already associated with the symbols
-        # and the association is stored in the indexers. As such, we need to ensure 
-        # that field and indexers have already been set in some way before calling 
-        # this method. I am not totally sure how this mehtod would be used, but it 
-        # is a reasonable assumption for now I believe. 
-
-        assert field_name in self._fields
-        assert field_name in self._indexers
-
-        for annotation in field_annotations:
-            assert annotation.doc == self
-            # check that the annotation is associated with the document
-
-        setattr(self, field_name, field_annotations)
-
-    def add(self, **annotations: List[Annotation]):
-        """Add document annotations into this document object.
-        Note: in this case, the annotations are assumed to be already associated with
-        the document symbols.
-        """
-        for field_name, field_annotations in annotations.items():
-            self._add(field_name, field_annotations)
 
     def to_json(self, fields: Optional[List[str]] = None, with_images=False) -> Dict:
         """Returns a dictionary that's suitable for serialization
