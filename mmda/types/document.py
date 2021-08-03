@@ -6,13 +6,14 @@
 
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Type
 import json
 import os
 from glob import glob
 
 from mmda.types.image import Image
-from mmda.types.document_elements import DocumentSymbols, DocumentSpanAnnotationIndexer, DocumentAnnotation, DocSpanGroup
+from mmda.types.document_elements import DocumentSymbols
+from mmda.types.annotation import Annotation, DocSpanGroup, Indexer, DocSpanGroupIndexer
 
 
 @dataclass
@@ -29,7 +30,7 @@ class Document:
         self.symbols = symbols
         self.images = images
         self._fields = self.DEFAULT_FIELDS
-        self._indexers = {}
+        self._indexers: Dict[str, Indexer] = {}
 
     @property
     def fields(self):
@@ -48,7 +49,7 @@ class Document:
         if field_name not in self.fields:
             self._check_valid_field_name(field_name)
             self._fields.append(field_name)
-            self._indexers[field_name] = DocumentSpanAnnotationIndexer(num_pages=self.symbols.page_count)
+            self._indexers[field_name] = DocSpanGroupIndexer(num_pages=self.symbols.page_count)
 
     def _annotate(self, field_name, field_annotations):
 
@@ -59,7 +60,7 @@ class Document:
             
         setattr(self, field_name, field_annotations)
 
-    def annotate(self, **annotations: List[DocumentAnnotation]):
+    def annotate(self, **annotations: List[Annotation]):
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
         """
@@ -84,7 +85,7 @@ class Document:
 
         setattr(self, field_name, field_annotations)
 
-    def add(self, **annotations: List[DocumentAnnotation]):
+    def add(self, **annotations: List[Annotation]):
         """Add document annotations into this document object.
         Note: in this case, the annotations are assumed to be already associated with
         the document symbols.
@@ -137,9 +138,10 @@ class Document:
         images = json_data.pop("images", None)
         doc = cls(symbols=symbols, images=images)
 
+        # TODO: unclear if should be `annotations` or `annotation` for `load()`
         for field_name, field_annotations in json_data.items():
             field_annotations = [
-                load_document_element(field_name, field_annotation, document=doc)
+                DocumentSymbols.load(field_name=field_name, annotations=field_annotation, document=doc)
                 for field_annotation in field_annotations
             ]
             doc._add(
