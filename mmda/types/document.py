@@ -92,7 +92,7 @@ class Document:
         for field_name, field_annotations in annotations.items():
             self._add(field_name, field_annotations)
 
-    def to_json(self, fields: Optional[List[str]] = None, with_images=False):
+    def to_json(self, fields: Optional[List[str]] = None, with_images=False) -> Dict:
 
         fields = self.fields if fields is None else fields
         return {
@@ -118,7 +118,7 @@ class Document:
         doc_json = self.to_json(fields, with_images=with_images and images_in_json)
 
         if with_images and not images_in_json:
-            json_path = os.path.join(path, "document.json")
+            json_path = os.path.join(path, "document.json")     # TODO[kylel]: avoid hard-code
 
             with open(json_path, "w") as fp:
                 json.dump(doc_json, fp)
@@ -135,7 +135,7 @@ class Document:
 
         symbols = fields.pop("symbols")  # TODO: avoid hard-coded values
         images = json_data.pop("images", None)
-        doc = cls(symbols, images)
+        doc = cls(symbols=symbols, images=images)
 
         for field_name, field_annotations in json_data.items():
             field_annotations = [
@@ -149,13 +149,15 @@ class Document:
         return doc
 
     @classmethod
-    def load(cls, path: str):
-
+    def load(cls, path: str) -> "Document":
+        """Instantiate a Document object from its serialization.
+        If path is a directory, loads the JSON for the Document along with all Page images
+        If path is a file, just loads the JSON for the Document, assuming no Page images"""
         if os.path.isdir(path):
             json_path = os.path.join(path, "document.json")
             image_files = glob(os.path.join(path, "*.png"))
             image_files = sorted(
-                image_files, key=lambda x: int(os.path.basename(x)[:-4])
+                image_files, key=lambda x: int(os.path.basename(x).replace('.png', ''))
             )
             images = [Image.load(image_file) for image_file in image_files]
         else:
