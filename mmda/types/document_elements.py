@@ -40,8 +40,9 @@ class DocumentSymbols(DocumentElement):
 
     page_symbols: List[DocumentPageSymbols] = field(default_factory=list)
 
-    def __getitem__(self, *indices):
+    def __getitem__(self, indices):
         page_id, symbol_slices = indices
+        assert page_id < len(self.page_symbols), "Page index out of range"
         return self.page_symbols[page_id][symbol_slices]
 
     def to_json(self):
