@@ -1,10 +1,19 @@
+"""
+
+
+
+"""
+
 from abc import abstractmethod
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import List, Optional, Dict, Type
 import json
 import os
 from glob import glob
 
-from mmda.types.document_elements import *
+from mmda.types.image import Image
+from mmda.types.document_elements import DocumentSymbols
+from mmda.types.annotation import Annotation, DocSpanGroup, Indexer, DocSpanGroupIndexer
 
 
 @dataclass
@@ -15,13 +24,13 @@ class Document:
     def __init__(
         self,
         symbols: DocumentSymbols,
-        images: Optional["Image.Image"] = None,
+        images: Optional[List["Image.Image"]] = None,
     ):
 
         self.symbols = symbols
         self.images = images
         self._fields = self.DEFAULT_FIELDS
-        self._indexers = {}
+        self._indexers: Dict[str, Indexer] = {}
 
     @property
     def fields(self):
@@ -39,8 +48,8 @@ class Document:
     def _register_field(self, field_name):
         if field_name not in self.fields:
             self._check_valid_field_name(field_name)
-            self._fields.append(field)
-            self._indexers[field_name] = DocumentSpanAnnotationIndexer(num_pages=self.symbols.page_count)
+            self._fields.append(field_name)
+            self._indexers[field_name] = DocSpanGroupIndexer(num_pages=self.symbols.page_count)
 
     def _annotate(self, field_name, field_annotations):
 
@@ -51,7 +60,7 @@ class Document:
             
         setattr(self, field_name, field_annotations)
 
-    def annotate(self, **annotations: List[DocumentAnnotation]):
+    def annotate(self, **annotations: List[Annotation]):
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
         """
@@ -76,7 +85,7 @@ class Document:
 
         setattr(self, field_name, field_annotations)
 
-    def add(self, **annotations: List[DocumentAnnotation]):
+    def add(self, **annotations: List[Annotation]):
         """Add document annotations into this document object.
         Note: in this case, the annotations are assumed to be already associated with
         the document symbols.
@@ -84,7 +93,7 @@ class Document:
         for field_name, field_annotations in annotations.items():
             self._add(field_name, field_annotations)
 
-    def to_json(self, fields: Optional[List[str]] = None, with_images=False):
+    def to_json(self, fields: Optional[List[str]] = None, with_images=False) -> Dict:
 
         fields = self.fields if fields is None else fields
         return {
@@ -110,7 +119,7 @@ class Document:
         doc_json = self.to_json(fields, with_images=with_images and images_in_json)
 
         if with_images and not images_in_json:
-            json_path = os.path.join(path, "document.json")
+            json_path = os.path.join(path, "document.json")     # TODO[kylel]: avoid hard-code
 
             with open(json_path, "w") as fp:
                 json.dump(doc_json, fp)
@@ -127,11 +136,12 @@ class Document:
 
         symbols = fields.pop("symbols")  # TODO: avoid hard-coded values
         images = json_data.pop("images", None)
-        doc = cls(symbols, images)
+        doc = cls(symbols=symbols, images=images)
 
+        # TODO: unclear if should be `annotations` or `annotation` for `load()`
         for field_name, field_annotations in json_data.items():
             field_annotations = [
-                load_document_element(field_name, field_annotation, document=doc)
+                DocumentSymbols.load(field_name=field_name, annotations=field_annotation, document=doc)
                 for field_annotation in field_annotations
             ]
             doc._add(
@@ -141,13 +151,15 @@ class Document:
         return doc
 
     @classmethod
-    def load(cls, path: str):
-
+    def load(cls, path: str) -> "Document":
+        """Instantiate a Document object from its serialization.
+        If path is a directory, loads the JSON for the Document along with all Page images
+        If path is a file, just loads the JSON for the Document, assuming no Page images"""
         if os.path.isdir(path):
             json_path = os.path.join(path, "document.json")
             image_files = glob(os.path.join(path, "*.png"))
             image_files = sorted(
-                image_files, key=lambda x: int(os.path.basename(x)[:-4])
+                image_files, key=lambda x: int(os.path.basename(x).replace('.png', ''))
             )
             images = [Image.load(image_file) for image_file in image_files]
         else:
