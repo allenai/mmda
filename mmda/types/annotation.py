@@ -30,9 +30,9 @@ class Annotation:
         pass
 
     # TODO[kylel] - comment explaining
-    def __getattr__(self, field: str):
+    def __getattr__(self, field: str) -> List["Annotation"]:
         if field in self.doc.fields:
-            return self.doc.find(self, field)
+            return self.doc.find_overlapping(self, field)
         else:
             return self.__getattribute__(field)
 
@@ -74,26 +74,33 @@ class DocBoxGroup(Annotation):
 class Indexer:
     """Stores an index for a particular collection of Annotations.
     Indexes in this library focus on *INTERSECT* relations."""
-    raise NotImplementedError
+
+    num_pages: int
+
+    @abstractmethod
+    def find(self, query: Annotation) -> List[Annotation]:
+        """Returns all matching Annotations given a suitable query"""
 
 
 @dataclass
 class DocSpanGroupIndexer(Indexer):
 
-    num_pages: int
-
     # TODO[kylel] -- explain why?
     def __post_init__(self):
         self._index: List[IntervalTree] = [IntervalTree() for _ in range(self.num_pages)]
 
+    # TODO[kylel] - this is more confusing than simply treating it as list[list], like it is == `index[0][2:3]`
     def __getitem__(self, indices):
         page_id, annotation_slice = indices
         return [interval.data for interval in self._index[page_id][annotation_slice]]
 
-    def index(self, doc_span_group: DocSpanGroup):
+    def find(self, query: Annotation) -> List[Annotation]:
+        if not isinstance(query, DocSpanGroup):
+            raise ValueError(f'DocSpanGroupIndexer only works with `query` that is DocSpanGroup type')
+
         all_matched_span_groups = []
         # TODO: does this work?  isnt it `for span in anno.span_group` and require `span_group` to implement `__iter__`
-        for span in doc_span_group.span_group:
+        for span in query.span_group:
             for matched_span_group in self._index[span.page_id][span.start : span.end]:
                 if matched_span_group not in all_matched_span_groups: # Deduplicate
                     all_matched_span_groups.append(matched_span_group)
