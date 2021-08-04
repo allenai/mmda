@@ -178,7 +178,7 @@ class Document:
             image_files = sorted(
                 image_files, key=lambda x: int(os.path.basename(x).replace('.png', ''))
             )
-            images = [Image.load(image_file) for image_file in image_files]
+            images = [Image.load(image_file) for image_file in image_files]     # TODO[kylel]: not how to load PIL images
         else:
             json_path = path
             images = None
@@ -186,7 +186,7 @@ class Document:
         with open(json_path, "r") as fp:
             json_data = json.load(fp)
 
-        doc = cls.from_json(json_data)
+        doc = cls.from_json(doc_dict=json_data)
         doc.images = images
 
         return doc

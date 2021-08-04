@@ -34,7 +34,7 @@ class Annotation:
         if field in self.doc.fields:
             return self.doc.find_overlapping(self, field)
         else:
-            return self.__getattribute__(field)
+            return self.__getattribute__(field)     # TODO[kylel] - alternatively, have it fail
 
 
 @dataclass
@@ -94,6 +94,7 @@ class DocSpanGroupIndexer(Indexer):
         page_id, annotation_slice = indices
         return [interval.data for interval in self._index[page_id][annotation_slice]]
 
+    # TODO[kylel] - maybe have more nullable args for different types of queryes (just start/end ints, just SpanGroup)
     def find(self, query: Annotation) -> List[Annotation]:
         if not isinstance(query, DocSpanGroup):
             raise ValueError(f'DocSpanGroupIndexer only works with `query` that is DocSpanGroup type')
