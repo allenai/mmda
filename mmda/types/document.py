@@ -40,7 +40,14 @@ class Document:
     def _create_doc_span_group_indexer(self) -> DocSpanGroupIndexer:
         return DocSpanGroupIndexer(num_pages=self.symbols.page_count)
 
+    # TODO: extend implementation to support DocBoxGroup
+    def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
+        if not isinstance(query, DocSpanGroup):
+            raise NotImplementedError(f'Currently only supports query of type DocSpanGroup')
+        return self._indexers[field_name].find(query=query)
+
     # TODO: this implementation which sets attribute doesn't allow for adding new annos to existing field
+    # TODO: extend this to allow fo rother types of groups
     def annotate(self, **kwargs: List[SpanGroup]) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
@@ -83,6 +90,9 @@ class Document:
         # add new index to Doc
         self._indexers[field_name] = new_doc_span_group_indexer
 
+    #
+    #   to & from JSON
+    #
 
     def to_json(self, fields: Optional[List[str]] = None, with_images=False) -> Dict:
         """Returns a dictionary that's suitable for serialization
@@ -104,34 +114,6 @@ class Document:
             for field in fields
         }
 
-    def save(
-        self,
-        path: str,
-        fields: Optional[List[str]] = None,
-        with_images=True,
-        images_in_json=False,
-    ):
-
-        if with_images and not images_in_json:
-            assert os.path.isdir(
-                path
-            ), f"When with_images={with_images} and images_in_json={images_in_json}, it requires the path to be a folder"
-            # f-string equals like f"{with_images=}" will break the black formatter and won't work for python < 3.8
-
-        doc_json = self.to_json(fields, with_images=with_images and images_in_json)
-
-        if with_images and not images_in_json:
-            json_path = os.path.join(path, "document.json")     # TODO[kylel]: avoid hard-code
-
-            with open(json_path, "w") as fp:
-                json.dump(doc_json, fp)
-
-            for pid, image in enumerate(self.images):
-                image.save(os.path.join(path, f"{pid}.png"))
-        else:
-            with open(path, "w") as fp:
-                json.dump(doc_json, fp)
-
     @classmethod
     def from_json(cls, doc_dict: Dict):
         fields = doc_dict.keys()        # TODO[kylel]: this modifies the referenced dict, not copy
@@ -152,6 +134,38 @@ class Document:
             )  # We should use add here as they are already annotated
 
         return doc
+
+    #
+    #   for serialization
+    #
+
+    def save(
+        self,
+        path: str,
+        fields: Optional[List[str]] = None,
+        with_images=True,
+        images_in_json=False,
+    ):
+
+        if with_images and not images_in_json:
+            assert os.path.isdir(
+                path
+            ), f"When with_images={with_images} and images_in_json={images_in_json}, it requires the path to be a folder"
+            # f-string equals like f"{with_images=}" will break the black formatter and won't work for python < 3.8
+
+        doc_json: Dict = self.to_json(fields=fields, with_images=with_images and images_in_json)
+
+        if with_images and not images_in_json:
+            json_path = os.path.join(path, "document.json")     # TODO[kylel]: avoid hard-code
+
+            with open(json_path, "w") as fp:
+                json.dump(doc_json, fp)
+
+            for pid, image in enumerate(self.images):
+                image.save(os.path.join(path, f"{pid}.png"))
+        else:
+            with open(path, "w") as fp:
+                json.dump(doc_json, fp)
 
     @classmethod
     def load(cls, path: str) -> "Document":
@@ -176,11 +190,3 @@ class Document:
         doc.images = images
 
         return doc
-
-    @classmethod
-    def find(self, query: DocSpanGroup, field_name: str):
-
-        # As for now query only supports for DocSpanGroup, the function is 
-        # just this simple
-
-        return self._indexers[field_name].index(query)
