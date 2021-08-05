@@ -11,7 +11,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 
 
-from mmda.types.span import Span, SpanGroup
+from mmda.types.span import Span
 from mmda.types.box import Box, BoxGroup
 
 from intervaltree import IntervalTree
@@ -29,6 +29,12 @@ class Annotation:
     def to_json(self) -> Dict:
         pass
 
+    def attach_doc(self, doc: "Document") -> None:
+        if not self.doc:
+            self.doc = doc
+        else:
+            raise AttributeError(f'This annotation already has an attached document')
+
     # TODO[kylel] - comment explaining
     def __getattr__(self, field: str) -> List["Annotation"]:
         if field in self.doc.fields:
@@ -37,21 +43,27 @@ class Annotation:
             return self.__getattribute__(field)     # TODO[kylel] - alternatively, have it fail
 
 
+
 @dataclass
-class DocSpanGroup(Annotation):
-    span_group: SpanGroup
+class SpanGroup(Annotation):
+    spans: List[Span] = field(default_factory=list)
+    id: Optional[int] = None
     text: Optional[str] = None
     type: Optional[str] = None
     box_group: Optional[BoxGroup] = None
 
     def to_json(self) -> Dict:
         return dict(
-            _type="DocSpanGroup",  # Used for differenting between DocSpan and DocBox when loading the json
-            span_group=self.span_group.to_json(),
+            _type="SpanGroup",  # Used for differenting between DocSpan and DocBox when loading the json
+            span_group=[span.to_json() for span in self.spans],
             text=self.text,
             type=self.type,
             box_group=self.box_group.to_json() if self.box_group else None,
         )
+
+    def __getitem__(self, key: int):
+        return self.spans[key]
+
 
 
 @dataclass
@@ -81,15 +93,15 @@ class Indexer:
 
 
 @dataclass
-class DocSpanGroupIndexer(Indexer):
+class SpanGroupIndexer(Indexer):
 
     def __post_init__(self):
         self._index: IntervalTree = IntervalTree()
 
     # TODO[kylel] - maybe have more nullable args for different types of queryes (just start/end ints, just SpanGroup)
     def find(self, query: Annotation) -> List[Annotation]:
-        if not isinstance(query, DocSpanGroup):
-            raise ValueError(f'DocSpanGroupIndexer only works with `query` that is DocSpanGroup type')
+        if not isinstance(query, SpanGroup):
+            raise ValueError(f'SpanGroupIndexer only works with `query` that is SpanGroup type')
 
         all_matched_span_groups = []
         for span in query.span_group:

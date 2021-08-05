@@ -12,8 +12,7 @@ import os
 from glob import glob
 
 from mmda.types.image import Image
-from mmda.types.span import SpanGroup
-from mmda.types.annotation import Annotation, DocSpanGroup, Indexer, DocSpanGroupIndexer
+from mmda.types.annotation import Annotation, SpanGroup, Indexer, SpanGroupIndexer
 from mmda.types.names import Symbols, Images
 
 
@@ -38,8 +37,8 @@ class Document:
 
     # TODO: extend implementation to support DocBoxGroup
     def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
-        if not isinstance(query, DocSpanGroup):
-            raise NotImplementedError(f'Currently only supports query of type DocSpanGroup')
+        if not isinstance(query, SpanGroup):
+            raise NotImplementedError(f'Currently only supports query of type SpanGroup')
         return self._indexers[field_name].find(query=query)
 
     # TODO: this implementation which sets attribute doesn't allow for adding new annos to existing field
@@ -52,7 +51,8 @@ class Document:
         for field_name in kwargs.keys():
             assert not field_name.startswith("_"), "The field_name should not start with `_`. "
             assert field_name not in self.fields, "This field name already exists"
-            assert field_name not in self.UNALLOWED_FIELD_NAMES, f"The field_name should not be in {self.UNALLOWED_FIELD_NAMES}."
+            assert field_name not in self.UNALLOWED_FIELD_NAMES, \
+                f"The field_name should not be in {self.UNALLOWED_FIELD_NAMES}."
             assert field_name not in dir(self), \
                 f"The field_name should not conflict with existing class properties {field_name}"
 
@@ -69,22 +69,25 @@ class Document:
         if any([not isinstance(group, SpanGroup) for group in span_groups]):
             raise NotImplementedError(f'Currently doesnt support anything except `SpanGroup` annotation')
 
-        new_doc_span_group_indexer = DocSpanGroupIndexer()
+        new_span_group_indexer = SpanGroupIndexer()
         for span_group in span_groups:
-            # 1) create a new DocSpanGroup from SpanGroup
-            new_doc_span_group = DocSpanGroup(doc=self, span_group=span_group)
+            # 1) add Document to each SpanGroup
+            span_group.attach_doc(doc=self)
 
+            # 2) for each span in span_group, (a) check if any conflicts (requires disjointedness).
+            #    then (b) add span group to index at this span location
+            #  TODO: can be cleaned up; encapsulate the checker somewhere else
             for span in span_group:
-                # 2) Check index if any conflicts (we require disjointness)
-                matched_span_group = new_doc_span_group_indexer[span.start:span.end]
+                # a) Check index if any conflicts (we require disjointness)
+                matched_span_group = new_span_group_indexer[span.start:span.end]
                 if matched_span_group:
                     raise ValueError(f'Detected overlap with existing SpanGroup {matched_span_group} when attempting index {span}')
 
-                # 3) If no issues, add to index (for each span in span_group)
-                new_doc_span_group_indexer[span.start:span.end] = new_doc_span_group
+                # b) If no issues, add to index (for each span in span_group)
+                new_span_group_indexer[span.start:span.end] = span_group
 
         # add new index to Doc
-        self._indexers[field_name] = new_doc_span_group_indexer
+        self._indexers[field_name] = new_span_group_indexer
 
     #
     #   to & from JSON
@@ -124,10 +127,10 @@ class Document:
         doc = cls(symbols=symbols, images=images)
 
         # 2) load annotations for each field
-        for field_name, doc_span_group_dicts in doc_dict.items():
+        for field_name, span_group_dicts in doc_dict.items():
             annotations = [
-                DocSpanGroup.from_json(span_group_dict=span_group_dict)
-                for span_group_dict in doc_span_group_dicts
+                SpanGroup.from_json(span_group_dict=span_group_dict)
+                for span_group_dict in span_group_dicts
             ]
             doc._add(
                 field_name, annotations

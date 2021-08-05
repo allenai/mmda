@@ -27,13 +27,3 @@ class Span:
         else:
             return dict(start=self.start, end=self.end, page=self.page, box=self.box)
 
-
-@dataclass
-class SpanGroup:
-    spans: List[Span] = field(default_factory=list)
-
-    def to_json(self) -> List[Dict]:
-        return [span.to_json() for span in self.spans]
-
-    def __getitem__(self, key: int):
-        return self.spans[key]
