@@ -110,27 +110,32 @@ class Document:
         if not with_images:
             fields = [field for field in fields if field != Images]
         return {
-            field: [group.to_json() for group in getattr(self, field)]
+            field: [doc_span_group.to_json() for doc_span_group in getattr(self, field)]
             for field in fields
         }
 
     @classmethod
-    def from_json(cls, doc_dict: Dict):
+    def from_json(cls, doc_dict: Dict) -> "Document":
         fields = doc_dict.keys()        # TODO[kylel]: this modifies the referenced dict, not copy
 
-        # instantiate Document
-        symbols = fields.pop(Symbols)
-        images = doc_dict.pop(Images, None)
+        # 1) instantiate basic Document
+        symbols_dict = fields.pop(Symbols)
+        symbols = DocumentSymbols.from_json(symbols_dict=symbols_dict)
+        images_dict = doc_dict.pop(Images, None)
+        if images_dict:
+            raise NotImplementedError(f'We havent figured out how to instantiate Images from JSON yet')
+        images = None
+
         doc = cls(symbols=symbols, images=images)
 
-        # TODO: unclear if should be `annotations` or `annotation` for `load()`
-        for field_name, field_annotations in doc_dict.items():
-            field_annotations = [
-                DocumentSymbols.load(field_name=field_name, annotations=field_annotation, document=doc)
-                for field_annotation in field_annotations
+        # 2) load annotations for each field
+        for field_name, doc_span_group_dicts in doc_dict.items():
+            annotations = [
+                DocSpanGroup.from_json(span_group_dict=span_group_dict)
+                for span_group_dict in doc_span_group_dicts
             ]
             doc._add(
-                field_name, field_annotations
+                field_name, annotations
             )  # We should use add here as they are already annotated
 
         return doc
@@ -186,7 +191,7 @@ class Document:
         with open(json_path, "r") as fp:
             json_data = json.load(fp)
 
-        doc = cls.from_json(doc_dict=json_data)
+        doc: Document = cls.from_json(doc_dict=json_data)
         doc.images = images
 
         return doc
