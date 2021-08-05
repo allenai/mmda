@@ -12,7 +12,6 @@ import os
 from glob import glob
 
 from mmda.types.image import Image
-from mmda.types.document_elements import DocumentSymbols
 from mmda.types.span import SpanGroup
 from mmda.types.annotation import Annotation, DocSpanGroup, Indexer, DocSpanGroupIndexer
 from mmda.types.names import Symbols, Images
@@ -25,7 +24,7 @@ class Document:
 
     def __init__(
         self,
-        symbols: DocumentSymbols,
+        symbols: str,
         images: Optional[List["Image.Image"]] = None,
     ):
         self.symbols = symbols
@@ -36,9 +35,6 @@ class Document:
     @property
     def fields(self) -> List[str]:
         return self._fields
-
-    def _create_doc_span_group_indexer(self) -> DocSpanGroupIndexer:
-        return DocSpanGroupIndexer(num_pages=self.symbols.page_count)
 
     # TODO: extend implementation to support DocBoxGroup
     def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
@@ -73,19 +69,19 @@ class Document:
         if any([not isinstance(group, SpanGroup) for group in span_groups]):
             raise NotImplementedError(f'Currently doesnt support anything except `SpanGroup` annotation')
 
-        new_doc_span_group_indexer: DocSpanGroupIndexer = self._create_doc_span_group_indexer()
+        new_doc_span_group_indexer = DocSpanGroupIndexer()
         for span_group in span_groups:
             # 1) create a new DocSpanGroup from SpanGroup
             new_doc_span_group = DocSpanGroup(doc=self, span_group=span_group)
 
             for span in span_group:
                 # 2) Check index if any conflicts (we require disjointness)
-                matched_span_group = new_doc_span_group_indexer[span.page_id][span.start:span.end]
+                matched_span_group = new_doc_span_group_indexer[span.start:span.end]
                 if matched_span_group:
                     raise ValueError(f'Detected overlap with existing SpanGroup {matched_span_group} when attempting index {span}')
 
                 # 3) If no issues, add to index (for each span in span_group)
-                new_doc_span_group_indexer[span.page_id][span.start:span.end] = new_doc_span_group
+                new_doc_span_group_indexer[span.start:span.end] = new_doc_span_group
 
         # add new index to Doc
         self._indexers[field_name] = new_doc_span_group_indexer
@@ -102,7 +98,7 @@ class Document:
 
         Output format looks like
             {
-                Symbols: ["...", "...", ...],
+                Symbols: "...",
 
             }
         """
@@ -119,8 +115,7 @@ class Document:
         fields = doc_dict.keys()        # TODO[kylel]: this modifies the referenced dict, not copy
 
         # 1) instantiate basic Document
-        symbols_dict = fields.pop(Symbols)
-        symbols = DocumentSymbols.from_json(symbols_dict=symbols_dict)
+        symbols = fields.pop(Symbols)
         images_dict = doc_dict.pop(Images, None)
         if images_dict:
             raise NotImplementedError(f'We havent figured out how to instantiate Images from JSON yet')
