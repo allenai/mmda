@@ -14,7 +14,7 @@ from glob import glob
 from mmda.types.image import Image
 from mmda.types.annotation import Annotation, SpanGroup, Indexer, SpanGroupIndexer
 from mmda.types.names import Symbols, Images
-
+from mmda.types.image import Image as DocImage
 
 class Document:
 
@@ -123,8 +123,9 @@ class Document:
         symbols = fields.pop(Symbols)
         images_dict = doc_dict.pop(Images, None)
         if images_dict:
-            raise NotImplementedError(f'We havent figured out how to instantiate Images from JSON yet')
-        images = None
+            images = [DocImage.frombase64(image_str) for image_str in images_dict]
+        else:
+            images = None
 
         doc = cls(symbols=symbols, images=images)
 
