@@ -125,8 +125,7 @@ class Indexer:
 @dataclass
 class SpanGroupIndexer(Indexer):
 
-    def __post_init__(self):
-        self._index: IntervalTree = IntervalTree()
+    _index: IntervalTree = IntervalTree()
 
     # TODO[kylel] - maybe have more nullable args for different types of queryes (just start/end ints, just SpanGroup)
     def find(self, query: SpanGroup) -> List[SpanGroup]:
