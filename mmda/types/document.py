@@ -71,6 +71,7 @@ class Document:
 
         new_span_group_indexer = SpanGroupIndexer()
         for span_group in span_groups:
+
             # 1) add Document to each SpanGroup
             span_group.attach_doc(doc=self)
 
@@ -101,13 +102,14 @@ class Document:
 
         Output format looks like
             {
-                Symbols: "...",
-
+                symbols: "...",
+                field1: [...],
+                field2: [...]
             }
         """
-        fields = self.fields if fields is None else fields
+        fields = self.fields if fields is None else fields              # use all fields unless overridden
         if not with_images:
-            fields = [field for field in fields if field != Images]
+            fields = [field for field in fields if field != Images]     # remove images from considered fields
         return {
             field: [doc_span_group.to_json() for doc_span_group in getattr(self, field)]
             for field in fields
@@ -126,15 +128,17 @@ class Document:
 
         doc = cls(symbols=symbols, images=images)
 
-        # 2) load annotations for each field
+        # 2) convert span group dicts to span gropus
+        field_name_to_span_groups = {}
         for field_name, span_group_dicts in doc_dict.items():
-            annotations = [
+            span_groups = [
                 SpanGroup.from_json(span_group_dict=span_group_dict)
                 for span_group_dict in span_group_dicts
             ]
-            doc._add(
-                field_name, annotations
-            )  # We should use add here as they are already annotated
+            field_name_to_span_groups[field_name] = span_groups
+
+        # 3) load annotations for each field
+        doc.annotate(**field_name_to_span_groups)
 
         return doc
 

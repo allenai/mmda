@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 
 from mmda.types.span import Span
-from mmda.types.box import Box, BoxGroup
+from mmda.types.box import Box
 
 from intervaltree import IntervalTree
 
@@ -27,6 +27,11 @@ class Annotation:
 
     @abstractmethod
     def to_json(self) -> Dict:
+        pass
+
+    @abstractmethod
+    @classmethod
+    def from_json(cls, annotation_dict: Dict) -> "Annotation":
         pass
 
     def attach_doc(self, doc: "Document") -> None:
@@ -53,31 +58,56 @@ class SpanGroup(Annotation):
     box_group: Optional[BoxGroup] = None
 
     def to_json(self) -> Dict:
-        return dict(
-            _type="SpanGroup",  # Used for differenting between DocSpan and DocBox when loading the json
-            span_group=[span.to_json() for span in self.spans],
+        span_group_dict = dict(
+            _type="SpanGroup",
+            spans=[span.to_json() for span in self.spans],
+            id=self.id,
             text=self.text,
             type=self.type,
             box_group=self.box_group.to_json() if self.box_group else None,
         )
+        return {key:value for key, value in span_group_dict.items() if value}   # only serialize non-null values
+
+    @classmethod
+    def from_json(cls, span_group_dict: Dict) -> "SpanGroup":
+        box_group_dict = span_group_dict.get('box_group')
+        if box_group_dict:
+            box_group = BoxGroup.from_json(box_group_dict=box_group_dict)
+        else:
+            box_group = None
+        return SpanGroup(spans=[Span.from_json(span_dict=span_dict) for span_dict in span_group_dict['spans']],
+                         id=span_group_dict.get('id'),
+                         text=span_group_dict.get('text'),
+                         type=span_group_dict.get('type'),
+                         box_group=box_group)
 
     def __getitem__(self, key: int):
         return self.spans[key]
 
 
-
 @dataclass
-class DocBoxGroup(Annotation):
-    box_group: BoxGroup
+class BoxGroup(Annotation):
+    boxes: List[Box] = field(default_factory=list)
+    id: Optional[int] = None
     type: Optional[str] = None
 
     def to_json(self) -> Dict:
-        return dict(
-            _type="DocBoxGroup",  # Used for differenting between DocSpan and DocBox when loading the json
-            box_group=self.box_group.to_json(),
+        box_group_dict = dict(
+            _type="BoxGroup",
+            boxes=[box.to_json() for box in self.boxes],
+            id=self.id,
             type=self.type
         )
+        return {key: value for key, value in box_group_dict.items() if value}  # only serialize non-null values
 
+    @classmethod
+    def from_json(cls, box_group_dict: Dict) -> "BoxGroup":
+        return BoxGroup(boxes=[Box.from_json(box_dict=box_dict) for box_dict in box_group_dict['boxes']],
+                        id=box_group_dict.get('id'),
+                        type=box_group_dict.get('type'))
+
+    def __getitem__(self, key: int):
+        return self.boxes[key]
 
 
 
@@ -99,7 +129,7 @@ class SpanGroupIndexer(Indexer):
         self._index: IntervalTree = IntervalTree()
 
     # TODO[kylel] - maybe have more nullable args for different types of queryes (just start/end ints, just SpanGroup)
-    def find(self, query: Annotation) -> List[Annotation]:
+    def find(self, query: SpanGroup) -> List[SpanGroup]:
         if not isinstance(query, SpanGroup):
             raise ValueError(f'SpanGroupIndexer only works with `query` that is SpanGroup type')
 
