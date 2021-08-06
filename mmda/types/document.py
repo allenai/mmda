@@ -12,95 +12,140 @@ import os
 from glob import glob
 
 from mmda.types.image import Image
-from mmda.types.document_elements import DocumentSymbols
-from mmda.types.annotation import Annotation, DocSpanGroup, Indexer, DocSpanGroupIndexer
+from mmda.types.annotation import Annotation, SpanGroup, Indexer, SpanGroupIndexer
+from mmda.types.names import Symbols, Images
+from mmda.types.image import Image as DocImage
 
-
-@dataclass
 class Document:
 
-    DEFAULT_FIELDS = ["symbols", "images"]
+    DEFAULT_FIELDS = [Symbols, Images]
+    UNALLOWED_FIELD_NAMES = ['fields']
 
     def __init__(
         self,
-        symbols: DocumentSymbols,
+        symbols: str,
         images: Optional[List["Image.Image"]] = None,
     ):
-
         self.symbols = symbols
         self.images = images
         self._fields = self.DEFAULT_FIELDS
         self._indexers: Dict[str, Indexer] = {}
 
     @property
-    def fields(self):
+    def fields(self) -> List[str]:
         return self._fields
 
-    def _check_valid_field_name(self, field_name):
-        assert not field_name.startswith(
-            "_"
-        ), "The field_name should not start with `_`. "
-        assert field_name not in ["fields"], "The field_name should not be 'fields'."
-        assert field_name not in dir(
-            self
-        ), f"The field_name should not conflict with existing class properties {field_name}"
+    # TODO: extend implementation to support DocBoxGroup
+    def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
+        if not isinstance(query, SpanGroup):
+            raise NotImplementedError(f'Currently only supports query of type SpanGroup')
+        return self._indexers[field_name].find(query=query)
 
-    def _register_field(self, field_name):
-        if field_name not in self.fields:
-            self._check_valid_field_name(field_name)
-            self._fields.append(field_name)
-            self._indexers[field_name] = DocSpanGroupIndexer(num_pages=self.symbols.page_count)
-
-    def _annotate(self, field_name, field_annotations):
-
-        self._register_field(field_name)
-        
-        for annotation in field_annotations:
-            annotation = annotation.annotate(self)
-            
-        setattr(self, field_name, field_annotations)
-
-    def annotate(self, **annotations: List[Annotation]):
+    # TODO: this implementation which sets attribute doesn't allow for adding new annos to existing field
+    # TODO: extend this to allow fo rother types of groups
+    def annotate(self, **kwargs: List[SpanGroup]) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
         """
-        for field_name, field_annotations in annotations.items():
-            self._annotate(field_name, field_annotations)
+        # 1) check validity of field names
+        for field_name in kwargs.keys():
+            assert not field_name.startswith("_"), "The field_name should not start with `_`. "
+            assert field_name not in self.fields, "This field name already exists"
+            assert field_name not in self.UNALLOWED_FIELD_NAMES, \
+                f"The field_name should not be in {self.UNALLOWED_FIELD_NAMES}."
+            assert field_name not in dir(self), \
+                f"The field_name should not conflict with existing class properties {field_name}"
 
-    def _add(self, field_name, field_annotations):
+        # 2) register fields into Document & create span groups
+        for field_name, span_groups in kwargs.items():
+            self._fields.append(field_name)                                       # save the name of field in doc
+            self._annotate_field(span_groups=span_groups, field_name=field_name)  # add span groups to doc + index
+            setattr(self, field_name, span_groups)                                # make a property of doc
 
-        # This is different from annotate:
-        # In add, we assume the annotations are already associated with the symbols
-        # and the association is stored in the indexers. As such, we need to ensure 
-        # that field and indexers have already been set in some way before calling 
-        # this method. I am not totally sure how this mehtod would be used, but it 
-        # is a reasonable assumption for now I believe. 
-        
-        assert field_name in self._fields
-        assert field_name in self._indexers
-
-        for annotation in field_annotations:
-            assert annotation.doc == self
-            # check that the annotation is associated with the document
-
-        setattr(self, field_name, field_annotations)
-
-    def add(self, **annotations: List[Annotation]):
-        """Add document annotations into this document object.
-        Note: in this case, the annotations are assumed to be already associated with
-        the document symbols.
+    def _annotate_field(self, span_groups: List[SpanGroup], field_name: str) -> None:
+        """Annotate the Document using a bunch of span groups.
+        It will associate the annotations with the document symbols.
         """
-        for field_name, field_annotations in annotations.items():
-            self._add(field_name, field_annotations)
+        if any([not isinstance(group, SpanGroup) for group in span_groups]):
+            raise NotImplementedError(f'Currently doesnt support anything except `SpanGroup` annotation')
+
+        new_span_group_indexer = SpanGroupIndexer()
+        for span_group in span_groups:
+
+            # 1) add Document to each SpanGroup
+            span_group.attach_doc(doc=self)
+
+            # 2) for each span in span_group, (a) check if any conflicts (requires disjointedness).
+            #    then (b) add span group to index at this span location
+            #  TODO: can be cleaned up; encapsulate the checker somewhere else
+            for span in span_group:
+                # a) Check index if any conflicts (we require disjointness)
+                matched_span_group = new_span_group_indexer[span.start:span.end]
+                if matched_span_group:
+                    raise ValueError(f'Detected overlap with existing SpanGroup {matched_span_group} when attempting index {span}')
+
+                # b) If no issues, add to index (for each span in span_group)
+                new_span_group_indexer[span.start:span.end] = span_group
+
+        # add new index to Doc
+        self._indexers[field_name] = new_span_group_indexer
+
+    #
+    #   to & from JSON
+    #
 
     def to_json(self, fields: Optional[List[str]] = None, with_images=False) -> Dict:
+        """Returns a dictionary that's suitable for serialization
 
-        fields = self.fields if fields is None else fields
+        Use `fields` to specify a subset of groups in the Document to include (e.g. 'sentences')
+        If `with_images` is True, will also turn the Images into base64 strings.  Else, won't include them.
+
+        Output format looks like
+            {
+                symbols: "...",
+                field1: [...],
+                field2: [...]
+            }
+        """
+        fields = self.fields if fields is None else fields              # use all fields unless overridden
+        if not with_images:
+            fields = [field for field in fields if field != Images]     # remove images from considered fields
         return {
-            field: [ele.to_json() for ele in getattr(self, field)]
+            field: [doc_span_group.to_json() for doc_span_group in getattr(self, field)]
             for field in fields
-            if field != "images" or with_images
         }
+
+    @classmethod
+    def from_json(cls, doc_dict: Dict) -> "Document":
+        fields = doc_dict.keys()        # TODO[kylel]: this modifies the referenced dict, not copy
+
+        # 1) instantiate basic Document
+        symbols = fields.pop(Symbols)
+        images_dict = doc_dict.pop(Images, None)
+        if images_dict:
+            images = [DocImage.frombase64(image_str) for image_str in images_dict]
+        else:
+            images = None
+
+        doc = cls(symbols=symbols, images=images)
+
+        # 2) convert span group dicts to span gropus
+        field_name_to_span_groups = {}
+        for field_name, span_group_dicts in doc_dict.items():
+            span_groups = [
+                SpanGroup.from_json(span_group_dict=span_group_dict)
+                for span_group_dict in span_group_dicts
+            ]
+            field_name_to_span_groups[field_name] = span_groups
+
+        # 3) load annotations for each field
+        doc.annotate(**field_name_to_span_groups)
+
+        return doc
+
+    #
+    #   for serialization
+    #
 
     def save(
         self,
@@ -116,7 +161,7 @@ class Document:
             ), f"When with_images={with_images} and images_in_json={images_in_json}, it requires the path to be a folder"
             # f-string equals like f"{with_images=}" will break the black formatter and won't work for python < 3.8
 
-        doc_json = self.to_json(fields, with_images=with_images and images_in_json)
+        doc_json: Dict = self.to_json(fields=fields, with_images=with_images and images_in_json)
 
         if with_images and not images_in_json:
             json_path = os.path.join(path, "document.json")     # TODO[kylel]: avoid hard-code
@@ -131,26 +176,6 @@ class Document:
                 json.dump(doc_json, fp)
 
     @classmethod
-    def from_json(cls, json_data: Dict):
-        fields = json_data.keys()
-
-        symbols = fields.pop("symbols")  # TODO: avoid hard-coded values
-        images = json_data.pop("images", None)
-        doc = cls(symbols=symbols, images=images)
-
-        # TODO: unclear if should be `annotations` or `annotation` for `load()`
-        for field_name, field_annotations in json_data.items():
-            field_annotations = [
-                DocumentSymbols.load(field_name=field_name, annotations=field_annotation, document=doc)
-                for field_annotation in field_annotations
-            ]
-            doc._add(
-                field_name, field_annotations
-            )  # We should use add here as they are already annotated
-
-        return doc
-
-    @classmethod
     def load(cls, path: str) -> "Document":
         """Instantiate a Document object from its serialization.
         If path is a directory, loads the JSON for the Document along with all Page images
@@ -161,7 +186,7 @@ class Document:
             image_files = sorted(
                 image_files, key=lambda x: int(os.path.basename(x).replace('.png', ''))
             )
-            images = [Image.load(image_file) for image_file in image_files]
+            images = [Image.load(image_file) for image_file in image_files]     # TODO[kylel]: not how to load PIL images
         else:
             json_path = path
             images = None
@@ -169,15 +194,7 @@ class Document:
         with open(json_path, "r") as fp:
             json_data = json.load(fp)
 
-        doc = cls.from_json(json_data)
+        doc: Document = cls.from_json(doc_dict=json_data)
         doc.images = images
 
         return doc
-
-    @classmethod
-    def find(self, query: DocSpanGroup, field_name: str):
-        
-        # As for now query only supports for DocSpanGroup, the function is 
-        # just this simple
-        
-        return self._indexers[field_name].index(query)

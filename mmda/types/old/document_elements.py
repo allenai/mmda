@@ -61,4 +61,7 @@ class DocumentSymbols(DocumentElement):
     def to_json(self):
         return [page_symbols.to_json() for page_symbols in self.page_symbols]
 
-
+    @classmethod
+    def from_json(cls, symbols_dict: List[str]) -> "DocumentSymbols":
+        page_symbols = [DocumentPageSymbols(symbols=page_text) for page_text in symbols_dict]
+        return cls(page_count=len(page_symbols), page_symbols=page_symbols)

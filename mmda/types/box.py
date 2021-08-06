@@ -18,16 +18,11 @@ class Box:
     h: float
     page: int
 
+    # TODO[kylel]: make this more minimal
     def to_json(self) -> Dict:
         return dict(l=self.l, t=self.t, w=self.w, h=self.h, page=self.page)
 
+    @classmethod
+    def from_json(cls, box_dict) -> "Box":
+        return Box(l=box_dict['l'], t=box_dict['t'], w=box_dict['w'], h=box_dict['h'], page=box_dict['page'])
 
-@dataclass
-class BoxGroup:
-    boxes: List[Box] = field(default_factory=list)
-
-    def to_json(self) -> List[Dict]:
-        return [box.to_json() for box in self.boxes]
-
-    def __getitem__(self, key: int):
-        return self.boxes[key]

@@ -11,8 +11,8 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 
 
-from mmda.types.span import Span, SpanGroup
-from mmda.types.box import Box, BoxGroup
+from mmda.types.span import Span
+from mmda.types.box import Box
 
 from intervaltree import IntervalTree
 
@@ -30,63 +30,84 @@ class Annotation:
         pass
 
     @abstractmethod
-    def annotate(self, doc: "Document"):
-        """Annotate the object itself on a specific document.
-        It will associate the annotations with the document symbols.
-        """
+    @classmethod
+    def from_json(cls, annotation_dict: Dict) -> "Annotation":
+        pass
+
+    def attach_doc(self, doc: "Document") -> None:
+        if not self.doc:
+            self.doc = doc
+        else:
+            raise AttributeError(f'This annotation already has an attached document')
 
     # TODO[kylel] - comment explaining
-    def __getattr__(self, field: str):
+    def __getattr__(self, field: str) -> List["Annotation"]:
         if field in self.doc.fields:
-            return self.doc.find(self, field)
+            return self.doc.find_overlapping(self, field)
         else:
-            return self.__getattribute__(field)
+            return self.__getattribute__(field)     # TODO[kylel] - alternatively, have it fail
+
 
 
 @dataclass
-class DocSpanGroup(Annotation):
-    span_group: SpanGroup
+class SpanGroup(Annotation):
+    spans: List[Span] = field(default_factory=list)
+    id: Optional[int] = None
     text: Optional[str] = None
     type: Optional[str] = None
     box_group: Optional[BoxGroup] = None
 
-    def annotate(self, doc: "Document", field_name: str) -> None:
-        """Annotate the object itself on a specific document.
-        It will associate the annotations with the document symbols.
-        """
-        self.doc = doc
-        doc_field_indexer = doc._indexers[field_name]
-
-        for span in SpanGroup:
-            # constraint - all spans disjoint
-            existing = doc_field_indexer[span.page_id][span.start:span.end]
-            if existing:
-                raise ValueError(f'Existing {existing} when attempting index {span}')
-            # add to index
-            doc_field_indexer[span.page_id][span.start:span.end] = self
-
     def to_json(self) -> Dict:
-        return dict(
-            _type="DocSpanGroup",  # Used for differenting between DocSpan and DocBox when loading the json
-            span_group=self.span_group.to_json(),
+        span_group_dict = dict(
+            _type="SpanGroup",
+            spans=[span.to_json() for span in self.spans],
+            id=self.id,
             text=self.text,
             type=self.type,
             box_group=self.box_group.to_json() if self.box_group else None,
         )
+        return {key:value for key, value in span_group_dict.items() if value}   # only serialize non-null values
+
+    @classmethod
+    def from_json(cls, span_group_dict: Dict) -> "SpanGroup":
+        box_group_dict = span_group_dict.get('box_group')
+        if box_group_dict:
+            box_group = BoxGroup.from_json(box_group_dict=box_group_dict)
+        else:
+            box_group = None
+        return SpanGroup(spans=[Span.from_json(span_dict=span_dict) for span_dict in span_group_dict['spans']],
+                         id=span_group_dict.get('id'),
+                         text=span_group_dict.get('text'),
+                         type=span_group_dict.get('type'),
+                         box_group=box_group)
+
+    def __getitem__(self, key: int):
+        return self.spans[key]
 
 
 @dataclass
-class DocBoxGroup(Annotation):
-    box_group: BoxGroup
+class BoxGroup(Annotation):
+    boxes: List[Box] = field(default_factory=list)
+    id: Optional[int] = None
     type: Optional[str] = None
 
     def to_json(self) -> Dict:
-        return dict(
-            _type="DocBoxGroup",  # Used for differenting between DocSpan and DocBox when loading the json
-            box_group=self.box_group.to_json(),
+        box_group_dict = dict(
+            _type="BoxGroup",
+            boxes=[box.to_json() for box in self.boxes],
+            id=self.id,
             type=self.type
         )
+        return {key: value for key, value in box_group_dict.items() if value}  # only serialize non-null values
 
+    @classmethod
+    def from_json(cls, box_group_dict: Dict) -> "BoxGroup":
+        return BoxGroup(boxes=[Box.from_json(box_dict=box_dict) for box_dict in box_group_dict['boxes']],
+                        id=box_group_dict.get('id'),
+                        type=box_group_dict.get('type'))
+
+    def __getitem__(self, key: int):
+        return self.boxes[key]
 
 
 
@@ -95,27 +116,25 @@ class DocBoxGroup(Annotation):
 class Indexer:
     """Stores an index for a particular collection of Annotations.
     Indexes in this library focus on *INTERSECT* relations."""
-    raise NotImplementedError
+
+    @abstractmethod
+    def find(self, query: Annotation) -> List[Annotation]:
+        """Returns all matching Annotations given a suitable query"""
 
 
 @dataclass
-class DocSpanGroupIndexer(Indexer):
+class SpanGroupIndexer(Indexer):
 
-    num_pages: int
+    _index: IntervalTree = IntervalTree()
 
-    # TODO[kylel] -- explain why?
-    def __post_init__(self):
-        self._index: List[IntervalTree] = [IntervalTree() for _ in range(self.num_pages)]
+    # TODO[kylel] - maybe have more nullable args for different types of queryes (just start/end ints, just SpanGroup)
+    def find(self, query: SpanGroup) -> List[SpanGroup]:
+        if not isinstance(query, SpanGroup):
+            raise ValueError(f'SpanGroupIndexer only works with `query` that is SpanGroup type')
 
-    def __getitem__(self, indices):
-        page_id, annotation_slice = indices
-        return [interval.data for interval in self._index[page_id][annotation_slice]]
-
-    def index(self, doc_span_group: DocSpanGroup):
         all_matched_span_groups = []
-        # TODO: does this work?  isnt it `for span in anno.span_group` and require `span_group` to implement `__iter__`
-        for span in doc_span_group.span_group:
-            for matched_span_group in self._index[span.page_id][span.start : span.end]:
+        for span in query.span_group:
+            for matched_span_group in self._index[span.start : span.end]:
                 if matched_span_group not in all_matched_span_groups: # Deduplicate
                     all_matched_span_groups.append(matched_span_group)
         return all_matched_span_groups
