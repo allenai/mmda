@@ -199,9 +199,9 @@ class SymbolScraperParser(BaseParser):
         tokens: List[SpanGroup] = []
         rows: List[SpanGroup] = []
         start = 0
-        for i, (page, row_to_tokens) in enumerate(page_to_row_to_tokens.items()):
+        for page, row_to_tokens in page_to_row_to_tokens.items():
             page_rows: List[SpanGroup] = []
-            for j, (row, tokens) in enumerate(row_to_tokens.items()):
+            for row, tokens in row_to_tokens.items():
                 # process tokens in this row
                 row_tokens: List[SpanGroup] = []
                 for k, token in enumerate(tokens):
@@ -223,6 +223,13 @@ class SymbolScraperParser(BaseParser):
             # make page
             page = SpanGroup(spans=[span for row in page_rows for span in row.spans])   # TODO: override box?
             pages.append(page)
+        # add IDs
+        for i, page in enumerate(pages):
+            page.id = i
+        for j, row in enumerate(rows):
+            row.id = j
+        for k, token in enumerate(tokens):
+            token.id = k
         return {
             Symbols: text,
             Pages: [page.to_json() for page in pages],
@@ -249,13 +256,13 @@ class SymbolScraperParser(BaseParser):
         print(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
 
         # get token stream (grouped by page & row)
-        page_to_row_to_words = self._parse_page_to_row_to_tokens(xml_lines=xml_lines, page_to_metrics=page_to_metrics)
+        page_to_row_to_tokens = self._parse_page_to_row_to_tokens(xml_lines=xml_lines, page_to_metrics=page_to_metrics)
 
         # convert to spans
-        doc_json = self._convert_nested_text_to_doc_json(page_to_row_to_tokens=page_to_row_to_words)
+        doc_dict = self._convert_nested_text_to_doc_json(page_to_row_to_tokens=page_to_row_to_tokens)
 
         # build Document
-        doc = Document.from_json(doc_json=doc_json)
+        doc = Document.from_json(doc_dict=doc_dict)
         return doc
 
 
