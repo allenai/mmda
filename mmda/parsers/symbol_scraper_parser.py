@@ -118,8 +118,8 @@ class SymbolScraperParser(BaseParser):
         match = re.match(pattern=r'<Line id=\"([0-9]+)\" BBOX=\"(.+)\">', string=row_tag)
         return {'id': int(match.group(1)), 'bbox': match.group(2)}
 
-    def _parse_word_head_tag(self, word_tag: str) -> Dict:
-        match = re.match(pattern=r'<Word id=\"([0-9]+)\">', string=word_tag)
+    def _parse_token_head_tag(self, token_tag: str) -> Dict:
+        match = re.match(pattern=r'<Word id=\"([0-9]+)\">', string=token_tag)
         return {'id': int(match.group(1))}
 
     def _parse_char_head_tag(self, char_tag: str) -> Dict:
@@ -143,13 +143,13 @@ class SymbolScraperParser(BaseParser):
             page_width = float(self._find_one_and_extract(my_list=partition, start_tag='<pagewidth>', end_tag='</pagewidth>'))
             page_height = float(self._find_one_and_extract(my_list=partition, start_tag='<pageheight>', end_tag='</pageheight>'))
             page_num_rows = int(self._find_one_and_extract(my_list=partition, start_tag='<lines>', end_tag='</lines>'))
-            page_num_words = int(self._find_one_and_extract(my_list=partition, start_tag='<words>', end_tag='</words>'))
+            page_num_tokens = int(self._find_one_and_extract(my_list=partition, start_tag='<words>', end_tag='</words>'))
             page_num_chars = int(self._find_one_and_extract(my_list=partition, start_tag='<characters>', end_tag='</characters>'))
             page_to_metrics[page_num] = {
                 'height': page_height,
                 'width': page_width,
                 'rows': page_num_rows,
-                'words': page_num_words,
+                'tokens': page_num_tokens,
                 'chars': page_num_chars
             }
         return page_to_metrics
@@ -167,14 +167,14 @@ class SymbolScraperParser(BaseParser):
                 row_lines = page_lines[row_start:row_end]
                 row_info = self._parse_row_head_tag(row_tag=row_lines[0])  # first line is the head tag
                 row_id = row_info['id']
-                for word_start, word_end in self._split_list_by_start_end_tags(my_list=row_lines,
+                for token_start, token_end in self._split_list_by_start_end_tags(my_list=row_lines,
                                                                                start_tag='<Word',
                                                                                end_tag='</Word>'):
-                    word_lines = row_lines[word_start:word_end]
-                    word_info = self._parse_word_head_tag(word_tag=word_lines[0])  # first line is the head tag
+                    token_lines = row_lines[token_start:token_end]
+                    token_info = self._parse_token_head_tag(token_tag=token_lines[0])  # first line is the head tag
                     char_bboxes: List[Box] = []
                     token = ''
-                    for char_tag in [w for w in word_lines if w.startswith('<Char') and w.endswith('</Char>')]:
+                    for char_tag in [t for t in token_lines if t.startswith('<Char') and t.endswith('</Char>')]:
                         char_info = self._parse_char_head_tag(char_tag=char_tag)
                         bbox = self._build_from_sscraper_bbox(sscraper_bbox=char_info['bbox'],
                                                               sscraper_page_width=page_to_metrics[page_id]['width'],
@@ -195,9 +195,9 @@ class SymbolScraperParser(BaseParser):
 
     def _convert_nested_text_to_doc_json(self, page_to_row_to_tokens: Dict) -> Dict:
         text = ''
-        pages: List[SpanGroup] = []
-        tokens: List[SpanGroup] = []
-        rows: List[SpanGroup] = []
+        page_annos: List[SpanGroup] = []
+        token_annos: List[SpanGroup] = []
+        row_annos: List[SpanGroup] = []
         start = 0
         for page, row_to_tokens in page_to_row_to_tokens.items():
             page_rows: List[SpanGroup] = []
@@ -210,31 +210,31 @@ class SymbolScraperParser(BaseParser):
                     # make token
                     token = SpanGroup(spans=[Span(start=start, end=end, box=token['bbox'])])
                     row_tokens.append(token)
-                    tokens.append(token)
+                    token_annos.append(token)
                     if k < len(tokens) - 1:
                         text += ' '
                     else:
                         text += '\n'    # start newline at end of row
                     start = end + 1
                 # make row
-                row = SpanGroup(spans=[span for token in row_tokens for span in token.spans])   # TODO: override box?
+                row = SpanGroup(spans=[Span(start=row_tokens[0].start, end=row_tokens[-1].end)])   # TODO: override box?
                 page_rows.append(row)
-                rows.append(row)
+                row_annos.append(row)
             # make page
-            page = SpanGroup(spans=[span for row in page_rows for span in row.spans])   # TODO: override box?
-            pages.append(page)
+            page = SpanGroup(spans=[Span(start=page_rows[0].start, end=page_rows[-1].end)])   # TODO: override box?
+            page_annos.append(page)
         # add IDs
-        for i, page in enumerate(pages):
+        for i, page in enumerate(page_annos):
             page.id = i
-        for j, row in enumerate(rows):
+        for j, row in enumerate(row_annos):
             row.id = j
-        for k, token in enumerate(tokens):
+        for k, token in enumerate(token_annos):
             token.id = k
         return {
             Symbols: text,
-            Pages: [page.to_json() for page in pages],
-            Tokens: [token.to_json() for token in tokens],
-            Rows: [row.to_json() for row in rows]
+            Pages: [page.to_json() for page in page_annos],
+            Tokens: [token.to_json() for token in token_annos],
+            Rows: [row.to_json() for row in row_annos]
         }
 
     def _parse_xml_to_doc(self, xmlfile: str) -> Document:
@@ -252,7 +252,7 @@ class SymbolScraperParser(BaseParser):
         # get page metrics
         page_to_metrics = self._parse_page_to_metrics(xml_lines=xml_lines)
         print(f'\tNum pages: {len(page_to_metrics)}')
-        print(f"\tAvg tokens: {sum([metric['words'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        print(f"\tAvg tokens: {sum([metric['tokens'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
         print(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
 
         # get token stream (grouped by page & row)
