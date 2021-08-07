@@ -26,3 +26,13 @@ class Box:
     def from_json(cls, box_dict) -> "Box":
         return Box(l=box_dict['l'], t=box_dict['t'], w=box_dict['w'], h=box_dict['h'], page=box_dict['page'])
 
+    @classmethod
+    def small_boxes_to_big_box(cls, boxes: List['Box']) -> 'Box':
+        """Computes one big box that tightly encapsulates all smaller input boxes"""
+        if len({box.page for box in boxes}) != 1:
+            raise ValueError(f'Bboxes not all on same page: {boxes}')
+        x1 = min([bbox.l for bbox in boxes])
+        y1 = min([bbox.t for bbox in boxes])
+        x2 = max([bbox.l + bbox.w for bbox in boxes])
+        y2 = max([bbox.t + bbox.h for bbox in boxes])
+        return Box(page=boxes[0].page, l=x1, t=y1, w=x2 - x1, h=y2 - y1)

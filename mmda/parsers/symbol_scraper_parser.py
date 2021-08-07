@@ -17,6 +17,7 @@ import re
 from collections import defaultdict
 
 from mmda.types.box import Box
+from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.parsers.parser import BaseParser
 
@@ -169,7 +170,7 @@ class SymbolScraperParser(BaseParser):
                                                                                end_tag='</Word>'):
                     word_lines = row_lines[word_start:word_end]
                     word_info = self._parse_word_head_tag(word_tag=word_lines[0])  # first line is the head tag
-                    char_bboxes: List[BoundingBox] = []
+                    char_bboxes: List[Box] = []
                     word = ''
                     for char_tag in [w for w in word_lines if w.startswith('<Char') and w.endswith('</Char>')]:
                         char_info = self._parse_char_head_tag(char_tag=char_tag)
@@ -183,7 +184,7 @@ class SymbolScraperParser(BaseParser):
                     if not word or not char_bboxes:
                         continue
                     else:
-                        word_bbox = BoundingBox.union_bboxes(bboxes=char_bboxes)
+                        word_bbox = Box.small_boxes_to_big_box(boxes=char_bboxes)
                         page_to_row_to_words[page_id][row_id].append({'text': word, 'bbox': word_bbox})
         return {
             page: {row: words for row, words in row_to_words.items()}
@@ -215,12 +216,12 @@ class SymbolScraperParser(BaseParser):
                     start = end + 1
                 # make row
                 row = Span(start=row_tokens[0].start, end=row_tokens[-1].end, id=len(rows),
-                           bbox=BoundingBox.union_bboxes(bboxes=[token.bbox for token in row_tokens]))
+                           bbox=BoundingBox.small_boxes_to_big_box(boxes=[token.bbox for token in row_tokens]))
                 page_rows.append(row)
                 rows.append(row)
             # make page
             page = Span(start=page_rows[0].start, end=page_rows[-1].end, id=i,
-                        bbox=BoundingBox.union_bboxes(bboxes=[row.bbox for row in page_rows]))
+                        bbox=BoundingBox.small_boxes_to_big_box(boxes=[row.bbox for row in page_rows]))
             pages.append(page)
         return {
             Text: text,
