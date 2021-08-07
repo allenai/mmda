@@ -217,11 +217,17 @@ class SymbolScraperParser(BaseParser):
                         text += '\n'    # start newline at end of row
                     start = end + 1
                 # make row
-                row = SpanGroup(spans=[Span(start=row_tokens[0].start, end=row_tokens[-1].end)])   # TODO: override box?
+                row = SpanGroup(spans=[
+                    Span(start=row_tokens[0][0].start, end=row_tokens[-1][0].end,
+                         box=Box.small_boxes_to_big_box(boxes=[span.box for t in row_tokens for span in t]))
+                ])
                 page_rows.append(row)
                 row_annos.append(row)
             # make page
-            page = SpanGroup(spans=[Span(start=page_rows[0].start, end=page_rows[-1].end)])   # TODO: override box?
+            page = SpanGroup(spans=[
+                Span(start=page_rows[0][0].start, end=page_rows[-1][0].end,
+                     box=Box.small_boxes_to_big_box(boxes=[span.box for r in page_rows for span in r]))
+            ])
             page_annos.append(page)
         # add IDs
         for i, page in enumerate(page_annos):
