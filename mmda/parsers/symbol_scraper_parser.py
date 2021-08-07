@@ -16,10 +16,12 @@ import tempfile
 import re
 from collections import defaultdict
 
+from mmda.types.span import Span
 from mmda.types.box import Box
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.parsers.parser import BaseParser
+from mmda.types.names import *
 
 
 class SymbolScraperParser(BaseParser):
@@ -193,43 +195,39 @@ class SymbolScraperParser(BaseParser):
 
     def _convert_nested_text_to_doc_json(self, page_to_row_to_words: Dict) -> Dict:
         text = ''
-        pages: List[Span] = []
-        tokens: List[Span] = []
-        rows: List[Span] = []
+        pages: List[SpanGroup] = []
+        tokens: List[SpanGroup] = []
+        rows: List[SpanGroup] = []
         start = 0
         for i, (page, row_to_words) in enumerate(page_to_row_to_words.items()):
-            page_rows = []
+            page_rows: List[SpanGroup] = []
             for j, (row, words) in enumerate(row_to_words.items()):
                 # process tokens in this row
-                row_tokens = []
+                row_tokens: List[SpanGroup] = []
                 for k, word in enumerate(words):
                     text += word['text']
                     end = start + len(word['text'])
                     # make token
-                    token = Span(start=start, end=end, id=len(tokens), bbox=word['bbox'])
+                    token = SpanGroup(spans=[Span(start=start, end=end, box=word['bbox'])])
                     row_tokens.append(token)
                     tokens.append(token)
                     if k < len(words) - 1:
                         text += ' '
                     else:
-                        text += '\n'
+                        text += '\n'    # start newline at end of row
                     start = end + 1
                 # make row
-                row = Span(start=row_tokens[0].start, end=row_tokens[-1].end, id=len(rows),
-                           bbox=BoundingBox.small_boxes_to_big_box(boxes=[token.bbox for token in row_tokens]))
+                row = SpanGroup(spans=[span for token in row_tokens for span in token.spans])   # TODO: override box?
                 page_rows.append(row)
                 rows.append(row)
             # make page
-            page = Span(start=page_rows[0].start, end=page_rows[-1].end, id=i,
-                        bbox=BoundingBox.small_boxes_to_big_box(boxes=[row.bbox for row in page_rows]))
+            page = SpanGroup(spans=[span for row in page_rows for span in row.spans])   # TODO: override box?
             pages.append(page)
         return {
-            Text: text,
-            Page: [page.to_json() for page in pages],
-            Token: [token.to_json() for token in tokens],
-            Row: [row.to_json() for row in rows],
-            Sent: [],
-            Block: []
+            Symbols: text,
+            Pages: [page.to_json() for page in pages],
+            Tokens: [token.to_json() for token in tokens],
+            Rows: [row.to_json() for row in rows]
         }
 
     def _parse_xml_to_doc(self, xmlfile: str) -> Document:
