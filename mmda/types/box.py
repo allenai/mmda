@@ -18,13 +18,15 @@ class Box:
     h: float
     page: int
 
-    # TODO[kylel]: make this more minimal
-    def to_json(self) -> Dict:
-        return dict(l=self.l, t=self.t, w=self.w, h=self.h, page=self.page)
+    def to_json(self) -> List:
+        return [self.l, self.t, self.w, self.h, self.page]
+        # return dict(l=self.l, t=self.t, w=self.w, h=self.h, page=self.page)
 
     @classmethod
-    def from_json(cls, box_dict) -> "Box":
-        return Box(l=box_dict['l'], t=box_dict['t'], w=box_dict['w'], h=box_dict['h'], page=box_dict['page'])
+    def from_json(cls, box_coords: List) -> "Box":
+        l, t, w, h, page = box_coords
+        return Box(l=l, t=t, w=w, h=h, page=page)
+        # return Box(l=box_coords['l'], t=box_coords['t'], w=box_coords['w'], h=box_coords['h'], page=box_coords['page'])
 
     @classmethod
     def small_boxes_to_big_box(cls, boxes: List['Box']) -> 'Box':
