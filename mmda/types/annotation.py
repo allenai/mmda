@@ -29,8 +29,8 @@ class Annotation:
     def to_json(self) -> Dict:
         pass
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_json(cls, annotation_dict: Dict) -> "Annotation":
         pass
 
@@ -55,7 +55,7 @@ class SpanGroup(Annotation):
     id: Optional[int] = None
     text: Optional[str] = None
     type: Optional[str] = None
-    box_group: Optional[BoxGroup] = None
+    box_group: Optional[BoxGroup] = None        # TODO[kylel] - implement default behavior
 
     def to_json(self) -> Dict:
         span_group_dict = dict(
