@@ -154,8 +154,8 @@ class SymbolScraperParser(BaseParser):
             }
         return page_to_metrics
 
-    def _parse_page_to_row_to_words(self, xml_lines: List[str], page_to_metrics: Dict) -> Dict:
-        page_to_row_to_words = defaultdict(lambda: defaultdict(list))
+    def _parse_page_to_row_to_tokens(self, xml_lines: List[str], page_to_metrics: Dict) -> Dict:
+        page_to_row_to_tokens = defaultdict(lambda: defaultdict(list))
         for page_start, page_end in self._split_list_by_start_end_tags(my_list=xml_lines,
                                                                        start_tag='<Page',
                                                                        end_tag='</Page>'):
@@ -173,7 +173,7 @@ class SymbolScraperParser(BaseParser):
                     word_lines = row_lines[word_start:word_end]
                     word_info = self._parse_word_head_tag(word_tag=word_lines[0])  # first line is the head tag
                     char_bboxes: List[Box] = []
-                    word = ''
+                    token = ''
                     for char_tag in [w for w in word_lines if w.startswith('<Char') and w.endswith('</Char>')]:
                         char_info = self._parse_char_head_tag(char_tag=char_tag)
                         bbox = self._build_from_sscraper_bbox(sscraper_bbox=char_info['bbox'],
@@ -181,37 +181,37 @@ class SymbolScraperParser(BaseParser):
                                                               sscraper_page_height=page_to_metrics[page_id]['height'],
                                                               page_id=page_id)
                         char_bboxes.append(bbox)
-                        word += char_info['text']
-                    # sometimes, just empty words (e.g. figures)
-                    if not word or not char_bboxes:
+                        token += char_info['text']
+                    # sometimes, just empty tokens (e.g. figures)
+                    if not token or not char_bboxes:
                         continue
                     else:
-                        word_bbox = Box.small_boxes_to_big_box(boxes=char_bboxes)
-                        page_to_row_to_words[page_id][row_id].append({'text': word, 'bbox': word_bbox})
+                        token_bbox = Box.small_boxes_to_big_box(boxes=char_bboxes)
+                        page_to_row_to_tokens[page_id][row_id].append({'text': token, 'bbox': token_bbox})
         return {
-            page: {row: words for row, words in row_to_words.items()}
-            for page, row_to_words in page_to_row_to_words.items()
+            page: {row: tokens for row, tokens in row_to_tokens.items()}
+            for page, row_to_tokens in page_to_row_to_tokens.items()
         }
 
-    def _convert_nested_text_to_doc_json(self, page_to_row_to_words: Dict) -> Dict:
+    def _convert_nested_text_to_doc_json(self, page_to_row_to_tokens: Dict) -> Dict:
         text = ''
         pages: List[SpanGroup] = []
         tokens: List[SpanGroup] = []
         rows: List[SpanGroup] = []
         start = 0
-        for i, (page, row_to_words) in enumerate(page_to_row_to_words.items()):
+        for i, (page, row_to_tokens) in enumerate(page_to_row_to_tokens.items()):
             page_rows: List[SpanGroup] = []
-            for j, (row, words) in enumerate(row_to_words.items()):
+            for j, (row, tokens) in enumerate(row_to_tokens.items()):
                 # process tokens in this row
                 row_tokens: List[SpanGroup] = []
-                for k, word in enumerate(words):
-                    text += word['text']
-                    end = start + len(word['text'])
+                for k, token in enumerate(tokens):
+                    text += token['text']
+                    end = start + len(token['text'])
                     # make token
-                    token = SpanGroup(spans=[Span(start=start, end=end, box=word['bbox'])])
+                    token = SpanGroup(spans=[Span(start=start, end=end, box=token['bbox'])])
                     row_tokens.append(token)
                     tokens.append(token)
-                    if k < len(words) - 1:
+                    if k < len(tokens) - 1:
                         text += ' '
                     else:
                         text += '\n'    # start newline at end of row
@@ -245,14 +245,14 @@ class SymbolScraperParser(BaseParser):
         # get page metrics
         page_to_metrics = self._parse_page_to_metrics(xml_lines=xml_lines)
         print(f'\tNum pages: {len(page_to_metrics)}')
-        print(f"\tAvg words: {sum([metric['words'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        print(f"\tAvg tokens: {sum([metric['words'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
         print(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
 
         # get token stream (grouped by page & row)
-        page_to_row_to_words = self._parse_page_to_row_to_words(xml_lines=xml_lines, page_to_metrics=page_to_metrics)
+        page_to_row_to_words = self._parse_page_to_row_to_tokens(xml_lines=xml_lines, page_to_metrics=page_to_metrics)
 
         # convert to spans
-        doc_json = self._convert_nested_text_to_doc_json(page_to_row_to_words=page_to_row_to_words)
+        doc_json = self._convert_nested_text_to_doc_json(page_to_row_to_tokens=page_to_row_to_words)
 
         # build Document
         doc = Document.from_json(doc_json=doc_json)
