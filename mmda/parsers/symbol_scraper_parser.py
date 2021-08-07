@@ -16,9 +16,7 @@ import tempfile
 import re
 from collections import defaultdict
 
-from mmda.types.span import Span
-from mmda.types.document import Document, Page, Token, Row, Sent, Block, Text, DocImage
-from mmda.types.boundingbox import BoundingBox
+from mmda.types.document import Document
 from mmda.parsers.parser import BaseParser
 
 
@@ -26,27 +24,24 @@ class SymbolScraperParser(BaseParser):
     def __init__(self, sscraper_bin_path: str):
         self.sscraper_bin_path = sscraper_bin_path
 
-    def parse(self, infile: str, outdir: Optional[str] = None, outfname: Optional[str] = None, load_images=True) -> Document:
-        
-        if outdir is None:
-            with tempfile.TemporaryDirectory() as outdir:
-                xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
+    def parse(self, input_pdf_path: str, output_json_path: Optional[str] = None,
+              tempdir: Optional[str] = None, load_images=False) -> Document:
+
+        if tempdir is None:
+            with tempfile.TemporaryDirectory() as tempdir:
+                xmlfile = self._run_sscraper(infile=input_pdf_path, outdir=tempdir)
                 doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
-            outdir = None
         else:
-            xmlfile = self._run_sscraper(infile=infile, outdir=outdir)
+            xmlfile = self._run_sscraper(infile=input_pdf_path, outdir=tempdir)
             doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
        
         if load_images:
-            doc.load(images=self.load_images(infile))
+            raise NotImplementedError(f'Load images?')
 
-        if outdir is not None:
-            if outfname is None:
-                outfname = os.path.join(outdir, os.path.basename(infile).replace('.pdf', '.json'))
-
-            outfile = os.path.join(outdir, outfname)
-            with open(outfile, 'w') as f_out:
+        if output_json_path:
+            with open(output_json_path, 'w') as f_out:
                 json.dump(doc.to_json(), f_out, indent=4)
+
         return doc
 
     #
