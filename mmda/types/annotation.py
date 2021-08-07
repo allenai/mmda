@@ -65,7 +65,7 @@ class BoxGroup(Annotation):
 
     @classmethod
     def from_json(cls, box_group_dict: Dict) -> "BoxGroup":
-        return BoxGroup(boxes=[Box.from_json(box_dict=box_dict) for box_dict in box_group_dict['boxes']],
+        return BoxGroup(boxes=[Box.from_json(box_coords=box_dict) for box_dict in box_group_dict['boxes']],
                         id=box_group_dict.get('id'),
                         type=box_group_dict.get('type'))
 
@@ -90,7 +90,7 @@ class SpanGroup(Annotation):
             type=self.type,
             box_group=self.box_group.to_json() if self.box_group else None,
         )
-        return {key: value for key, value in span_group_dict.items() if value}  # only serialize non-null values
+        return {key: value for key, value in span_group_dict.items() if value is not None}  # only serialize non-null values
 
     @classmethod
     def from_json(cls, span_group_dict: Dict) -> "SpanGroup":
