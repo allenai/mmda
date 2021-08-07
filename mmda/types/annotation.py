@@ -48,43 +48,6 @@ class Annotation:
             return self.__getattribute__(field)     # TODO[kylel] - alternatively, have it fail
 
 
-
-@dataclass
-class SpanGroup(Annotation):
-    spans: List[Span] = field(default_factory=list)
-    id: Optional[int] = None
-    text: Optional[str] = None
-    type: Optional[str] = None
-    box_group: Optional[BoxGroup] = None        # TODO[kylel] - implement default behavior
-
-    def to_json(self) -> Dict:
-        span_group_dict = dict(
-            _type="SpanGroup",
-            spans=[span.to_json() for span in self.spans],
-            id=self.id,
-            text=self.text,
-            type=self.type,
-            box_group=self.box_group.to_json() if self.box_group else None,
-        )
-        return {key:value for key, value in span_group_dict.items() if value}   # only serialize non-null values
-
-    @classmethod
-    def from_json(cls, span_group_dict: Dict) -> "SpanGroup":
-        box_group_dict = span_group_dict.get('box_group')
-        if box_group_dict:
-            box_group = BoxGroup.from_json(box_group_dict=box_group_dict)
-        else:
-            box_group = None
-        return SpanGroup(spans=[Span.from_json(span_dict=span_dict) for span_dict in span_group_dict['spans']],
-                         id=span_group_dict.get('id'),
-                         text=span_group_dict.get('text'),
-                         type=span_group_dict.get('type'),
-                         box_group=box_group)
-
-    def __getitem__(self, key: int):
-        return self.spans[key]
-
-
 @dataclass
 class BoxGroup(Annotation):
     boxes: List[Box] = field(default_factory=list)
@@ -109,6 +72,41 @@ class BoxGroup(Annotation):
     def __getitem__(self, key: int):
         return self.boxes[key]
 
+
+@dataclass
+class SpanGroup(Annotation):
+    spans: List[Span] = field(default_factory=list)
+    id: Optional[int] = None
+    text: Optional[str] = None
+    type: Optional[str] = None
+    box_group: Optional[BoxGroup] = None  # TODO[kylel] - implement default behavior
+
+    def to_json(self) -> Dict:
+        span_group_dict = dict(
+            _type="SpanGroup",
+            spans=[span.to_json() for span in self.spans],
+            id=self.id,
+            text=self.text,
+            type=self.type,
+            box_group=self.box_group.to_json() if self.box_group else None,
+        )
+        return {key: value for key, value in span_group_dict.items() if value}  # only serialize non-null values
+
+    @classmethod
+    def from_json(cls, span_group_dict: Dict) -> "SpanGroup":
+        box_group_dict = span_group_dict.get('box_group')
+        if box_group_dict:
+            box_group = BoxGroup.from_json(box_group_dict=box_group_dict)
+        else:
+            box_group = None
+        return SpanGroup(spans=[Span.from_json(span_dict=span_dict) for span_dict in span_group_dict['spans']],
+                         id=span_group_dict.get('id'),
+                         text=span_group_dict.get('text'),
+                         type=span_group_dict.get('type'),
+                         box_group=box_group)
+
+    def __getitem__(self, key: int):
+        return self.spans[key]
 
 
 # TODO[kylel] -- Implement
