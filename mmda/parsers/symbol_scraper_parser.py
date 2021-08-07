@@ -16,6 +16,7 @@ import tempfile
 import re
 from collections import defaultdict
 
+from mmda.types.box import Box
 from mmda.types.document import Document
 from mmda.parsers.parser import BaseParser
 
@@ -29,12 +30,12 @@ class SymbolScraperParser(BaseParser):
 
         if tempdir is None:
             with tempfile.TemporaryDirectory() as tempdir:
-                xmlfile = self._run_sscraper(infile=input_pdf_path, outdir=tempdir)
+                xmlfile = self._run_sscraper(input_pdf_path=input_pdf_path, outdir=tempdir)
                 doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
         else:
-            xmlfile = self._run_sscraper(infile=input_pdf_path, outdir=tempdir)
+            xmlfile = self._run_sscraper(input_pdf_path=input_pdf_path, outdir=tempdir)
             doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
-       
+
         if load_images:
             raise NotImplementedError(f'Load images?')
 
@@ -47,16 +48,16 @@ class SymbolScraperParser(BaseParser):
     #
     #   methods for interacting with SymbolScraper binary
     #
-    def _run_sscraper(self, infile: str, outdir: str) -> str:
+    def _run_sscraper(self, input_pdf_path: str, outdir: str) -> str:
         """Returns xmlpath of parsed output"""
-        if not infile.endswith('.pdf'):
-            raise FileNotFoundError(f'{infile} doesnt end in .pdf extension, which {self} expected')
+        if not input_pdf_path.endswith('.pdf'):
+            raise FileNotFoundError(f'{input_pdf_path} doesnt end in .pdf extension, which {self} expected')
         os.makedirs(outdir, exist_ok=True)
-        cmd = [self.sscraper_bin_path, '-b', infile, outdir]
+        cmd = [self.sscraper_bin_path, '-b', input_pdf_path, outdir]
         subprocess.run(cmd)
-        xmlfile = os.path.join(outdir, os.path.basename(infile).replace('.pdf', '.xml'))
+        xmlfile = os.path.join(outdir, os.path.basename(input_pdf_path).replace('.pdf', '.xml'))
         if not os.path.exists(xmlfile):
-            raise FileNotFoundError(f'Parsing {infile} may have failed. Cant find {xmlfile}.')
+            raise FileNotFoundError(f'Parsing {input_pdf_path} may have failed. Cant find {xmlfile}.')
         else:
             return xmlfile
 
@@ -66,14 +67,14 @@ class SymbolScraperParser(BaseParser):
     def _build_from_sscraper_bbox(self, sscraper_bbox: str,
                                   sscraper_page_width: float,
                                   sscraper_page_height: float,
-                                  page_id: int) -> BoundingBox:
+                                  page_id: int) -> Box:
         left, top, width, height = [float(element) for element in sscraper_bbox.split(' ')]
-        return BoundingBox(l=left / sscraper_page_width,
-                           t=(sscraper_page_height - top) / sscraper_page_height,
-                           # annoyingly, sscraper goes other way
-                           w=width / sscraper_page_width,
-                           h=height / sscraper_page_height,
-                           page=page_id)
+        return Box(l=left / sscraper_page_width,
+                   t=(sscraper_page_height - top) / sscraper_page_height,
+                   # annoyingly, sscraper goes other way
+                   w=width / sscraper_page_width,
+                   h=height / sscraper_page_height,
+                   page=page_id)
 
     #
     #   helper methods for parsing sscraper's particular XML format
