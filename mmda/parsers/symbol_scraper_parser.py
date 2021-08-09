@@ -42,6 +42,7 @@ class SymbolScraperParser(BaseParser):
         if load_images:
             raise NotImplementedError(f'Load images?')
 
+        # TODO: remove `indent=4` for storage efficiency
         if output_json_path:
             with open(output_json_path, 'w') as f_out:
                 json.dump(doc.to_json(), f_out, indent=4)
