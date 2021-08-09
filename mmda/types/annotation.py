@@ -56,7 +56,6 @@ class BoxGroup(Annotation):
 
     def to_json(self) -> Dict:
         box_group_dict = dict(
-            _type="BoxGroup",
             boxes=[box.to_json() for box in self.boxes],
             id=self.id,
             type=self.type
@@ -83,7 +82,6 @@ class SpanGroup(Annotation):
 
     def to_json(self) -> Dict:
         span_group_dict = dict(
-            _type="SpanGroup",
             spans=[span.to_json() for span in self.spans],
             id=self.id,
             text=self.text,

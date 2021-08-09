@@ -28,7 +28,7 @@ class Document:
     ):
         self.symbols = symbols
         self.images = images
-        self._fields = self.DEFAULT_FIELDS
+        self._fields = []
         self._indexers: Dict[str, Indexer] = {}
 
     @property
@@ -53,6 +53,8 @@ class Document:
             assert field_name not in self.fields, "This field name already exists"
             assert field_name not in self.UNALLOWED_FIELD_NAMES, \
                 f"The field_name should not be in {self.UNALLOWED_FIELD_NAMES}."
+            assert field_name not in self.DEFAULT_FIELDS, \
+                f"The field_name should not be in {self.DEFAULT_FIELDS}."
             assert field_name not in dir(self), \
                 f"The field_name should not conflict with existing class properties {field_name}"
 
@@ -108,12 +110,11 @@ class Document:
             }
         """
         doc_dict = {Symbols: self.symbols}
+        if with_images:
+            doc_dict[Images] = [image.to_json() for image in self.images]
 
         # figure out which fields to serialize
         fields = self.fields if fields is None else fields              # use all fields unless overridden
-        fields = [field for field in fields if field != Symbols]
-        if not with_images:
-            fields = [field for field in fields if field != Images]     # remove images from considered fields
 
         # add to doc dict
         for field in fields:
@@ -124,23 +125,23 @@ class Document:
     @classmethod
     def from_json(cls, doc_dict: Dict) -> "Document":
         # 1) instantiate basic Document
-        symbols = doc_dict.pop(Symbols)
-        images_dict = doc_dict.pop(Images, None)
+        symbols = doc_dict[Symbols]
+        images_dict = doc_dict.get(Images, None)
         if images_dict:
             images = [DocImage.frombase64(image_str) for image_str in images_dict]
         else:
             images = None
-
         doc = cls(symbols=symbols, images=images)
 
         # 2) convert span group dicts to span gropus
         field_name_to_span_groups = {}
         for field_name, span_group_dicts in doc_dict.items():
-            span_groups = [
-                SpanGroup.from_json(span_group_dict=span_group_dict)
-                for span_group_dict in span_group_dicts
-            ]
-            field_name_to_span_groups[field_name] = span_groups
+            if field_name not in doc.DEFAULT_FIELDS:
+                span_groups = [
+                    SpanGroup.from_json(span_group_dict=span_group_dict)
+                    for span_group_dict in span_group_dicts
+                ]
+                field_name_to_span_groups[field_name] = span_groups
 
         # 3) load annotations for each field
         doc.annotate(**field_name_to_span_groups)
