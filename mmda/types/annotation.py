@@ -129,12 +129,12 @@ class SpanGroupIndexer(Indexer):
         if not isinstance(query, SpanGroup):
             raise ValueError(f'SpanGroupIndexer only works with `query` that is SpanGroup type')
 
-        all_matched_span_groups = []
-        for span in query.span_group:
-            for matched_span_group in self._index[span.start : span.end]:
-                if matched_span_group not in all_matched_span_groups: # Deduplicate
-                    all_matched_span_groups.append(matched_span_group)
-        return all_matched_span_groups
+        all_matched_spans = []
+        for span in query.spans:
+            for matched_span in self._index[span.start : span.end]:
+                if matched_span.data not in all_matched_spans: # Deduplicate
+                    all_matched_spans.append(matched_span.data)
+        return all_matched_spans
 
     def __getitem__(self, key):
         return self._index[key]
