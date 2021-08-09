@@ -29,8 +29,8 @@ class Annotation:
     def to_json(self) -> Dict:
         pass
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_json(cls, annotation_dict: Dict) -> "Annotation":
         pass
 
@@ -48,6 +48,29 @@ class Annotation:
             return self.__getattribute__(field)     # TODO[kylel] - alternatively, have it fail
 
 
+@dataclass
+class BoxGroup(Annotation):
+    boxes: List[Box] = field(default_factory=list)
+    id: Optional[int] = None
+    type: Optional[str] = None
+
+    def to_json(self) -> Dict:
+        box_group_dict = dict(
+            boxes=[box.to_json() for box in self.boxes],
+            id=self.id,
+            type=self.type
+        )
+        return {key: value for key, value in box_group_dict.items() if value}  # only serialize non-null values
+
+    @classmethod
+    def from_json(cls, box_group_dict: Dict) -> "BoxGroup":
+        return BoxGroup(boxes=[Box.from_json(box_coords=box_dict) for box_dict in box_group_dict['boxes']],
+                        id=box_group_dict.get('id'),
+                        type=box_group_dict.get('type'))
+
+    def __getitem__(self, key: int):
+        return self.boxes[key]
+
 
 @dataclass
 class SpanGroup(Annotation):
@@ -55,18 +78,17 @@ class SpanGroup(Annotation):
     id: Optional[int] = None
     text: Optional[str] = None
     type: Optional[str] = None
-    box_group: Optional[BoxGroup] = None
+    box_group: Optional[BoxGroup] = None  # TODO[kylel] - implement default behavior
 
     def to_json(self) -> Dict:
         span_group_dict = dict(
-            _type="SpanGroup",
             spans=[span.to_json() for span in self.spans],
             id=self.id,
             text=self.text,
             type=self.type,
             box_group=self.box_group.to_json() if self.box_group else None,
         )
-        return {key:value for key, value in span_group_dict.items() if value}   # only serialize non-null values
+        return {key: value for key, value in span_group_dict.items() if value is not None}  # only serialize non-null values
 
     @classmethod
     def from_json(cls, span_group_dict: Dict) -> "SpanGroup":
@@ -85,32 +107,6 @@ class SpanGroup(Annotation):
         return self.spans[key]
 
 
-@dataclass
-class BoxGroup(Annotation):
-    boxes: List[Box] = field(default_factory=list)
-    id: Optional[int] = None
-    type: Optional[str] = None
-
-    def to_json(self) -> Dict:
-        box_group_dict = dict(
-            _type="BoxGroup",
-            boxes=[box.to_json() for box in self.boxes],
-            id=self.id,
-            type=self.type
-        )
-        return {key: value for key, value in box_group_dict.items() if value}  # only serialize non-null values
-
-    @classmethod
-    def from_json(cls, box_group_dict: Dict) -> "BoxGroup":
-        return BoxGroup(boxes=[Box.from_json(box_dict=box_dict) for box_dict in box_group_dict['boxes']],
-                        id=box_group_dict.get('id'),
-                        type=box_group_dict.get('type'))
-
-    def __getitem__(self, key: int):
-        return self.boxes[key]
-
-
-
 # TODO[kylel] -- Implement
 @dataclass
 class Indexer:
@@ -125,7 +121,8 @@ class Indexer:
 @dataclass
 class SpanGroupIndexer(Indexer):
 
-    _index: IntervalTree = IntervalTree()
+    # careful; if write it as _index = IntervalTree(), all SpanGroupIndexers will share the same _index object
+    _index: IntervalTree = field(default_factory=IntervalTree)
 
     # TODO[kylel] - maybe have more nullable args for different types of queryes (just start/end ints, just SpanGroup)
     def find(self, query: SpanGroup) -> List[SpanGroup]:
@@ -138,3 +135,9 @@ class SpanGroupIndexer(Indexer):
                 if matched_span_group not in all_matched_span_groups: # Deduplicate
                     all_matched_span_groups.append(matched_span_group)
         return all_matched_span_groups
+
+    def __getitem__(self, key):
+        return self._index[key]
+
+    def __setitem__(self, key, value):
+        self._index[key] = value

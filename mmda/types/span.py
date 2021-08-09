@@ -27,7 +27,7 @@ class Span:
     def from_json(cls, span_dict) -> "Span":
         box_dict = span_dict.get('box')
         if box_dict:
-            box = Box.from_json(box_dict=span_dict['box'])
+            box = Box.from_json(box_coords=span_dict['box'])
         else:
             box = None
         return Span(start=span_dict['start'], end=span_dict['end'], box=box)

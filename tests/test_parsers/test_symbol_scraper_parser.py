@@ -9,8 +9,8 @@ Tests for symbol scraper parser
 
 import unittest
 
-from mmda.types.boundingbox import BoundingBox
 from mmda.parsers.symbol_scraper_parser import SymbolScraperParser
+from mmda.types.names import *
 
 class TestSymbolScraperParser(unittest.TestCase):
 
@@ -85,32 +85,36 @@ class TestSymbolScraperParser(unittest.TestCase):
         </Page>
         </Document>"""
         cls.xml_lines = [line.strip() for line in cls.xml.splitlines()]
-        cls.page_to_metrics = {0: {'height': 792.0, 'width': 612.0, 'rows': 555, 'words': 888, 'chars': 999}}
-        cls.page_to_row_to_words = {0: {
+        cls.page_to_metrics = {0: {'height': 792.0, 'width': 612.0, 'rows': 555, 'tokens': 888, 'chars': 999}}
+        cls.page_to_row_to_tokens = {0: {
             0: [
-                {'text': 'The', 'bbox': [0.24914161764705883, 0.14273611111111115, 0.045513914379084974, 0.014693952020202017]},
-                {'text': 'Smoothed', 'bbox': [0.3031788235294118, 0.14273611111111115, 0.11873560294117647, 0.015867739267676734]},
-                {'text': 'Possibility', 'bbox': [0.4300158169934641, 0.14273611111111115, 0.12191432352941173, 0.018932647727272683]}
+                {'text': 'The', 'box': [0.24914161764705883, 0.14273611111111115, 0.045513914379084974, 0.014693952020202017, 0]},
+                {'text': 'Smoothed', 'box': [0.3031788235294118, 0.14273611111111115, 0.11873560294117647, 0.015867739267676734, 0]},
+                {'text': 'Possibility', 'box': [0.4300158169934641, 0.14273611111111115, 0.12191432352941173, 0.018932647727272683, 0]}
             ],
             1: [
-                {'text': 'Curves', 'bbox': [0.365513545751634, 0.2131515151515152, 0.04706188398692812, 0.011132455808080727]},
-                {'text': 'Flow', 'bbox': [0.4171823202614379, 0.2131515151515152, 0.027787840359477123, 0.008692116161616165]},
-                {'text': 'RPI,', 'bbox': [0.44990264705882355, 0.2131515151515152, 0.03123896781045743, 0.008503431060606054]}
+                {'text': 'Curves', 'box': [0.365513545751634, 0.2131515151515152, 0.04706188398692812, 0.011132455808080727, 0]},
+                {'text': 'Flow', 'box': [0.4171823202614379, 0.2131515151515152, 0.027787840359477123, 0.008692116161616165, 0]},
+                {'text': 'RPI,', 'box': [0.44990264705882355, 0.2131515151515152, 0.03123896781045743, 0.008503431060606054, 0]}
             ]}
         }
         cls.doc_json = {
-            'text': 'The Smoothed Possibility\nCurves Flow RPI,\n',
-            'page': [{'start': 0, 'end': 41, 'id': 0, 'bbox': [0.24914161764705883, 0.14273611111111115, 0.302788522875817, 0.08154785984848478]}],
-            'token': [{'start': 0, 'end': 3, 'id': 0, 'bbox': [0.24914161764705883, 0.14273611111111115, 0.045513914379084974, 0.014693952020202017]},
-                      {'start': 4, 'end': 12, 'id': 1, 'bbox': [0.3031788235294118, 0.14273611111111115, 0.11873560294117647, 0.015867739267676734]},
-                      {'start': 13, 'end': 24, 'id': 2, 'bbox': [0.4300158169934641, 0.14273611111111115, 0.12191432352941173, 0.018932647727272683]},
-                      {'start': 25, 'end': 31, 'id': 3, 'bbox': [0.365513545751634, 0.2131515151515152, 0.04706188398692812, 0.011132455808080727]},
-                      {'start': 32, 'end': 36, 'id': 4, 'bbox': [0.4171823202614379, 0.2131515151515152, 0.027787840359477123, 0.008692116161616165]},
-                      {'start': 37, 'end': 41, 'id': 5, 'bbox': [0.44990264705882355, 0.2131515151515152, 0.03123896781045743, 0.008503431060606054]}],
-            'row': [{'start': 0, 'end': 24, 'id': 0, 'bbox': [0.24914161764705883, 0.14273611111111115, 0.302788522875817, 0.018932647727272683]},
-                    {'start': 25, 'end': 41, 'id': 1, 'bbox': [0.365513545751634, 0.2131515151515152, 0.115628069117647, 0.011132455808080727]}],
-            'sent': [],
-            'block': []
+            Symbols: 'The Smoothed Possibility\nCurves Flow RPI,\n',
+            Pages: [
+                {'id': 0, 'spans': [{'start': 0, 'end': 41, 'box': [0.24914161764705883, 0.14273611111111115, 0.302788522875817, 0.08154785984848478, 0]}]}
+            ],
+            Tokens: [
+                {'id': 0, 'spans': [{'start': 0, 'end': 3, 'box': [0.24914161764705883, 0.14273611111111115, 0.045513914379084974, 0.014693952020202017, 0]}]},
+                {'id': 1, 'spans': [{'start': 4, 'end': 12, 'box': [0.3031788235294118, 0.14273611111111115, 0.11873560294117647, 0.015867739267676734, 0]}]},
+                {'id': 2, 'spans': [{'start': 13, 'end': 24, 'box': [0.4300158169934641, 0.14273611111111115, 0.12191432352941173, 0.018932647727272683, 0]}]},
+                {'id': 3, 'spans': [{'start': 25, 'end': 31, 'box': [0.365513545751634, 0.2131515151515152, 0.04706188398692812, 0.011132455808080727, 0]}]},
+                {'id': 4, 'spans': [{'start': 32, 'end': 36, 'box': [0.4171823202614379, 0.2131515151515152, 0.027787840359477123, 0.008692116161616165, 0]}]},
+                {'id': 5, 'spans': [{'start': 37, 'end': 41, 'box': [0.44990264705882355, 0.2131515151515152, 0.03123896781045743, 0.008503431060606054, 0]}]}
+            ],
+            Rows: [
+                {'id': 0, 'spans': [{'start': 0, 'end': 24, 'box': [0.24914161764705883, 0.14273611111111115, 0.302788522875817, 0.018932647727272683, 0]}]},
+                {'id': 1, 'spans': [{'start': 25, 'end': 41, 'box': [0.365513545751634, 0.2131515151515152, 0.115628069117647, 0.011132455808080727, 0]}]}
+            ]
         }
         # TODO - test the bboxes too
 
@@ -142,25 +146,32 @@ class TestSymbolScraperParser(unittest.TestCase):
         self.assertDictEqual(d1=page_to_metrics, d2=self.page_to_metrics)
 
     def test_parse_page_to_row_to_words(self):
-        page_to_row_to_words = self.sscraper_parser._parse_page_to_row_to_words(xml_lines=self.xml_lines,
-                                                                                page_to_metrics=self.page_to_metrics)
-        assert len(page_to_row_to_words) == len(self.page_to_row_to_words)
-        assert len(page_to_row_to_words[0]) == len(self.page_to_row_to_words[0])    # first page
-        assert len(page_to_row_to_words[0][0]) == len(self.page_to_row_to_words[0][0])  # first row
-        assert len(page_to_row_to_words[0][1]) == len(self.page_to_row_to_words[0][1])  # second row
-        assert page_to_row_to_words[0][0][0]['text'] == self.page_to_row_to_words[0][0][0]['text']  # first word
-        assert page_to_row_to_words[0][0][1]['text'] == self.page_to_row_to_words[0][0][1]['text']  # second word
-        assert page_to_row_to_words[0][0][2]['text'] == self.page_to_row_to_words[0][0][2]['text']  # third word
-        assert page_to_row_to_words[0][1][0]['text'] == self.page_to_row_to_words[0][1][0]['text']  # first word
-        assert page_to_row_to_words[0][1][1]['text'] == self.page_to_row_to_words[0][1][1]['text']  # second word
-        assert page_to_row_to_words[0][1][2]['text'] == self.page_to_row_to_words[0][1][2]['text']  # third word
+        page_to_row_to_words = self.sscraper_parser._parse_page_to_row_to_tokens(xml_lines=self.xml_lines,
+                                                                                 page_to_metrics=self.page_to_metrics)
+        assert len(page_to_row_to_words) == len(self.page_to_row_to_tokens)
+        assert len(page_to_row_to_words[0]) == len(self.page_to_row_to_tokens[0])    # first page
+        assert len(page_to_row_to_words[0][0]) == len(self.page_to_row_to_tokens[0][0])  # first row
+        assert len(page_to_row_to_words[0][1]) == len(self.page_to_row_to_tokens[0][1])  # second row
+        assert page_to_row_to_words[0][0][0]['text'] == self.page_to_row_to_tokens[0][0][0]['text']  # first word
+        assert page_to_row_to_words[0][0][1]['text'] == self.page_to_row_to_tokens[0][0][1]['text']  # second word
+        assert page_to_row_to_words[0][0][2]['text'] == self.page_to_row_to_tokens[0][0][2]['text']  # third word
+        assert page_to_row_to_words[0][1][0]['text'] == self.page_to_row_to_tokens[0][1][0]['text']  # first word
+        assert page_to_row_to_words[0][1][1]['text'] == self.page_to_row_to_tokens[0][1][1]['text']  # second word
+        assert page_to_row_to_words[0][1][2]['text'] == self.page_to_row_to_tokens[0][1][2]['text']  # third word
         # self.assertDictEqual(d1=page_to_row_to_words, d2=self.page_to_row_to_words)
 
     def test_convert_nested_text_to_doc_json(self):
-        page_to_row_to_words = self.sscraper_parser._parse_page_to_row_to_words(xml_lines=self.xml_lines,
-                                                                                page_to_metrics=self.page_to_metrics)
-        doc_json = self.sscraper_parser._convert_nested_text_to_doc_json(page_to_row_to_words=page_to_row_to_words)
-        self.assertDictEqual(doc_json, self.doc_json)
+        page_to_row_to_tokens = self.sscraper_parser._parse_page_to_row_to_tokens(xml_lines=self.xml_lines,
+                                                                                 page_to_metrics=self.page_to_metrics)
+        doc_json = self.sscraper_parser._convert_nested_text_to_doc_json(page_to_row_to_tokens=page_to_row_to_tokens)
+        from pprint import pprint
+        assert doc_json['symbols'] == self.doc_json['symbols']
+        for di, dj in zip(doc_json['pages'], self.doc_json['pages']):
+            self.assertDictEqual(di, dj)
+        for di, dj in zip(doc_json['rows'], self.doc_json['rows']):
+            self.assertDictEqual(di, dj)
+        for di, dj in zip(doc_json['tokens'], self.doc_json['tokens']):
+            self.assertDictEqual(di, dj)
 
     def test_parse_sscraper_xml(self):
         pass
