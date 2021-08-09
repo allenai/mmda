@@ -107,20 +107,24 @@ class Document:
                 field2: [...]
             }
         """
+        doc_dict = {Symbols: self.symbols}
+
+        # figure out which fields to serialize
         fields = self.fields if fields is None else fields              # use all fields unless overridden
+        fields = [field for field in fields if field != Symbols]
         if not with_images:
             fields = [field for field in fields if field != Images]     # remove images from considered fields
-        return {
-            field: [doc_span_group.to_json() for doc_span_group in getattr(self, field)]
-            for field in fields
-        }
+
+        # add to doc dict
+        for field in fields:
+            doc_dict[field] = [doc_span_group.to_json() for doc_span_group in getattr(self, field)]
+
+        return doc_dict
 
     @classmethod
     def from_json(cls, doc_dict: Dict) -> "Document":
-        fields = doc_dict.keys()        # TODO[kylel]: this modifies the referenced dict, not copy
-
         # 1) instantiate basic Document
-        symbols = fields.pop(Symbols)
+        symbols = doc_dict.pop(Symbols)
         images_dict = doc_dict.pop(Images, None)
         if images_dict:
             images = [DocImage.frombase64(image_str) for image_str in images_dict]
