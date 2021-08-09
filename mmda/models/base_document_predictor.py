@@ -83,11 +83,3 @@ class BaseDocumentPredictor:
     @abstractmethod
     def postprocess(self, model_outputs: Any) -> Dict:
         """Convert the model outputs into the Annotation format"""
-
-
-#TODO[Shannon] Not exactly sure about the model configurations till 
-# we add specific models. 
-@dataclass
-class BaseDocumentPredictorConfig:
-    model_name: str = None
-    model_class: Any = None 
