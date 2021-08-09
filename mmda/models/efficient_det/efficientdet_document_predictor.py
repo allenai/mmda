@@ -59,6 +59,7 @@ class InputTransform:
 
 class EfficientDetLayoutModel(BaseDocumentPredictor):
 
+    REQUIRED_BACKENDS = ["effdet", "torch"]
     REQUIRED_DOCUMENT_FIELDS = [Images]
 
     def __init__(
