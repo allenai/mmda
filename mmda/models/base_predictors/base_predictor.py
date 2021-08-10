@@ -37,11 +37,6 @@ class BasePredictor:
     ######################### Core Methods ############################
     ###################################################################
 
-    def __init__(self, model: Any, config: Any):
-
-        self.model = model
-        self.config = config
-
     def _doc_field_checker(self, document: Document) -> None:
         if self.REQUIRED_DOCUMENT_FIELDS is not None:
             for field in self.REQUIRED_DOCUMENT_FIELDS:
@@ -56,19 +51,4 @@ class BasePredictor:
         """For all the mmda models, the input is a document object, and
         the output is a list of annotations.
         """
-
         self._doc_field_checker(document)
-
-        model_inputs = self.preprocess(document)
-        model_outputs = self.model.predict(model_inputs)
-        return self.postprocess(model_outputs)
-
-    @abstractmethod
-    def preprocess(self, document: Document) -> Dict:
-        """Convert the input document into the format that is required
-        by the model.
-        """
-
-    @abstractmethod
-    def postprocess(self, model_outputs: Any) -> Dict:
-        """Convert the model outputs into the Annotation format"""
