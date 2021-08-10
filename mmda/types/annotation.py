@@ -50,8 +50,9 @@ class Annotation:
     def __getattr__(self, field: str) -> List["Annotation"]:
         if field in self.doc.fields:
             return self.doc.find_overlapping(self, field)
-        elif field == Symbols:
-            return self.get_symbols()
+        # TODO - Check how to implement this
+        # elif field == Symbols:
+        #     return self.get_symbols()
         else:
             return self.__getattribute__(field)     # TODO[kylel] - alternatively, have it fail
 
@@ -88,11 +89,11 @@ class SpanGroup(Annotation):
     type: Optional[str] = None
     box_group: Optional[BoxGroup] = None  # TODO[kylel] - implement default behavior
 
-    def get_symbols(self) -> str:
-        if self.text is not None:
-            return self.text
-        else:
-            return ' '.join([self.doc.symbols[span.start:span.end] for span in self.spans])    
+    # def get_symbols(self) -> str:
+    #     if self.text is not None:
+    #         return self.text
+    #     else:
+    #         return ' '.join([self.doc.symbols[span.start:span.end] for span in self.spans])    
 
     def to_json(self) -> Dict:
         span_group_dict = dict(
