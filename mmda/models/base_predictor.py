@@ -6,7 +6,7 @@ from mmda.types.annotation import Annotation
 from mmda.types.document import Document
 
 
-class BaseDocumentPredictor:
+class BasePredictor:
 
     ###################################################################
     ##################### Necessary Model Variables ###################
@@ -42,9 +42,6 @@ class BaseDocumentPredictor:
         self.model = model
         self.config = config
 
-        self.initialize_postprocessor()
-        self.initialize_preprocessor()
-
     def _doc_field_checker(self, document: Document) -> None:
         if self.REQUIRED_DOCUMENT_FIELDS is not None:
             for field in self.REQUIRED_DOCUMENT_FIELDS:
@@ -67,18 +64,10 @@ class BaseDocumentPredictor:
         return self.postprocess(model_outputs)
 
     @abstractmethod
-    def initialize_preprocessor(self) -> None:
-        """Initialize the necessary preprocessor components"""
-
-    @abstractmethod
     def preprocess(self, document: Document) -> Dict:
         """Convert the input document into the format that is required
         by the model.
         """
-
-    @abstractmethod
-    def initialize_postprocessor(self) -> None:
-        """Initialize the necessary postprocessor components"""
 
     @abstractmethod
     def postprocess(self, model_outputs: Any) -> Dict:
