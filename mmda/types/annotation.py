@@ -6,6 +6,7 @@ Collections of Annotations are how one constructs a new Iterable of Group-type o
 
 """
 
+from mmda.types.names import Symbols
 from typing import List, Optional, Dict, Tuple, Type
 from abc import abstractmethod
 from dataclasses import dataclass, field
@@ -29,6 +30,11 @@ class Annotation:
     def to_json(self) -> Dict:
         pass
 
+    # TODO[shannon] make this as an abstract method after implementing
+    # get_symbols for BoxGroup
+    def get_symbols(self) -> str:
+        pass
+
     @classmethod
     @abstractmethod
     def from_json(cls, annotation_dict: Dict) -> "Annotation":
@@ -44,6 +50,9 @@ class Annotation:
     def __getattr__(self, field: str) -> List["Annotation"]:
         if field in self.doc.fields:
             return self.doc.find_overlapping(self, field)
+        # TODO - Check how to implement this
+        # elif field == Symbols:
+        #     return self.get_symbols()
         else:
             return self.__getattribute__(field)     # TODO[kylel] - alternatively, have it fail
 
@@ -79,6 +88,12 @@ class SpanGroup(Annotation):
     text: Optional[str] = None
     type: Optional[str] = None
     box_group: Optional[BoxGroup] = None  # TODO[kylel] - implement default behavior
+
+    # def get_symbols(self) -> str:
+    #     if self.text is not None:
+    #         return self.text
+    #     else:
+    #         return ' '.join([self.doc.symbols[span.start:span.end] for span in self.spans])    
 
     def to_json(self) -> Dict:
         span_group_dict = dict(
@@ -129,12 +144,12 @@ class SpanGroupIndexer(Indexer):
         if not isinstance(query, SpanGroup):
             raise ValueError(f'SpanGroupIndexer only works with `query` that is SpanGroup type')
 
-        all_matched_span_groups = []
-        for span in query.span_group:
-            for matched_span_group in self._index[span.start : span.end]:
-                if matched_span_group not in all_matched_span_groups: # Deduplicate
-                    all_matched_span_groups.append(matched_span_group)
-        return all_matched_span_groups
+        all_matched_spans = []
+        for span in query.spans:
+            for matched_span in self._index[span.start : span.end]:
+                if matched_span.data not in all_matched_spans: # Deduplicate
+                    all_matched_spans.append(matched_span.data)
+        return all_matched_spans
 
     def __getitem__(self, key):
         return self._index[key]
