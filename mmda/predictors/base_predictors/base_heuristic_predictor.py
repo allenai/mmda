@@ -4,7 +4,7 @@ from typing import Union, List, Dict, Any
 
 from mmda.types.document import Document
 from mmda.types.annotation import Annotation
-from mmda.models.base_predictors.base_predictor import BasePredictor
+from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
 
 class BaseHeuristicPredictor(BasePredictor):

@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Union, List, Dict, Any
 
 from mmda.types.document import Document
-from mmda.models.base_predictors.base_predictor import BasePredictor
+from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
 
 class BaseSpacyPredictor(BasePredictor):

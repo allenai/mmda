@@ -4,7 +4,7 @@ from typing import Union, List, Dict, Any
 from mmda.types.names import *
 from mmda.types.document import Document
 from mmda.types.annotation import BoxGroup
-from mmda.models.base_predictors.base_predictor import BasePredictor
+from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
 
 class BaseLayoutParserPredictor(BasePredictor):
@@ -15,3 +15,4 @@ class BaseLayoutParserPredictor(BasePredictor):
 
         self.model = model
         self.config = config
+
