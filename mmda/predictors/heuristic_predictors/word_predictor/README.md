@@ -1,6 +1,6 @@
-# heuristic predictors
+# word predictors
 
-### words
+### summary
 
 Due to PDF formatting, words might be represented as separate tokens after PDF parsing (e.g. `tok-` and `en` instead of `token`).  One way to turn these back into regular words is to undo this partitioning.
 
@@ -15,3 +15,7 @@ Due to PDF formatting, words might be represented as separate tokens after PDF p
     - Strategy: Check both segments against dictionary of English words; if valid words, keep separate; else merge
 
  
+### dependencies
+
+1. [SymSpellPy](https://github.com/mammothb/symspellpy) is Python binding for [SymSpell](https://github.com/wolfgarbe/SymSpell), which is a popular method for fast spelling correction.  MIT License. 
+
