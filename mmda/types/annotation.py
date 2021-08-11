@@ -15,8 +15,6 @@ from dataclasses import dataclass, field
 from mmda.types.span import Span
 from mmda.types.box import Box
 
-from intervaltree import IntervalTree
-
 
 @dataclass
 class Annotation:
@@ -121,38 +119,16 @@ class SpanGroup(Annotation):
     def __getitem__(self, key: int):
         return self.spans[key]
 
+    @property
+    def start(self) -> int:
+        return min([span.start for span in self.spans])
 
-# TODO[kylel] -- Implement
-@dataclass
-class Indexer:
-    """Stores an index for a particular collection of Annotations.
-    Indexes in this library focus on *INTERSECT* relations."""
+    @property
+    def end(self) -> int:
+        return max([span.end for span in self.spans])
 
-    @abstractmethod
-    def find(self, query: Annotation) -> List[Annotation]:
-        """Returns all matching Annotations given a suitable query"""
-
-
-@dataclass
-class SpanGroupIndexer(Indexer):
-
-    # careful; if write it as _index = IntervalTree(), all SpanGroupIndexers will share the same _index object
-    _index: IntervalTree = field(default_factory=IntervalTree)
-
-    # TODO[kylel] - maybe have more nullable args for different types of queryes (just start/end ints, just SpanGroup)
-    def find(self, query: SpanGroup) -> List[SpanGroup]:
-        if not isinstance(query, SpanGroup):
-            raise ValueError(f'SpanGroupIndexer only works with `query` that is SpanGroup type')
-
-        all_matched_spans = []
-        for span in query.spans:
-            for matched_span in self._index[span.start : span.end]:
-                if matched_span.data not in all_matched_spans: # Deduplicate
-                    all_matched_spans.append(matched_span.data)
-        return all_matched_spans
-
-    def __getitem__(self, key):
-        return self._index[key]
-
-    def __setitem__(self, key, value):
-        self._index[key] = value
+    def __lt__(self, other: 'SpanGroup'):
+        if self.id and other.id:
+            return self.id < other.id
+        else:
+            return self.start < other.start

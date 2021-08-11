@@ -12,7 +12,8 @@ import os
 from glob import glob
 
 from mmda.types.image import Image
-from mmda.types.annotation import Annotation, SpanGroup, Indexer, SpanGroupIndexer
+from mmda.types.annotation import Annotation, SpanGroup
+from mmda.types.indexers import Indexer, SpanGroupIndexer
 from mmda.types.names import Symbols, Images
 from mmda.types.image import Image as DocImage
 
