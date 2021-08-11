@@ -87,11 +87,9 @@ class SpanGroup(Annotation):
     type: Optional[str] = None
     box_group: Optional[BoxGroup] = None  # TODO[kylel] - implement default behavior
 
-    # def get_symbols(self) -> str:
-    #     if self.text is not None:
-    #         return self.text
-    #     else:
-    #         return ' '.join([self.doc.symbols[span.start:span.end] for span in self.spans])    
+    @property
+    def symbols(self) -> List[str]:
+        return [self.doc.symbols[span.start : span.end] for span in self.spans]
 
     def to_json(self) -> Dict:
         span_group_dict = dict(
