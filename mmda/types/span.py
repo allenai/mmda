@@ -31,3 +31,9 @@ class Span:
         else:
             box = None
         return Span(start=span_dict['start'], end=span_dict['end'], box=box)
+
+    def __lt__(self, other: 'Span'):
+        if self.id and other.id:
+            return self.id < other.id
+        else:
+            return self.start < other.start

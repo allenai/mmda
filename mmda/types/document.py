@@ -12,7 +12,8 @@ import os
 from glob import glob
 
 from mmda.types.image import Image
-from mmda.types.annotation import Annotation, SpanGroup, Indexer, SpanGroupIndexer
+from mmda.types.annotation import Annotation, SpanGroup
+from mmda.types.indexers import Indexer, SpanGroupIndexer
 from mmda.types.names import Symbols, Images
 from mmda.types.image import Image as DocImage
 
@@ -26,7 +27,7 @@ class Document:
         symbols: str,
         images: Optional[List["Image.Image"]] = None,
     ):
-        self.symbols = symbols
+        self._symbols = symbols
         self.images = images
         self._fields = []
         self._indexers: Dict[str, Indexer] = {}
@@ -109,7 +110,7 @@ class Document:
                 field2: [...]
             }
         """
-        doc_dict = {Symbols: self.symbols}
+        doc_dict = {Symbols: self._symbols}
         if with_images:
             doc_dict[Images] = [image.to_json() for image in self.images]
 
