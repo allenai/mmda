@@ -40,7 +40,7 @@ class SymbolScraperParser(BaseParser):
             doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
 
         if load_images:
-            raise NotImplementedError(f'Load images?')
+            doc.images = self.load_images(input_pdf_path)
 
         # TODO: remove `indent=4` for storage efficiency
         if output_json_path:
