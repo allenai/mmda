@@ -5,6 +5,8 @@ from unittest import TestCase
 
 import requests
 
+from model.prediction import Prediction
+
 
 HOST = str(
     subprocess.run(
@@ -29,3 +31,5 @@ class TestInvocations(TestCase):
         request = get_test_request()
         resp = requests.post(URL, json=request)
         self.assertEqual(resp.status_code, 200)
+        # test that i can rehydrate the resp
+        Prediction(**resp.json()["predictions"][0])
