@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from typing import Union, List, Dict, Any
 
 import layoutparser as lp
@@ -19,11 +18,11 @@ class LayoutParserPredictor(BasePredictor):
     @classmethod
     def from_pretrained(
         cls,
-        config_path,
-        model_path=None,
-        label_map=None,
-        extra_config=None,
-        enforce_cpu=False,
+        config_path: str,
+        model_path: str = None,
+        label_map: Dict = None,
+        extra_config: List = None,
+        enforce_cpu: bool = False,
     ):
         """Initialize a pre-trained layout detection model from
         layoutparser. The parameters currently are the same as the
@@ -46,7 +45,6 @@ class LayoutParserPredictor(BasePredictor):
 
         return cls(model)
 
-    @abstractmethod
     def postprocess(self, model_outputs: lp.Layout, page_index: int) -> List[Box]:
         """Convert the model outputs into the Annotation format"""
 
