@@ -20,11 +20,11 @@ pip install -e '.[dev]'
 
 ## Parsers
 
-### [SymbolScraper](https://github.com/zanibbi/SymbolScraper/tree/bd3b04de61c7cc390d4219358ca0cd95e43aae50)
+### [SymbolScraper](/parsers/symbolscraper)
 
 #### Install
 
-Quoted from their `README`
+Quoted from their [README](https://github.com/zanibbi/SymbolScraper/tree/bd3b04de61c7cc390d4219358ca0cd95e43aae50)
 > From the main directory, issue `make`. This will run the Maven build system, 
 > download dependencies, etc., compile source files and generate .jar files 
 > in `./target`. Finally, a bash script `bin/sscraper` is generated, so that 
@@ -43,12 +43,11 @@ pip install -r requirements.txt
 
 In this example, we use the `SymbolScraperParser`. Each parser implements its own `.parse()`.
 ```python
-import os
-from mmda.parsers.symbol_scraper_parser import SymbolScraperParser
+from symbol_scraper import SymbolScraperParser
 from mmda.types.document import Document
 
-ssparser = SymbolScraperParser(sscraper_bin_path='...')
-doc: Document = ssparser.parse(infile='...pdf', outdir='...', outfname='...json')
+ssparser = SymbolScraperParser("/path/to/sscraper")
+doc: Document = ssparser.parse(input_pdf_path='...pdf', output_json_path='...json')
 ```
 
 Because we provided `outdir` and `outfname`, the document is also serialized for you:
