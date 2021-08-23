@@ -5,7 +5,7 @@ import layoutparser as lp
 from mmda.types.names import *
 from mmda.types.document import Document
 from mmda.types.box import Box
-from mmda.predictors.base_predictors.base_predictor import BasePredictor
+from mmda.predictors.base_predictor import BasePredictor
 
 
 class LayoutParserPredictor(BasePredictor):
