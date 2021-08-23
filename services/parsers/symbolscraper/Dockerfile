@@ -15,12 +15,6 @@ RUN apt-get update &&\
         make &&\
         ln -sf /opt/symbolscraper/bin/sscraper /bin/sscraper
 
-WORKDIR /opt/ml/lib
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY mmda mmda
-ENV PYTHONPATH "/opt/ml/lib${PYTHONPATH:+:${PYTHONPATH}}"
-
 ###########################################################
 #### S2AGEMAKER REQS BELOW THIS POINT -- DO NOT CHANGE ####
 ###########################################################
@@ -28,13 +22,13 @@ ENV PYTHONPATH "/opt/ml/lib${PYTHONPATH:+:${PYTHONPATH}}"
 RUN apt-get update && apt-get install nginx -y
 WORKDIR /opt/ml/code
 
-COPY services/parsers/symbolscraper/requirements.txt .
-COPY services/parsers/symbolscraper/setup.py .
+COPY requirements.txt .
+COPY setup.py .
 
 RUN pip install -r requirements.txt
 RUN pip install --upgrade .[dev]
 
-COPY services/parsers/symbolscraper .
+COPY . .
 
 ENV ARTIFACTS_DIR /opt/ml/model
 ENV BATCH_SIZE 1

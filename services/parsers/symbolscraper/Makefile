@@ -5,7 +5,7 @@ endif
 IMAGE_NAME=mmda-symbolscraper$(OPTIONAL_TAG)
 
 build-image:
-	cd ../../.. && docker build -t $(IMAGE_NAME) . -f services/parsers/symbolscraper/Dockerfile
+	docker build -t $(IMAGE_NAME) .
 
 serve: build-image
 	docker run --rm \

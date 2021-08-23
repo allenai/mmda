@@ -12,7 +12,9 @@ s2agemaker_requirements = [
 ]
 
 # Add your python dependencies
-model_requirements = []
+model_requirements = [
+    "mmda@git+https://github.com/allenai/mmda.git@yogic/s2agemaker-symbol-scraper"
+]
 
 dev_requirements = ["pytest", "mypy", "black", "requests", "types-requests"]
 
