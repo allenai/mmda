@@ -3,34 +3,40 @@
 This is work in progress...
 
 There's multiple python projects in this repository.
-- [library/mmda](/library/mmda) - defines base classes that parsers
-and predictors will extend. Also defines associated data classes.
+- [mmda](/mmda) - Defines base classes that parsers
+and predictors will implement. Also defines associated data classes.
 - [parsers](/parsers) - parser applications
 - [predictors](/predictors) - predictor applications
 
 The applications (parsers and predictors) make use of the mmda library.
 
-## MMDA Library
+## Library
 
 ### Developing
-
 ```bash
-cd library
 conda create -n mmda python=3.8
 pip install -e '.[dev]'
 ```
 
 ## Parsers
 
-### [SymbolScraper](https://github.com/zanibbi/SymbolScraper/tree/bd3b04de61c7cc390d4219358ca0cd95e43aae50) - Apache 2.0
+### [SymbolScraper](https://github.com/zanibbi/SymbolScraper/tree/bd3b04de61c7cc390d4219358ca0cd95e43aae50)
+
+#### Install
 
 Quoted from their `README`
 > From the main directory, issue `make`. This will run the Maven build system, 
 > download dependencies, etc., compile source files and generate .jar files 
 > in `./target`. Finally, a bash script `bin/sscraper` is generated, so that 
 > the program can be easily used in different directories.
-    
-    
+
+#### Developing
+```bash
+cd parsers/symbolscraper
+conda create -n sscraper python=3.8
+pip install -r requirements.txt
+```
+
 ## Walkthrough
 
 #### 1. Creating a Document for the first time
