@@ -1,0 +1,72 @@
+from typing import List, Tuple
+import itertools
+
+from mmda.types.document import Document
+
+
+def shift_index_sequence_to_zero_start(sequence):
+    """
+    Shift a sequence to start at 0.
+    """
+    sequence_start = min(sequence)
+    return [i - sequence_start for i in sequence]
+
+
+def convert_document_page_to_pdf_dict(document: Document):
+    """
+    Convert a document to a dictionary of the form:
+    {
+        'words': ['word1', 'word2', ...],
+        'bbox': [[x1, y1, x2, y2], [x1, y1, x2, y2], ...],
+        'block_ids': [0, 0, 0, 1 ...],
+        'line_ids': [0, 1, 1, 2 ...],
+        'labels': [0, 0, 0, 1 ...], # could be empty
+    }
+    """
+
+    words = [token.symbols[0] for token in document.tokens]
+    # TODO: Right now we assume the token could on have a single span.
+
+    bbox = [token.box[0].coordinates for token in document.tokens]
+    # TODO: This returns relative coordinates to the document.
+
+    line_ids = [token.rows[0].id for token in document.tokens]
+    # TODO: Right now we assume the token could span for one row of the
+    # document.
+    line_ids = shift_index_sequence_to_zero_start(line_ids)
+
+    block_ids = []
+    # TODO: Implement fetching block_ids
+
+    labels = [None] * len(words)
+    # TODO: We provide an empty label list.
+
+    return {
+        "words": words,
+        "bbox": bbox,
+        "block_ids": block_ids,
+        "line_ids": line_ids,
+        "labels": labels,
+    }
+
+
+def convert_sequence_tagging_to_spans(
+    token_prediction_sequence: List,
+) -> List[Tuple[int, int, int]]:
+    """For a squence of token predictions, convert them to spans
+    of consecutive same predictions.
+
+    Args:
+        token_prediction_sequence (List)
+
+    Returns:
+        List[Tuple[int, int, int]]: A list of (start, end, label)
+            of consecutive prediction of the same label.
+    """
+    prev_len = 0
+    spans = []
+    for gp, seq in itertools.groupby(token_prediction_sequence):
+        cur_len = len(list(seq))
+        spans.append((prev_len, prev_len + cur_len, gp))
+        prev_len = prev_len + cur_len
+    return spans
