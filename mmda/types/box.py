@@ -38,3 +38,8 @@ class Box:
         x2 = max([bbox.l + bbox.w for bbox in boxes])
         y2 = max([bbox.t + bbox.h for bbox in boxes])
         return Box(page=boxes[0].page, l=x1, t=y1, w=x2 - x1, h=y2 - y1)
+
+    @property
+    def coordinates(self) -> Tuple[float, float, float, float]:
+        """Return a tuple of the (x1, y1, x2, y2) format."""
+        return self.l, self.t, self.l + self.w, self.t + self.h
