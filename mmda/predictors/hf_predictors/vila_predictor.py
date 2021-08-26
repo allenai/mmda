@@ -10,7 +10,7 @@ import itertools
 
 import torch
 from transformers import AutoTokenizer, AutoConfig, AutoModelForTokenClassification
-from vila.modeling.hierarchical_model import (
+from vila.models.hierarchical_model import (
     HierarchicalModelForTokenClassification,
     HierarchicalModelConfig,
 )
@@ -49,6 +49,8 @@ class BaseVILAPredictor(BaseHFPredictor):
         self, model: Any, config: Any, tokenizer: Any, preprocessor, device=None
     ):
         self.model = model
+        self.tokenizer = tokenizer
+        self.config = config
         self.preprocessor = preprocessor
 
         if device is None:
@@ -82,7 +84,7 @@ class BaseVILAPredictor(BaseHFPredictor):
                 tokenizer, VILAPreprocessorConfig(**preprocessor_config)
             )
 
-        return cls(model, preprocessor, device)
+        return cls(model, config, tokenizer, preprocessor, device)
 
     @staticmethod
     @abstractmethod
@@ -142,7 +144,7 @@ class BaseVILAPredictor(BaseHFPredictor):
     def predict(self, document: Document) -> List[Annotation]:
 
         page_prediction_results = []
-        for page in document:
+        for page in document.pages:
             pdf_dict = convert_document_page_to_pdf_dict(page)
             model_inputs = self.preprocess(pdf_dict)
             model_outputs = self.model(**self.model_input_collator(model_inputs))
@@ -229,7 +231,7 @@ class HVILAPredictor(BaseVILAPredictor):
                 tokenizer, VILAPreprocessorConfig(**preprocessor_config)
             )
 
-        return cls(model, preprocessor, device)
+        return cls(model, config, tokenizer, preprocessor, device)
 
     @staticmethod
     def initialize_preprocessor(tokenizer, config):
@@ -240,13 +242,14 @@ class HVILAPredictor(BaseVILAPredictor):
     @staticmethod
     def flatten_line_level_prediction(batched_line_pred, batched_line_word_count):
         final_flattend_pred = []
-        for line_pred, line_word_count in zip(batched_line_pred, batched_line_word_count):
+        for line_pred, line_word_count in zip(
+            batched_line_pred, batched_line_word_count
+        ):
             assert len(line_pred) == len(line_word_count)
             for (pred, label), (line_id, count) in zip(line_pred, line_word_count):
                 final_flattend_pred.append([[pred, label, line_id]] * count)
 
         return list(itertools.chain.from_iterable(final_flattend_pred))
-
 
     def get_true_token_level_category_prediction(
         self, pdf_dict, model_inputs, model_predictions
