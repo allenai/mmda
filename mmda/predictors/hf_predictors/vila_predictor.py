@@ -2,10 +2,8 @@
 # https://github.com/allenai/VILA/blob/dd242d2fcbc5fdcf05013174acadb2dc896a28c3/src/vila/predictors.py#L1
 # to reduce the dependency on the VILA package.
 
-
-from mmda.predictors.vila import preprocessors
 from typing import List, Union, Dict, Any, Tuple
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from dataclasses import dataclass
 import inspect
 import itertools
