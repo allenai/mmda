@@ -7,7 +7,7 @@ from mmda.types.document import Document
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
 
-class BaseHuggingFacePredictor(BasePredictor):
+class BaseHFPredictor(BasePredictor):
     REQUIRED_BACKENDS = ["transformers", "torch"]
 
     def __init__(self, model: Any, config: Any, tokenizer: Any):
