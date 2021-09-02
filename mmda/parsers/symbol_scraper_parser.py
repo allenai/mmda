@@ -72,9 +72,9 @@ class SymbolScraperParser(BaseParser):
                                   sscraper_page_width: float,
                                   sscraper_page_height: float,
                                   page_id: int) -> Box:
-        left, top, width, height = [float(element) for element in sscraper_bbox.split(' ')]
+        left, bottom, width, height = [float(element) for element in sscraper_bbox.split(' ')]
         return Box(l=left / sscraper_page_width,
-                   t=(sscraper_page_height - top) / sscraper_page_height,
+                   t=(sscraper_page_height - bottom - height) / sscraper_page_height,
                    # annoyingly, sscraper goes other way
                    w=width / sscraper_page_width,
                    h=height / sscraper_page_height,
