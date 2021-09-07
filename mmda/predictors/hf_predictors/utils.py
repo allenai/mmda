@@ -27,7 +27,7 @@ def convert_document_page_to_pdf_dict(document: Document):
     words = [token.symbols[0] for token in document.tokens]
     # TODO: Right now we assume the token could on have a single span.
 
-    bbox = [token.box[0].coordinates for token in document.tokens]
+    bbox = [token.spans[0].box.coordinates for token in document.tokens]
     # TODO: This returns relative coordinates to the document.
 
     line_ids = [token.rows[0].id for token in document.tokens]
