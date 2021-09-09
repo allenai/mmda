@@ -48,8 +48,8 @@ class Predictor:
             pdf_path = f"{tempdir}/input.pdf"
             with open(pdf_path, "wb") as f:
                 f.write(base64.b64decode(instance.pdf))
-            doc = self._sscraper.parse(pdf_path, tempdir=tempdir)
-            return Prediction(**doc.to_json())
+            doc = self._sscraper.parse(pdf_path, load_images=True)
+            return Prediction(**doc.to_json(with_images=True))
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         return [self.predict(instance) for instance in instances]
