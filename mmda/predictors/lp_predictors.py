@@ -5,6 +5,7 @@ import layoutparser as lp
 from mmda.types.names import *
 from mmda.types.document import Document
 from mmda.types.box import Box
+from mmda.types.annotation import BoxGroup, Annotation
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
 
@@ -18,7 +19,7 @@ class LayoutParserPredictor(BasePredictor):
     @classmethod
     def from_pretrained(
         cls,
-        config_path: str,
+        config_path: str = 'lp://PrimaLayout/mask_rcnn_R_50_FPN_3x/config',
         model_path: str = None,
         label_map: Dict = None,
         extra_config: List = None,
@@ -37,30 +38,26 @@ class LayoutParserPredictor(BasePredictor):
 
         model = lp.Detectron2LayoutModel(
             config_path,
-            model_path=model_path,
-            label_map=label_map,
-            extra_config=extra_config,
-            enforce_cpu=enforce_cpu,
         )
 
         return cls(model)
 
-    def postprocess(self, model_outputs: lp.Layout, page_index: int) -> List[Box]:
+    def postprocess(self, model_outputs: lp.Layout, page_index: int) -> List[BoxGroup]:
         """Convert the model outputs into the Annotation format"""
 
         # block.coordinates returns the left, top, bottom, right coordinates
         return [
-            Box(
+            BoxGroup(boxes = [Box(
                 l=block.coordinates[0],
                 t=block.coordinates[1],
                 w=block.width,
                 h=block.height,
                 page=page_index,
-            )
+            )], type = block.type)
             for block in model_outputs
         ]
 
-    def predict(self, document: Document) -> List[Box]:
+    def predict(self, document: Document) -> List[Annotation]:
 
         document_prediction = []
 
