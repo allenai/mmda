@@ -35,6 +35,7 @@ class SpanGroup(BaseModel):
 
 class Prediction(BaseModel):
     symbols: str
+    images: List[str]
     pages: List[SpanGroup]
     tokens: List[SpanGroup]
     rows: List[SpanGroup]

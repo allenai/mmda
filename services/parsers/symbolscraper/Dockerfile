@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.8-buster
 
 ###########################################################
 ###### MODEL SPECIFIC SYSTEM DEPS AND SETUP GO HERE #######
@@ -6,7 +6,7 @@ FROM python:3.8
 
 # have at it
 RUN apt-get update &&\
-        apt-get install -y default-jdk maven &&\
+        apt-get install -y default-jdk maven poppler-utils &&\
         curl -sSL 'https://github.com/zanibbi/SymbolScraper/archive/bd3b04de61c7cc390d4219358ca0cd95e43aae50.zip' -o symbolscraper.zip &&\
         unzip symbolscraper.zip -d /opt &&\
         mv /opt/SymbolScraper-bd3b04de61c7cc390d4219358ca0cd95e43aae50 /opt/symbolscraper &&\
