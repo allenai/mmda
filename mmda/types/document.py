@@ -10,12 +10,17 @@ from typing import List, Optional, Dict, Type
 import json
 import os
 from glob import glob
+from copy import deepcopy
+import itertools
 
+from mmda.types.box import Box
+from mmda.types.span import Span
 from mmda.types.image import Image
-from mmda.types.annotation import Annotation, SpanGroup
+from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
 from mmda.types.indexers import Indexer, SpanGroupIndexer
 from mmda.types.names import Symbols, Images
 from mmda.types.image import Image as DocImage
+from mmda.utils.tools import merge_neighbor_spans, find_overlapping_tokens_for_box, allocate_overlapping_tokens_for_box
 
 class Document:
 
@@ -44,7 +49,7 @@ class Document:
 
     # TODO: this implementation which sets attribute doesn't allow for adding new annos to existing field
     # TODO: extend this to allow fo rother types of groups
-    def annotate(self, **kwargs: List[SpanGroup]) -> None:
+    def annotate(self, **kwargs: List[Annotation]) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
         """
@@ -60,18 +65,21 @@ class Document:
                 f"The field_name should not conflict with existing class properties {field_name}"
 
         # 2) register fields into Document & create span groups
-        for field_name, span_groups in kwargs.items():
-            self._fields.append(field_name)                                       # save the name of field in doc
-            self._annotate_field(span_groups=span_groups, field_name=field_name)  # add span groups to doc + index
+        for field_name, annotations in kwargs.items():
+            annotations = deepcopy(annotations)
+            self._fields.append(field_name) # save the name of field in doc
+            if isinstance(annotations[0], SpanGroup):
+                span_groups = self._annotate_span_group(span_groups=annotations, field_name=field_name)  # add span groups to doc + index
+            elif isinstance(annotations[0], BoxGroup):
+                span_groups = self._annotate_box_group(box_groups=annotations, field_name=field_name)  # add box groups to doc + index
             setattr(self, field_name, span_groups)                                # make a property of doc
 
-    def _annotate_field(self, span_groups: List[SpanGroup], field_name: str) -> None:
+    def _annotate_span_group(self, span_groups: List[SpanGroup], field_name: str) -> List[SpanGroup]:
         """Annotate the Document using a bunch of span groups.
         It will associate the annotations with the document symbols.
         """
-        if any([not isinstance(group, SpanGroup) for group in span_groups]):
-            raise NotImplementedError(f'Currently doesnt support anything except `SpanGroup` annotation')
-
+        assert all([isinstance(group, SpanGroup) for group in span_groups])
+            
         new_span_group_indexer = SpanGroupIndexer()
         for span_group in span_groups:
 
@@ -93,6 +101,51 @@ class Document:
         # add new index to Doc
         self._indexers[field_name] = new_span_group_indexer
 
+        return span_groups
+
+    def _annotate_box_group(self, box_groups: List[BoxGroup], field_name: str) -> List[SpanGroup]:
+
+        assert all([isinstance(group, BoxGroup) for group in box_groups])
+
+        all_page_tokens = dict()
+        derived_span_groups = []
+
+        for box_id, box_group in enumerate(box_groups):
+            
+            all_token_spans_with_box_group = []
+
+            for box in box_group.boxes:
+                
+                # Caching the page tokens to avoid duplicated search
+
+                if box.page not in all_page_tokens:
+                    cur_page_tokens = all_page_tokens[box.page] = self.pages[box.page].tokens
+                else:
+                    cur_page_tokens = all_page_tokens[box.page]
+                
+                # Find all the tokens within the box
+                cur_token_spans = list(itertools.chain.from_iterable(span_group.spans for span_group in cur_page_tokens))
+                tokens_in_box = find_overlapping_tokens_for_box(cur_token_spans, box)
+
+                all_token_spans_with_box_group.extend(
+                    tokens_in_box
+                )
+
+            derived_span_groups.append(
+                SpanGroup(
+                    spans = merge_neighbor_spans(all_token_spans_with_box_group),
+                    box_group = box_group,
+                    id = box_id, 
+                )
+            )
+
+        del all_page_tokens
+
+        print(derived_span_groups)
+
+        derived_span_groups = sorted(derived_span_groups, key=lambda span_group:span_group.start) # ensure they are ordered based on span indices
+
+        return self._annotate_span_group(span_groups=derived_span_groups, field_name=field_name)
     #
     #   to & from JSON
     #
