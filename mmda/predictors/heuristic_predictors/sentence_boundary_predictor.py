@@ -1,4 +1,5 @@
 from typing import List, Union, Dict, Any, Tuple
+import itertools
 
 import pysbd
 import numpy as np
@@ -10,6 +11,54 @@ from mmda.types.names import *
 from mmda.predictors.base_predictors.base_heuristic_predictor import (
     BaseHeuristicPredictor,
 )
+
+
+def merge_neighbor_spans(spans: List[Span], distance=1) -> List[Span]:
+    """Merge neighboring spans in a list of un-overlapped spans: 
+    when the gaps between neighboring spans is not larger than the 
+    specified distance, they are considered as the neighbors.  
+
+    Args:
+        spans (List[Span]): The input list of spans. 
+        distance (int, optional): 
+            The upper bound of interval gaps between two neighboring spans.
+            Defaults to 1.
+
+    Returns:
+        List[Span]: A list of merged spans
+    """
+
+    is_neighboring_spans = (
+        lambda span1, span2: min(
+            abs(span1.start - span2.end), abs(span1.end - span2.start)
+        )
+        <= distance
+    )
+    # It assumes non-overlapped intervals within the list 
+
+    merge_neighboring_spans = lambda span1, span2: Span(
+        min(span1.start, span2.start), max(span1.end, span2.end)
+    )
+
+    spans = sorted(spans, key=lambda ele: ele.start)
+    # When sorted, only one iteration round is needed.
+
+    if len(spans) == 0:
+        return []
+    if len(spans) == 1:
+        return spans
+
+    cur_merged_spans = [spans[0]]
+
+    for cur_span in spans[1:]:
+        prev_span = cur_merged_spans.pop()
+        if is_neighboring_spans(cur_span, prev_span):
+            cur_merged_spans.append(merge_neighboring_spans(prev_span, cur_span))
+        else:
+            # In this case, the prev_span should be moved to the bottom of the stack
+            cur_merged_spans.extend([prev_span, cur_span])
+
+    return cur_merged_spans
 
 
 class PysbdSentenceBoundaryPredictor(BaseHeuristicPredictor):
@@ -70,7 +119,15 @@ class PysbdSentenceBoundaryPredictor(BaseHeuristicPredictor):
 
     def predict(self, doc: Document) -> List[SpanGroup]:
 
-        words = [token.symbols[0] for token in doc.tokens]
+        if hasattr(doc, Words):
+            words = [word.symbols[0] for word in getattr(doc, Words)]
+            attr_name = Words
+            # `words` is preferred as it should has better reading
+            # orders and text representation
+        else:
+            words = [token.symbols[0] for token in doc.tokens]
+            attr_name = Tokens
+
         split = self.split_token_based_on_sentences_boundary(words)
 
         sentence_spans = []
@@ -79,9 +136,13 @@ class PysbdSentenceBoundaryPredictor(BaseHeuristicPredictor):
                 continue
             if end - start < 0:
                 raise ValueError
-            cur_spans = doc.tokens[start:end]
-            start = min([ele.start for ele in cur_spans])
-            end = max([ele.end for ele in cur_spans])
-            sentence_spans.append(SpanGroup([Span(start, end)]))
+
+            cur_spans = getattr(doc, attr_name)[start:end]
+
+            all_token_spans = list(
+                itertools.chain.from_iterable([ele.spans for ele in cur_spans])
+            )
+
+            sentence_spans.append(SpanGroup(merge_neighbor_spans(all_token_spans)))
 
         return sentence_spans
