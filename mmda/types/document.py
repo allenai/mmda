@@ -126,7 +126,7 @@ class Document:
                     cur_page_tokens = all_page_tokens[box.page]
                 
                 # Find all the tokens within the box
-                tokens_in_box, remaining_tokens = allocate_overlapping_tokens_for_box(cur_page_tokens, box)
+                tokens_in_box, remaining_tokens = allocate_overlapping_tokens_for_box(token_spans=cur_page_tokens, box=box)
                 all_page_tokens[box.page] = remaining_tokens
 
                 all_token_spans_with_box_group.extend(
@@ -135,7 +135,7 @@ class Document:
 
             derived_span_groups.append(
                 SpanGroup(
-                    spans = merge_neighbor_spans(all_token_spans_with_box_group),
+                    spans = merge_neighbor_spans(spans=all_token_spans_with_box_group, distance=1),
                     box_group = box_group,
                     #id = box_id, 
                 )
