@@ -147,6 +147,9 @@ class Document:
 
         derived_span_groups = sorted(derived_span_groups, key=lambda span_group:span_group.start) 
         # ensure they are ordered based on span indices
+        
+        for box_id, span_group in enumerate(derived_span_groups):
+            span_group.id = box_id
 
         return self._annotate_span_group(span_groups=derived_span_groups, field_name=field_name)
     
