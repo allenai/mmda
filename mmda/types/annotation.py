@@ -119,11 +119,11 @@ class SpanGroup(Annotation):
 
     @property
     def start(self) -> int:
-        return min([span.start for span in self.spans])
+        return min([span.start for span in self.spans]) if len(self.spans) > 0 else float("-inf")
 
     @property
     def end(self) -> int:
-        return max([span.end for span in self.spans])
+        return max([span.end for span in self.spans]) if len(self.spans) > 0 else float("inf")
 
     def __lt__(self, other: 'SpanGroup'):
         if self.id and other.id:
