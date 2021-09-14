@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import inspect
 import itertools
 
+from tqdm import tqdm
 import torch
 from transformers import AutoTokenizer, AutoConfig, AutoModelForTokenClassification
 from vila.models.hierarchical_model import (
@@ -144,7 +145,7 @@ class BaseVILAPredictor(BaseHFPredictor):
     def predict(self, document: Document) -> List[Annotation]:
 
         page_prediction_results = []
-        for page in document.pages:
+        for page in tqdm(document.pages):
             pdf_dict = convert_document_page_to_pdf_dict(page)
             model_inputs = self.preprocess(pdf_dict)
             model_outputs = self.model(**self.model_input_collator(model_inputs))
