@@ -67,12 +67,12 @@ class Document:
         # 2) register fields into Document & create span groups
         for field_name, annotations in kwargs.items():
             annotations = deepcopy(annotations)
-            self._fields.append(field_name) # save the name of field in doc
             if isinstance(annotations[0], SpanGroup):
                 span_groups = self._annotate_span_group(span_groups=annotations, field_name=field_name)  # add span groups to doc + index
             elif isinstance(annotations[0], BoxGroup):
                 span_groups = self._annotate_box_group(box_groups=annotations, field_name=field_name)  # add box groups to doc + index
             setattr(self, field_name, span_groups)                                # make a property of doc
+            self._fields.append(field_name) # save the name of field in doc
 
     def _annotate_span_group(self, span_groups: List[SpanGroup], field_name: str) -> List[SpanGroup]:
         """Annotate the Document using a bunch of span groups.
@@ -104,7 +104,9 @@ class Document:
         return span_groups
 
     def _annotate_box_group(self, box_groups: List[BoxGroup], field_name: str) -> List[SpanGroup]:
-
+        """Annotate the Document using a bunch of box groups.
+        It will associate the annotations with the document symbols.
+        """
         assert all([isinstance(group, BoxGroup) for group in box_groups])
 
         all_page_tokens = dict()
@@ -119,13 +121,13 @@ class Document:
                 # Caching the page tokens to avoid duplicated search
 
                 if box.page not in all_page_tokens:
-                    cur_page_tokens = all_page_tokens[box.page] = self.pages[box.page].tokens
+                    cur_page_tokens = all_page_tokens[box.page] = list(itertools.chain.from_iterable(span_group.spans for span_group in self.pages[box.page].tokens))
                 else:
                     cur_page_tokens = all_page_tokens[box.page]
                 
                 # Find all the tokens within the box
-                cur_token_spans = list(itertools.chain.from_iterable(span_group.spans for span_group in cur_page_tokens))
-                tokens_in_box = find_overlapping_tokens_for_box(cur_token_spans, box)
+                tokens_in_box, remaining_tokens = allocate_overlapping_tokens_for_box(cur_page_tokens, box)
+                all_page_tokens[box.page] = remaining_tokens
 
                 all_token_spans_with_box_group.extend(
                     tokens_in_box
@@ -135,17 +137,19 @@ class Document:
                 SpanGroup(
                     spans = merge_neighbor_spans(all_token_spans_with_box_group),
                     box_group = box_group,
-                    id = box_id, 
+                    #id = box_id, 
                 )
+                # TODO Right now we cannot assign the box id, or otherwise running doc.blocks will 
+                # generate blocks out-of-the-specified order. 
             )
 
         del all_page_tokens
 
-        print(derived_span_groups)
-
-        derived_span_groups = sorted(derived_span_groups, key=lambda span_group:span_group.start) # ensure they are ordered based on span indices
+        derived_span_groups = sorted(derived_span_groups, key=lambda span_group:span_group.start) 
+        # ensure they are ordered based on span indices
 
         return self._annotate_span_group(span_groups=derived_span_groups, field_name=field_name)
+    
     #
     #   to & from JSON
     #
