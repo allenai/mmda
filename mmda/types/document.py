@@ -12,6 +12,7 @@ import os
 from glob import glob
 from copy import deepcopy
 import itertools
+import warnings
 
 from mmda.types.box import Box
 from mmda.types.span import Span
@@ -66,6 +67,9 @@ class Document:
 
         # 2) register fields into Document & create span groups
         for field_name, annotations in kwargs.items():
+            if len(annotations) == 0: 
+                warnings.warn(f"The annotations is empty for the field {field_name}")
+                continue 
             annotations = deepcopy(annotations)
             if isinstance(annotations[0], SpanGroup):
                 span_groups = self._annotate_span_group(span_groups=annotations, field_name=field_name)  # add span groups to doc + index
