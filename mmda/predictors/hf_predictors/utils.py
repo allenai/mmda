@@ -1,7 +1,9 @@
+from mmda.types.annotation import SpanGroup
 from typing import List, Tuple
 import itertools
 
 from mmda.types.document import Document
+from mmda.types.names import *
 
 
 def shift_index_sequence_to_zero_start(sequence):
@@ -10,6 +12,14 @@ def shift_index_sequence_to_zero_start(sequence):
     """
     sequence_start = min(sequence)
     return [i - sequence_start for i in sequence]
+
+
+def get_visual_group_id(token: SpanGroup, field_name: str, defaults=-1) -> int:
+
+    field_value = getattr(token, field_name)
+    if len(field_value) == 0 or field_value[0].id is None:
+        return defaults
+    return field_value[0].id
 
 
 def convert_document_page_to_pdf_dict(document: Document):
@@ -30,13 +40,15 @@ def convert_document_page_to_pdf_dict(document: Document):
     bbox = [token.spans[0].box.coordinates for token in document.tokens]
     # TODO: This returns relative coordinates to the document.
 
-    line_ids = [token.rows[0].id for token in document.tokens]
+    line_ids = [get_visual_group_id(token, Rows, -1) for token in document.tokens]
     # TODO: Right now we assume the token could span for one row of the
     # document.
     line_ids = shift_index_sequence_to_zero_start(line_ids)
 
-    block_ids = []
-    # TODO: Implement fetching block_ids
+    block_ids = [get_visual_group_id(token, Blocks, -1) for token in document.tokens]
+    # TODO: Right now we assume the token could span for one block of the
+    # document.
+    block_ids = shift_index_sequence_to_zero_start(block_ids)
 
     labels = [None] * len(words)
     # TODO: We provide an empty label list.

@@ -1,5 +1,6 @@
-from typing import Union, List, Dict, Any
+from typing import Union, List, Dict, Any, Optional
 
+from tqdm import tqdm
 import layoutparser as lp
 
 from mmda.types.names import *
@@ -13,7 +14,7 @@ class LayoutParserPredictor(BasePredictor):
     REQUIRED_BACKENDS = ["layoutparser"]
     REQUIRED_DOCUMENT_FIELDS = [Pages, Images]
 
-    def __init__(self, model: lp.Detectron2LayoutModel):
+    def __init__(self, model):
         self.model = model
 
     @classmethod
@@ -21,9 +22,9 @@ class LayoutParserPredictor(BasePredictor):
         cls,
         config_path: str = 'lp://PrimaLayout/mask_rcnn_R_50_FPN_3x/config',
         model_path: str = None,
-        label_map: Dict = None,
-        extra_config: List = None,
-        enforce_cpu: bool = False,
+        label_map: Optional[Dict] = None,
+        extra_config: Optional[Dict] = None,
+        device: str = None,
     ):
         """Initialize a pre-trained layout detection model from
         layoutparser. The parameters currently are the same as the
@@ -36,8 +37,12 @@ class LayoutParserPredictor(BasePredictor):
         # only Detectron2 models loaded. And we will modify it in the future
         # such that we can load models using different DL backends.
 
-        model = lp.Detectron2LayoutModel(
-            config_path,
+        model = lp.AutoLayoutModel(
+            config_path = config_path,
+            model_path = model_path,
+            label_map = label_map,
+            extra_config = extra_config,
+            device = device,
         )
 
         return cls(model)
@@ -61,7 +66,7 @@ class LayoutParserPredictor(BasePredictor):
 
         document_prediction = []
 
-        for image_index, image in enumerate(document.images):
+        for image_index, image in enumerate(tqdm(document.images)):
             model_outputs = self.model.detect(image)
             document_prediction.extend(self.postprocess(model_outputs, image_index))
 
