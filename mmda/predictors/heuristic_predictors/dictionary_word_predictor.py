@@ -1,3 +1,9 @@
+"""
+DictionaryWordPredictor -- Reads rows of text into dehyphenated words.
+
+@rauthur
+"""
+
 import string
 from typing import Optional
 
@@ -20,7 +26,8 @@ class DictionaryWordPredictor(BasePredictor):
         Words should be lower-case in the dictionary unless they are invalid
         as a lower-case word (e.g., a person's name).
 
-        For an example, see https://github.com/dwyl/english-words (words_alpha.txt)
+        For an example see https://github.com/dwyl/english-words (words_alpha.txt) or
+        check the `tests/fixtures/example-dictionary.txt` file.
 
         The above example file contains base words, plurals, past-tense versions, etc.
         Thus the heuristics here do not do any changes to word structure other than 
@@ -44,6 +51,7 @@ class DictionaryWordPredictor(BasePredictor):
             may contain just the title-cased word (e.g., "Russell" and not "russell").
         """
         if not self._dictionary:
+            # TODO: Sanity checks for dictionary read results
             with open(self.dictionary_file_path, "r") as source:
                 self._dictionary = set(source.read().split())
 

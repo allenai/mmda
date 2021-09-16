@@ -1,10 +1,7 @@
 """
-
 Tests for DictionaryWordPredictor
 
 @rauthur
-
-
 """
 
 import tempfile
