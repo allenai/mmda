@@ -23,7 +23,8 @@ class DictionaryWordPredictor(BasePredictor):
         For an example, see https://github.com/dwyl/english-words (words_alpha.txt)
 
         The above example file contains base words, plurals, past-tense versions, etc.
-        Thus the heuristics here do not do any changes to word structure other than basics:
+        Thus the heuristics here do not do any changes to word structure other than 
+        basics:
 
           - Combine hyphenated words and see if they are in the dictionary
           - Strip plural endings "(s)" and punctuation
@@ -35,10 +36,12 @@ class DictionaryWordPredictor(BasePredictor):
 
     @property
     def dictionary(self) -> set[str]:
-        """Global dictionary and not document specific. This dictionary is the basis for finding words and will be appended with document-level tokens.
+        """Global dictionary and not document specific. This dictionary is the basis for
+        finding words and will be appended with document-level tokens.
 
         Returns:
-            set[str]: A set of words in the dictionary. For proper names, the dictionary may contain just the title-cased word (e.g., "Russell" and not "russell").
+            set[str]: A set of words in the dictionary. For proper names, the dictionary
+            may contain just the title-cased word (e.g., "Russell" and not "russell").
         """
         if not self._dictionary:
             with open(self.dictionary_file_path, "r") as source:
@@ -61,7 +64,7 @@ class DictionaryWordPredictor(BasePredictor):
                 only joined across row boundaries.
 
         Usage:
-        >>> doc = # a Document with underlying rows ("Please provide cus-", "tom models.")
+        >>> doc = # a Document with rows ("Please provide cus-", "tom models.")
         >>> predictor = DictionaryWordPredictor(dictionary_file_path="/some/file.txt")
         >>> words = predictor.predict(doc)
         >>> [w.text for w in words]
