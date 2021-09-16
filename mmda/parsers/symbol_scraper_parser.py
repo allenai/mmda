@@ -25,7 +25,8 @@ from mmda.types.names import *
 
 
 class SymbolScraperParser(BaseParser):
-    def __init__(self, sscraper_bin_path: str):
+    def __init__(self, sscraper_bin_path: str, dpi:int =None):
+        self.dpi = dpi
         self.sscraper_bin_path = sscraper_bin_path
 
     def parse(self, input_pdf_path: str, output_json_path: Optional[str] = None,

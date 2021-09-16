@@ -10,14 +10,12 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 
 
-def is_overlap_1d(start1:float, end1:float, start2:float, end2:float) -> bool:
-    """Return whether two 1D intervals overlaps 
-    """
-    assert start1<end1
-    assert start2<end2
-    
-    return not (start1>end2 # ll
-        or end1<start2) #rr
+def is_overlap_1d(start1: float, end1: float, start2: float, end2: float) -> bool:
+    """Return whether two 1D intervals overlaps"""
+    assert start1 < end1
+    assert start2 < end2
+
+    return not (start1 > end2 or end1 < start2)  # ll  # rr
 
 
 @dataclass
@@ -39,6 +37,10 @@ class Box:
         # return Box(l=box_coords['l'], t=box_coords['t'], w=box_coords['w'], h=box_coords['h'], page=box_coords['page'])
 
     @classmethod
+    def from_coordinates(cls, x1: float, y1: float, x2: float, y2: float, page: int):
+        return cls(x1, y1, x2 - x1, y2 - y1, page)
+
+    @classmethod
     def small_boxes_to_big_box(cls, boxes: List["Box"]) -> "Box":
         """Computes one big box that tightly encapsulates all smaller input boxes"""
         if len({box.page for box in boxes}) != 1:
@@ -54,7 +56,37 @@ class Box:
         """Return a tuple of the (x1, y1, x2, y2) format."""
         return self.l, self.t, self.l + self.w, self.t + self.h
 
+    @property
+    def center(self) -> Tuple[float, float]:
+        return self.l + self.w/2, self.t + self.h/2
+
+    @property
+    def xywh(self) -> Tuple[float, float, float, float]:
+        """Return a tuple of the (left, top, width, height) format."""
+        return self.l, self.t, self.w, self.h
+
+    def get_relative(self, page_width: int, page_height: int) -> "Box":
+        """Get the relative coordinates of self based on page_width, page_height."""
+        return self.__class__(
+            l=self.l / page_width,
+            t=self.t / page_height,
+            w=self.w / page_width,
+            h=self.h / page_height,
+            page=self.page,
+        )
+
+    def get_absolute(self, page_width: int, page_height: int) -> "Box":
+        """Get the absolute coordinates of self based on page_width, page_height."""
+        return self.__class__(
+            l=self.l * page_width,
+            t=self.t * page_height,
+            w=self.w * page_width,
+            h=self.h * page_height,
+            page=self.page,
+        )
+
     def is_overlap(self, other: "Box") -> bool:
+        """Whether self overlaps with the other Box object."""
         x11, y11, x12, y12 = self.coordinates
         x21, y21, x22, y22 = other.coordinates
 
