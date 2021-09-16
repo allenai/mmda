@@ -145,8 +145,16 @@ class BaseVILAPredictor(BaseHFPredictor):
     def predict(self, document: Document) -> List[Annotation]:
 
         page_prediction_results = []
-        for page in tqdm(document.pages):
-            pdf_dict = convert_document_page_to_pdf_dict(page)
+        for page_id, page in enumerate(tqdm(document.pages)):
+
+            page_width, page_height = document.images[page_id].size
+
+            pdf_dict = convert_document_page_to_pdf_dict(
+                page, page_width=page_width, page_height=page_height
+            ) 
+            # VILA models trained based on absolute page width rather than the 
+            # size (1000, 1000) in vanilla LayoutLM models 
+            
             model_inputs = self.preprocess(pdf_dict)
             model_outputs = self.model(**self.model_input_collator(model_inputs))
             model_predictions = self.get_category_prediction(model_outputs)
