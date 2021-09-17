@@ -23,3 +23,8 @@ python main.py --pdf-path <path-to-pdf-files> \
 It will run PubLayNet-based layout detection models to identify the layout structure, and run
 VILA models based on the detected layouts to perform token classification. All detected layouts
 and token categories will visualized and stored in the export-folder.
+
+If you see an error reading `SSL:CERTIFICATE_VERIFY_FAILED`, then you may need 
+to download a certificate for Python. See [this Stack Overflow 
+answer](https://stackoverflow.com/a/53310545/2096369) for a fix that might work 
+on Mac, as well as other answers.
