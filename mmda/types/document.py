@@ -31,18 +31,18 @@ class Document:
     def __init__(self, symbols: str, images: Optional[List["Image.Image"]] = None):
         self.symbols = symbols
         self.images = images if images else []
-        self._fields = []
-        self._indexers: Dict[str, Indexer] = {}
+        self.__fields = []
+        self.__indexers: Dict[str, Indexer] = {}
 
     @property
     def fields(self) -> List[str]:
-        return self._fields
+        return self.__fields
 
     # TODO: extend implementation to support DocBoxGroup
     def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
         if not isinstance(query, SpanGroup):
             raise NotImplementedError(f'Currently only supports query of type SpanGroup')
-        return self._indexers[field_name].find(query=query)
+        return self.__indexers[field_name].find(query=query)
 
     # TODO: this implementation which sets attribute doesn't allow for adding new annos to existing field
     # TODO: extend this to allow fo rother types of groups
@@ -72,7 +72,7 @@ class Document:
             elif isinstance(annotations[0], BoxGroup):
                 span_groups = self._annotate_box_group(box_groups=annotations, field_name=field_name)  # add box groups to doc + index
             setattr(self, field_name, span_groups)                                # make a property of doc
-            self._fields.append(field_name) # save the name of field in doc
+            self.__fields.append(field_name) # save the name of field in doc
 
     def _annotate_span_group(self, span_groups: List[SpanGroup], field_name: str) -> List[SpanGroup]:
         """Annotate the Document using a bunch of span groups.
@@ -99,7 +99,7 @@ class Document:
                 new_span_group_indexer[span.start:span.end] = span_group
 
         # add new index to Doc
-        self._indexers[field_name] = new_span_group_indexer
+        self.__indexers[field_name] = new_span_group_indexer
 
         return span_groups
 
