@@ -52,14 +52,11 @@ class Document:
         """
         # 1) check validity of field names
         for field_name in kwargs.keys():
-            assert not field_name.startswith("_"), "The field_name should not start with `_`. "
             assert field_name not in self.fields, "This field name already exists"
-            assert field_name not in self.UNALLOWED_FIELD_NAMES, \
-                f"The field_name should not be in {self.UNALLOWED_FIELD_NAMES}."
             assert field_name not in self.REQUIRED_FIELDS, \
-                f"The field_name should not be in {self.REQUIRED_FIELDS}."
+                f"The field_name {field_name} should not be in {self.REQUIRED_FIELDS}."
             assert field_name not in dir(self), \
-                f"The field_name should not conflict with existing class properties {field_name}"
+                f"The field_name {field_name} should not conflict with existing class properties {field_name}"
 
         # 2) register fields into Document & create span groups
         for field_name, annotations in kwargs.items():
