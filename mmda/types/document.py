@@ -60,25 +60,37 @@ class Document:
                     f"This field name {field_name} already exists. To override, set `is_overwrite=True`"
                 )
 
-        # 2) register fields into Document & create span groups
+        # 2) register fields into Document
         for field_name, annotations in kwargs.items():
-            if len(annotations) == 0: 
+            if len(annotations) == 0:
                 warnings.warn(f"The annotations is empty for the field {field_name}")
-                continue 
+                continue
+
+            # TODO: why is this good idea?
             annotations = deepcopy(annotations)
-            if isinstance(annotations[0], SpanGroup):
-                span_groups = self._annotate_span_group(span_groups=annotations, field_name=field_name)  # add span groups to doc + index
-            elif isinstance(annotations[0], BoxGroup):
-                span_groups = self._annotate_box_group(box_groups=annotations, field_name=field_name)  # add box groups to doc + index
-            setattr(self, field_name, span_groups)                                # make a property of doc
-            self.__fields.append(field_name) # save the name of field in doc
+
+            annotation_types = {type(a) for a in annotations}
+            assert len(annotation_types) == 1, f'Annotations in field_name {field_name} more than 1 type: {annotation_types}'
+            annotation_type = annotation_types.pop()
+
+            if annotation_type == SpanGroup:
+                span_groups = self._annotate_span_group(span_groups=annotations, field_name=field_name)
+            elif annotation_type == BoxGroup:
+                # TODO: not good. BoxGroups should be stored on their own, not auto-generating SpanGroups.
+                span_groups = self._annotate_box_group(box_groups=annotations, field_name=field_name)
+            else:
+                raise NotImplementedError(f'Unsupported annotation type {annotation_type} for {field_name}')
+
+            # register fields
+            setattr(self, field_name, span_groups)
+            self.__fields.append(field_name)
 
     def _annotate_span_group(self, span_groups: List[SpanGroup], field_name: str) -> List[SpanGroup]:
         """Annotate the Document using a bunch of span groups.
         It will associate the annotations with the document symbols.
         """
         assert all([isinstance(group, SpanGroup) for group in span_groups])
-            
+
         new_span_group_indexer = SpanGroupIndexer()
         for span_group in span_groups:
 
@@ -112,18 +124,18 @@ class Document:
         derived_span_groups = []
 
         for box_id, box_group in enumerate(box_groups):
-            
+
             all_token_spans_with_box_group = []
 
             for box in box_group.boxes:
-                
+
                 # Caching the page tokens to avoid duplicated search
 
                 if box.page not in all_page_tokens:
                     cur_page_tokens = all_page_tokens[box.page] = list(itertools.chain.from_iterable(span_group.spans for span_group in self.pages[box.page].tokens))
                 else:
                     cur_page_tokens = all_page_tokens[box.page]
-                
+
                 # Find all the tokens within the box
                 tokens_in_box, remaining_tokens = allocate_overlapping_tokens_for_box(token_spans=cur_page_tokens, box=box)
                 all_page_tokens[box.page] = remaining_tokens
@@ -136,7 +148,7 @@ class Document:
                 SpanGroup(
                     spans = merge_neighbor_spans(spans=all_token_spans_with_box_group, distance=1),
                     box_group = box_group,
-                    #id = box_id, 
+                    #id = box_id,
                 )
                 # TODO Right now we cannot assign the box id, or otherwise running doc.blocks will 
                 # generate blocks out-of-the-specified order. 
@@ -144,14 +156,14 @@ class Document:
 
         del all_page_tokens
 
-        derived_span_groups = sorted(derived_span_groups, key=lambda span_group:span_group.start) 
+        derived_span_groups = sorted(derived_span_groups, key=lambda span_group:span_group.start)
         # ensure they are ordered based on span indices
-        
+
         for box_id, span_group in enumerate(derived_span_groups):
             span_group.id = box_id
 
         return self._annotate_span_group(span_groups=derived_span_groups, field_name=field_name)
-    
+
     #
     #   to & from JSON
     #
