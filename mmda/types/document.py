@@ -44,19 +44,21 @@ class Document:
             raise NotImplementedError(f'Currently only supports query of type SpanGroup')
         return self.__indexers[field_name].find(query=query)
 
-    # TODO: this implementation which sets attribute doesn't allow for adding new annos to existing field
     # TODO: extend this to allow fo rother types of groups
-    def annotate(self, **kwargs: List[Annotation]) -> None:
+    def annotate(self, is_overwrite: bool = False, **kwargs: List[Annotation]) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
         """
         # 1) check validity of field names
         for field_name in kwargs.keys():
-            assert field_name not in self.fields, "This field name already exists"
             assert field_name not in self.REQUIRED_FIELDS, \
                 f"The field_name {field_name} should not be in {self.REQUIRED_FIELDS}."
             assert field_name not in dir(self), \
-                f"The field_name {field_name} should not conflict with existing class properties {field_name}"
+                f"The field_name {field_name} should not conflict with existing class properties"
+            if field_name in self.fields and not is_overwrite:
+                raise AssertionError(
+                    f"This field name {field_name} already exists. To override, set `is_overwrite=True`"
+                )
 
         # 2) register fields into Document & create span groups
         for field_name, annotations in kwargs.items():
