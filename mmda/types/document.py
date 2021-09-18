@@ -25,16 +25,12 @@ from mmda.utils.tools import merge_neighbor_spans, find_overlapping_tokens_for_b
 
 class Document:
 
-    DEFAULT_FIELDS = [Symbols, Images]
+    REQUIRED_FIELDS = [Symbols, Images]
     UNALLOWED_FIELD_NAMES = ['fields']
 
-    def __init__(
-        self,
-        symbols: str,
-        images: Optional[List["Image.Image"]] = None,
-    ):
-        self._symbols = symbols
-        self.images = images
+    def __init__(self, symbols: str, images: Optional[List["Image.Image"]] = None):
+        self.symbols = symbols
+        self.images = images if images else []
         self._fields = []
         self._indexers: Dict[str, Indexer] = {}
 
@@ -60,8 +56,8 @@ class Document:
             assert field_name not in self.fields, "This field name already exists"
             assert field_name not in self.UNALLOWED_FIELD_NAMES, \
                 f"The field_name should not be in {self.UNALLOWED_FIELD_NAMES}."
-            assert field_name not in self.DEFAULT_FIELDS, \
-                f"The field_name should not be in {self.DEFAULT_FIELDS}."
+            assert field_name not in self.REQUIRED_FIELDS, \
+                f"The field_name should not be in {self.REQUIRED_FIELDS}."
             assert field_name not in dir(self), \
                 f"The field_name should not conflict with existing class properties {field_name}"
 
@@ -174,7 +170,7 @@ class Document:
                 field2: [...]
             }
         """
-        doc_dict = {Symbols: self._symbols}
+        doc_dict = {Symbols: self.symbols}
         if with_images:
             doc_dict[Images] = [image.to_json() for image in self.images]
 
@@ -201,7 +197,7 @@ class Document:
         # 2) convert span group dicts to span gropus
         field_name_to_span_groups = {}
         for field_name, span_group_dicts in doc_dict.items():
-            if field_name not in doc.DEFAULT_FIELDS:
+            if field_name not in doc.REQUIRED_FIELDS:
                 span_groups = [
                     SpanGroup.from_json(span_group_dict=span_group_dict)
                     for span_group_dict in span_group_dicts
