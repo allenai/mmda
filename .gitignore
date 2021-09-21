@@ -113,3 +113,10 @@ venv.bak/
 .mypy_cache/
 
 .idea/
+resources/
+tmp/
+SymbolScraper/
+symbolscraper-log.csv
+output/
+docs/
+.devcontainer/
