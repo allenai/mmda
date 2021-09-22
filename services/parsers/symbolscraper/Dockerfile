@@ -1,12 +1,8 @@
 FROM python:3.8-buster
 
-###########################################################
-###### MODEL SPECIFIC SYSTEM DEPS AND SETUP GO HERE #######
-###########################################################
-
-# have at it
+# system deps
 RUN apt-get update &&\
-        apt-get install -y default-jdk maven poppler-utils &&\
+        apt-get install -y default-jdk maven poppler-utils nginx &&\
         curl -sSL 'https://github.com/zanibbi/SymbolScraper/archive/bd3b04de61c7cc390d4219358ca0cd95e43aae50.zip' -o symbolscraper.zip &&\
         unzip symbolscraper.zip -d /opt &&\
         mv /opt/SymbolScraper-bd3b04de61c7cc390d4219358ca0cd95e43aae50 /opt/symbolscraper &&\
@@ -15,21 +11,29 @@ RUN apt-get update &&\
         make &&\
         ln -sf /opt/symbolscraper/bin/sscraper /bin/sscraper
 
-###########################################################
-#### S2AGEMAKER REQS BELOW THIS POINT -- DO NOT CHANGE ####
-###########################################################
-
-RUN apt-get update && apt-get install nginx -y
-WORKDIR /opt/ml/code
-
+# mmda deps
+WORKDIR /opt/ml/lib
 COPY requirements.txt .
 COPY setup.py .
+RUN pip install -e .
 
-RUN pip install -r requirements.txt
+# server deps
+WORKDIR /opt/ml/code
+COPY services/parsers/symbolscraper/requirements.txt .
+COPY services/parsers/symbolscraper/setup.py .
+RUN pip install -e .
 RUN pip install --upgrade .[dev]
 
-COPY . .
+# mmda code
+WORKDIR /opt/ml/lib
+COPY mmda mmda
 
+# server code
+WORKDIR /opt/ml/code
+COPY services/parsers/symbolscraper .
+
+# environment
+ENV PYTHONPATH "/opt/ml/lib${PYTHONPATH:+:${PYTHONPATH}}"
 ENV ARTIFACTS_DIR /opt/ml/model
 ENV BATCH_SIZE 1
 ENV MODEL_SERVER_TIMEOUT 60
@@ -38,4 +42,3 @@ ENV PYTHONUNBUFFERED 1
 
 ENTRYPOINT ["python3", "entrypoint.py"]
 CMD ["serve"]
-
