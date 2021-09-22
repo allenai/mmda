@@ -44,7 +44,6 @@ class Document:
             raise NotImplementedError(f'Currently only supports query of type SpanGroup')
         return self.__indexers[field_name].find(query=query)
 
-    # TODO: extend this to allow fo rother types of groups
     def annotate(self, is_overwrite: bool = False, **kwargs: List[Annotation]) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
