@@ -13,13 +13,11 @@ RUN apt-get update &&\
 
 # mmda deps
 WORKDIR /opt/ml/lib
-COPY requirements.txt .
 COPY setup.py .
 RUN pip install -e .
 
 # server deps
 WORKDIR /opt/ml/code
-COPY services/parsers/symbolscraper/requirements.txt .
 COPY services/parsers/symbolscraper/setup.py .
 RUN pip install -e .
 RUN pip install --upgrade .[dev]
