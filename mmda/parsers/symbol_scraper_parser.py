@@ -29,10 +29,9 @@ logger = logging.getLogger(__name__)
 
 
 class SymbolScraperParser(BaseParser):
-    def __init__(self, sscraper_bin_path: str, dpi:int = None, debug: bool = True):
+    def __init__(self, sscraper_bin_path: str, dpi:int = None):
         self.dpi = dpi
         self.sscraper_bin_path = sscraper_bin_path
-        self.debug = debug
 
     def parse(self, input_pdf_path: str, output_json_path: Optional[str] = None,
               tempdir: Optional[str] = None, load_images=False) -> Document:
@@ -250,14 +249,7 @@ class SymbolScraperParser(BaseParser):
             Rows: [row.to_json() for row in row_annos]
         }
 
-    def _log(self, msg):
-        if self.debug:
-            logger.info(msg)
-
     def _run_and_log(self, cmd):
-        if not self.debug:
-            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-            return
         with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as proc:
             for line in iter(proc.stdout):
                 logger.info(str(line, 'utf-8'))
@@ -272,13 +264,13 @@ class SymbolScraperParser(BaseParser):
         if runtime is None:
             raise ValueError(f'No Runtime for {xmlfile}')
         else:
-            self._log(f'Symbol Scraper took {runtime} sec for {xmlfile}...')
+            logger.info(f'Symbol Scraper took {runtime} sec for {xmlfile}...')
 
         # get page metrics
         page_to_metrics = self._parse_page_to_metrics(xml_lines=xml_lines)
-        self._log(f'\tNum pages: {len(page_to_metrics)}')
-        self._log(f"\tAvg tokens: {sum([metric['tokens'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
-        self._log(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        logger.info(f'\tNum pages: {len(page_to_metrics)}')
+        logger.info(f"\tAvg tokens: {sum([metric['tokens'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        logger.info(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
 
         # get token stream (grouped by page & row)
         page_to_row_to_tokens = self._parse_page_to_row_to_tokens(xml_lines=xml_lines, page_to_metrics=page_to_metrics)

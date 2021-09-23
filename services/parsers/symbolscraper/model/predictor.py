@@ -1,14 +1,16 @@
 import base64
-import json
-import os
+import logging
 import tempfile
 from typing import List
 
-from pydantic import BaseModel, BaseSettings, Field
+from pydantic import BaseSettings
 
 from model.instance import Instance
 from model.prediction import Prediction
-from mmda.parsers.symbol_scraper_parser import SymbolScraperParser
+from mmda.parsers.symbol_scraper_parser import (
+    SymbolScraperParser,
+    logger as symbol_scraper_parser_logger,
+)
 
 
 class PredictorConfig(BaseSettings):
@@ -41,7 +43,8 @@ class Predictor:
         Initialize your model using the passed parameters
         """
         self._config = config
-        self._sscraper = SymbolScraperParser("sscraper", debug=False)
+        self._sscraper = SymbolScraperParser("sscraper")
+        symbol_scraper_parser_logger.setLevel(logging.ERROR)
 
     def predict(self, instance: Instance) -> Prediction:
         with tempfile.TemporaryDirectory() as tempdir:
