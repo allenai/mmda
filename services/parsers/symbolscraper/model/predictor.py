@@ -41,7 +41,7 @@ class Predictor:
         Initialize your model using the passed parameters
         """
         self._config = config
-        self._sscraper = SymbolScraperParser("sscraper", print_info=False)
+        self._sscraper = SymbolScraperParser("sscraper", debug=False)
 
     def predict(self, instance: Instance) -> Prediction:
         with tempfile.TemporaryDirectory() as tempdir:

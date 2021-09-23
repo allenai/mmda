@@ -19,8 +19,7 @@ RUN pip install -e .
 # server deps
 WORKDIR /opt/ml/code
 COPY services/parsers/symbolscraper/setup.py .
-RUN pip install -e .
-RUN pip install --upgrade .[dev]
+RUN pip install -e .[dev]
 
 # mmda code
 WORKDIR /opt/ml/lib

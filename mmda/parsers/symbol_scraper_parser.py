@@ -10,10 +10,11 @@ from typing import Optional, List, Dict, Tuple
 
 import os
 import json
+import logging
+import re
 import subprocess
 import tempfile
 
-import re
 from collections import defaultdict
 
 from mmda.types.span import Span
@@ -24,11 +25,14 @@ from mmda.parsers.parser import BaseParser
 from mmda.types.names import *
 
 
+logger = logging.getLogger(__name__)
+
+
 class SymbolScraperParser(BaseParser):
-    def __init__(self, sscraper_bin_path: str, dpi:int = None, print_info: bool = True):
+    def __init__(self, sscraper_bin_path: str, dpi:int = None, debug: bool = True):
         self.dpi = dpi
         self.sscraper_bin_path = sscraper_bin_path
-        self.print_info = print_info
+        self.debug = debug
 
     def parse(self, input_pdf_path: str, output_json_path: Optional[str] = None,
               tempdir: Optional[str] = None, load_images=False) -> Document:
@@ -60,9 +64,7 @@ class SymbolScraperParser(BaseParser):
             raise FileNotFoundError(f'{input_pdf_path} doesnt end in .pdf extension, which {self} expected')
         os.makedirs(outdir, exist_ok=True)
         cmd = [self.sscraper_bin_path, '-b', input_pdf_path, outdir]
-        stdout = None if self.print_info else subprocess.DEVNULL
-        stderr = None if self.print_info else subprocess.DEVNULL
-        subprocess.run(cmd, stdout=stdout, stderr=stderr)
+        self._run_and_log(cmd)
         xmlfile = os.path.join(outdir, os.path.basename(input_pdf_path).replace('.pdf', '.xml'))
         if not os.path.exists(xmlfile):
             raise FileNotFoundError(f'Parsing {input_pdf_path} may have failed. Cant find {xmlfile}.')
@@ -248,9 +250,17 @@ class SymbolScraperParser(BaseParser):
             Rows: [row.to_json() for row in row_annos]
         }
 
-    def print(self, msg):
-        if self.print_info:
-            print(msg)
+    def _log(self, msg):
+        if self.debug:
+            logger.info(msg)
+
+    def _run_and_log(self, cmd):
+        if not self.debug:
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            return
+        with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as proc:
+            for line in iter(proc.stdout):
+                logger.info(str(line, 'utf-8'))
 
     def _parse_xml_to_doc(self, xmlfile: str) -> Document:
 
@@ -262,13 +272,13 @@ class SymbolScraperParser(BaseParser):
         if runtime is None:
             raise ValueError(f'No Runtime for {xmlfile}')
         else:
-            self.print(f'Symbol Scraper took {runtime} sec for {xmlfile}...')
+            self._log(f'Symbol Scraper took {runtime} sec for {xmlfile}...')
 
         # get page metrics
         page_to_metrics = self._parse_page_to_metrics(xml_lines=xml_lines)
-        self.print(f'\tNum pages: {len(page_to_metrics)}')
-        self.print(f"\tAvg tokens: {sum([metric['tokens'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
-        self.print(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        self._log(f'\tNum pages: {len(page_to_metrics)}')
+        self._log(f"\tAvg tokens: {sum([metric['tokens'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        self._log(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
 
         # get token stream (grouped by page & row)
         page_to_row_to_tokens = self._parse_page_to_row_to_tokens(xml_lines=xml_lines, page_to_metrics=page_to_metrics)
