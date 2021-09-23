@@ -6,14 +6,15 @@ Dataclass for creating token streams from a document via SymbolScraper
 
 """
 
-from typing import Optional, List, Dict, Tuple, Union
+from typing import Optional, List, Dict, Tuple
 
 import os
 import json
+import logging
+import re
 import subprocess
 import tempfile
 
-import re
 from collections import defaultdict
 
 from mmda.types.span import Span
@@ -24,8 +25,11 @@ from mmda.parsers.parser import BaseParser
 from mmda.types.names import *
 
 
+logger = logging.getLogger(__name__)
+
+
 class SymbolScraperParser(BaseParser):
-    def __init__(self, sscraper_bin_path: str, dpi:int =None):
+    def __init__(self, sscraper_bin_path: str, dpi:int = None):
         self.dpi = dpi
         self.sscraper_bin_path = sscraper_bin_path
 
@@ -59,7 +63,7 @@ class SymbolScraperParser(BaseParser):
             raise FileNotFoundError(f'{input_pdf_path} doesnt end in .pdf extension, which {self} expected')
         os.makedirs(outdir, exist_ok=True)
         cmd = [self.sscraper_bin_path, '-b', input_pdf_path, outdir]
-        subprocess.run(cmd)
+        self._run_and_log(cmd)
         xmlfile = os.path.join(outdir, os.path.basename(input_pdf_path).replace('.pdf', '.xml'))
         if not os.path.exists(xmlfile):
             raise FileNotFoundError(f'Parsing {input_pdf_path} may have failed. Cant find {xmlfile}.')
@@ -245,6 +249,11 @@ class SymbolScraperParser(BaseParser):
             Rows: [row.to_json() for row in row_annos]
         }
 
+    def _run_and_log(self, cmd):
+        with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as proc:
+            for line in iter(proc.stdout):
+                logger.info(str(line, 'utf-8'))
+
     def _parse_xml_to_doc(self, xmlfile: str) -> Document:
 
         with open(xmlfile, 'r') as f_in:
@@ -255,13 +264,13 @@ class SymbolScraperParser(BaseParser):
         if runtime is None:
             raise ValueError(f'No Runtime for {xmlfile}')
         else:
-            print(f'Symbol Scraper took {runtime} sec for {xmlfile}...')
+            logger.info(f'Symbol Scraper took {runtime} sec for {xmlfile}...')
 
         # get page metrics
         page_to_metrics = self._parse_page_to_metrics(xml_lines=xml_lines)
-        print(f'\tNum pages: {len(page_to_metrics)}')
-        print(f"\tAvg tokens: {sum([metric['tokens'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
-        print(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        logger.info(f'\tNum pages: {len(page_to_metrics)}')
+        logger.info(f"\tAvg tokens: {sum([metric['tokens'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        logger.info(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
 
         # get token stream (grouped by page & row)
         page_to_row_to_tokens = self._parse_page_to_row_to_tokens(xml_lines=xml_lines, page_to_metrics=page_to_metrics)
