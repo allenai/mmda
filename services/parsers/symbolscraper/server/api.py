@@ -6,7 +6,6 @@ from typing import Iterable, List, Optional
 from fastapi import Depends, HTTPException, FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
-from starlette.responses import Response
 
 from model.instance import Instance
 from model.prediction import Prediction
@@ -54,22 +53,7 @@ def make_app(batch_size: int = 1):
 
         predictions: List[Prediction] = Field(description="The predictions")
 
-    class JsonResponse(Response):
-        media_type = "application/json"
-
-        def render(self, content) -> bytes:
-            """
-            This is copied from starlette.responses.JSONResponse
-            with allow_nan=False removed.
-            """
-            return json.dumps(
-                content,
-                ensure_ascii=False,
-                indent=None,
-                separators=(",", ":"),
-            ).encode("utf-8")
-
-    app = FastAPI(default_response_class=JsonResponse)
+    app = FastAPI()
 
     @app.middleware("http")
     async def add_request_processing_time(request: Request, call_next):
