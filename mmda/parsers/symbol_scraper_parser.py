@@ -5,17 +5,16 @@ Dataclass for creating token streams from a document via SymbolScraper
 @kylel
 
 """
-
-from typing import Optional, List, Dict, Tuple
-
 import os
 import json
 import logging
+import math
 import re
 import subprocess
 import tempfile
 
 from collections import defaultdict
+from typing import Optional, List, Dict, Tuple
 
 from mmda.types.span import Span
 from mmda.types.box import Box
@@ -76,8 +75,10 @@ class SymbolScraperParser(BaseParser):
     def _build_from_sscraper_bbox(self, sscraper_bbox: str,
                                   sscraper_page_width: float,
                                   sscraper_page_height: float,
-                                  page_id: int) -> Box:
+                                  page_id: int) -> Optional[Box]:
         left, bottom, width, height = [float(element) for element in sscraper_bbox.split(' ')]
+        if any(math.isnan(num) for num in [left, bottom, width, height]):
+            return None
         return Box(l=left / sscraper_page_width,
                    t=(sscraper_page_height - bottom - height) / sscraper_page_height,
                    # annoyingly, sscraper goes other way
@@ -186,6 +187,8 @@ class SymbolScraperParser(BaseParser):
                                                               sscraper_page_width=page_to_metrics[page_id]['width'],
                                                               sscraper_page_height=page_to_metrics[page_id]['height'],
                                                               page_id=page_id)
+                        if not bbox:
+                            continue
                         char_bboxes.append(bbox)
                         token += char_info['text']
                     # sometimes, just empty tokens (e.g. figures)
