@@ -6,11 +6,24 @@ Dataclass for creating token streams from a document
 
 """
 
-from typing import Optional, Union, List
 from abc import abstractmethod
+from typing import List, Optional, Protocol, Union
 
 from mmda.types.document import Document
 from mmda.types.image import load_pdf_images_from_path
+
+
+class Parser(Protocol):
+    @abstractmethod
+    def parse(self, input_pdf_path: str, **kwargs) -> Document:
+        """Given an input PDF return a Document with at least symbols
+
+        Args:
+            input_pdf_path (str): Path to the input PDF to process
+
+        Returns:
+            Document: Depending on parser support at least symbols in the PDF
+        """
 
 
 class BaseParser:
