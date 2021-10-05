@@ -7,6 +7,9 @@ Tests for DictionaryWordPredictor
 import tempfile
 import unittest
 
+from typing import Optional, Set, List
+
+
 from mmda.predictors.heuristic_predictors.dictionary_word_predictor import (
     DictionaryWordPredictor,
 )
@@ -14,11 +17,10 @@ from mmda.types.document import Document, SpanGroup
 from mmda.types.span import Span
 
 
-def mock_document(symbols: str, spans: list[Span], rows: list[SpanGroup]) -> Document:
+def mock_document(symbols: str, spans: List[Span], rows: List[SpanGroup]) -> Document:
     doc = Document(symbols=symbols)
     doc.annotate(rows=rows)
     doc.annotate(tokens=[SpanGroup(spans=[span]) for span in spans])
-
     return doc
 
 
