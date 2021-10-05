@@ -89,7 +89,7 @@ class SpanGroup(Annotation):
 
     @property
     def symbols(self) -> List[str]:
-        return [self.doc._symbols[span.start : span.end] for span in self.spans]
+        return [self.doc.symbols[span.start : span.end] for span in self.spans]
 
     def to_json(self) -> Dict:
         span_group_dict = dict(
