@@ -164,6 +164,10 @@ class DictionaryWordPredictor(BasePredictor):
 
             words.append(span_group)
 
+        # add IDs to each word
+        for i, word in enumerate(words):
+            word.id = i
+
         return words
 
     def _token_text(self, token: SpanGroup) -> str:
