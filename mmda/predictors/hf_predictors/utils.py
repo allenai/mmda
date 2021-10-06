@@ -15,7 +15,8 @@ def shift_index_sequence_to_zero_start(sequence):
 
 
 def get_visual_group_id(token: SpanGroup, field_name: str, defaults=-1) -> int:
-
+    if not hasattr(token, field_name):
+        return defaults
     field_value = getattr(token, field_name)
     if len(field_value) == 0 or field_value[0].id is None:
         return defaults
@@ -53,7 +54,7 @@ def convert_document_page_to_pdf_dict(
     """
 
     words = [token.symbols[0] for token in document.tokens]
-    # TODO: Right now we assume the token could on have a single span.
+    # TODO: Right now we assume the token could only have a single span.
 
     bbox = [
         token.spans[0].box.get_absolute(
@@ -63,13 +64,11 @@ def convert_document_page_to_pdf_dict(
     ]
 
     line_ids = [get_visual_group_id(token, Rows, -1) for token in document.tokens]
-    # TODO: Right now we assume the token could span for one row of the
-    # document.
+    # TODO: Right now we assume the token could span for one row of the document.
     line_ids = shift_index_sequence_to_zero_start(line_ids)
 
     block_ids = [get_visual_group_id(token, Blocks, -1) for token in document.tokens]
-    # TODO: Right now we assume the token could span for one block of the
-    # document.
+    # TODO: Right now we assume the token could span for one block of the document.
     block_ids = shift_index_sequence_to_zero_start(block_ids)
 
     labels = [None] * len(words)
@@ -82,6 +81,7 @@ def convert_document_page_to_pdf_dict(
         "line_ids": line_ids,
         "labels": labels,
     }
+
 
 
 def convert_sequence_tagging_to_spans(

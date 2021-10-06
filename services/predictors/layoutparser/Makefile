@@ -11,14 +11,15 @@ dev-image:
 	docker build -f Dockerfile --target dev -t $(DEV_IMAGE_NAME) ../../..
 
 server-image:
-	docker build -f Dockerfile --target server -t $(SERVER_IMAGE_NAME) ../../..
+	docker build \
+	-f Dockerfile --target server \
+	-t $(SERVER_IMAGE_NAME) ../../..
 
 serve: server-image
 	docker run --rm \
 		-p 8080:8080 \
 		--env-file $(shell pwd)/docker.env \
 		--name $(SERVER_IMAGE_NAME) \
-		-v $(shell pwd)/artifacts:/opt/ml/model:ro \
 		$(SERVER_IMAGE_NAME) serve
 
 background-serve: server-image

@@ -1,8 +1,9 @@
 import subprocess
 import requests
+import json
 from unittest import TestCase
 from mmda.types.image import Image
-from model.prediction import Prediction, BoxGroup, Box
+from mmda.types.annotation import BoxGroup
 import os.path
 
 HOST = str(
@@ -16,18 +17,39 @@ URL = f"http://{HOST}:{PORT}/invocations"
 
 
 class TestInvocations(TestCase):
-    def test__invoke(self):
-        page_images = [
-            Image.open(os.path.join(os.path.dirname(__file__), "data", "page0.png"))
+    def setUp(self) -> None:
+        self.page_images = [
+            Image.open(os.path.join(os.path.dirname(__file__), "data", "page0.png")).tobase64()
         ]
-        request = {"instances": [{"page_images": [i.tobase64() for i in page_images]}]}
+
+    def test__invoke(self):
+        request = {"instances": [{"images": self.page_images}]}
 
         resp = requests.post(URL, json=request)
 
         self.assertEqual(resp.status_code, 200)
 
-        predictions = [Prediction(**p) for p in resp.json()["predictions"]]
+        box_groups = [BoxGroup.from_json(p) for p in resp.json()["predictions"][0]]
 
-        self.assertTrue(len(predictions) > 0, "Empty predictions")
-        box_types = set(g.type for p in predictions for g in p.groups)
-        self.assertEqual(box_types, {"TextRegion", "SeparatorRegion"})
+        box_types = set(bg.type for bg in box_groups)
+        self.assertEqual(box_types, {"Title", "Text"})
+
+    def test_jsonl_invocation(self):
+        doc = {"images": self.page_images}
+        docs = [doc, doc]
+        request = "\n".join([json.dumps(d) for d in docs])
+
+        resp = requests.post(
+            f"{URL}",
+            data=request,
+            headers={
+                "content-type": "application/jsonlines",
+                "accept": "application/jsonlines",
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        for line in resp.text.split("\n"):
+            pred = json.loads(line)
+            box_groups = [BoxGroup.from_json(sg) for sg in pred]
+            box_types = set(bg.type for bg in box_groups)
+            self.assertEqual({"Title", "Text"}, box_types)

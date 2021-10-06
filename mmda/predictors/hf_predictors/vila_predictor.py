@@ -150,9 +150,9 @@ class BaseVILAPredictor(BaseHFPredictor):
             page_width, page_height = document.images[page_id].size
 
             pdf_dict = convert_document_page_to_pdf_dict(
-                page, page_width=page_width, page_height=page_height
-            ) 
-            # VILA models trained based on absolute page width rather than the 
+                page, page_width=page_width,page_height=page_height
+            )
+            # VILA models trained based on absolute page width rather than the
             # size (1000, 1000) in vanilla LayoutLM models 
             
             model_inputs = self.preprocess(pdf_dict)
