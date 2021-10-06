@@ -156,8 +156,11 @@ class DictionaryWordPredictor(BasePredictor):
                     text=combined_text,
                 )
 
-            span_group.attach_doc(document)
             words.append(span_group)
+
+        # add IDs to each word
+        for i, word in enumerate(words):
+            word.id = i
 
         return words
 
