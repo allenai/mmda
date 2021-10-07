@@ -1,5 +1,6 @@
 import io
 import xml.etree.ElementTree as et
+from typing import Text
 
 import requests
 from mmda.parsers.parser import Parser
@@ -40,6 +41,9 @@ def _post_document(url: str, input_pdf_path: str) -> str:
     return req.text
 
 
+_NULL_SPAN_GROUP = SpanGroup(spans=[], text="")
+
+
 class GrobidHeaderParser(Parser):
     """Grobid parser that uses header API methods to get title and abstract only. The
     current purpose of this class is evaluation against other methods for title and
@@ -60,12 +64,9 @@ class GrobidHeaderParser(Parser):
         root = et.parse(io.StringIO(xml)).getroot()
 
         title = self._get_title(root)
-        if len(title.text) == 0:
-            raise RuntimeError(f"Unable to extract title: {input_pdf_path}!")
 
-        abstract = self._get_abstract(root, offset=len(title.text) + 1)
-        if len(abstract.text) == 0:
-            raise RuntimeError(f"Unable to extract abstract: {input_pdf_path}!")
+        abstract_offset = 0 if len(title.text) == 0 else len(title.text) + 1
+        abstract = self._get_abstract(root, offset=abstract_offset)
 
         symbols = "\n".join([title.text, abstract.text])
 
@@ -78,7 +79,10 @@ class GrobidHeaderParser(Parser):
         matches = root.findall(".//tei:titleStmt/tei:title", NS)
 
         if len(matches) == 0:
-            return []
+            return _NULL_SPAN_GROUP
+
+        if not matches[0].text:
+            return _NULL_SPAN_GROUP
 
         text = matches[0].text.strip()
         tokens = text.split()
@@ -90,7 +94,7 @@ class GrobidHeaderParser(Parser):
         matches = root.findall(".//tei:profileDesc//tei:abstract//", NS)
 
         if len(matches) == 0:
-            return []
+            return _NULL_SPAN_GROUP
 
         # An abstract may have many paragraphs
         text = "\n".join(m.text for m in matches)
