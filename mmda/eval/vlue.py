@@ -194,31 +194,38 @@ if __name__ == "__main__":
 
     for label in labels:
         print(label.id)
+        if label.id in [
+            "396fb2b6ec96ff74e22ddd2484a9728257cccfbf",
+            "3ef6e51baee01b4c90c188a964f2298b7c309b07",
+            "4277d1ec41d88d595a0d80e4ab4146d8c2db2539",
+            "564a73c07436e1bd75e31b54825d2ba8e4fb68b7",
+        ]:
+            continue
+
         item_pdf_path = source_pdf_path.format(label.id, label.id)
 
         grobid_pred = grobid_prediction(item_pdf_path, grobid)
         title_scores["grobid"].append(score(label, grobid_pred, "title"))
         abstract_scores["grobid"].append(score(label, grobid_pred, "abstract"))
 
-        # s2_pred = s2_prediction(label.id)
-        # title_scores["s2"].append(score(label, s2_pred, "title"))
-        # abstract_scores["s2"].append(score(label, s2_pred, "abstract"))
+        s2_pred = s2_prediction(label.id)
+        title_scores["s2"].append(score(label, s2_pred, "title"))
+        abstract_scores["s2"].append(score(label, s2_pred, "abstract"))
 
-        vila_doc = _load_pdf(item_pdf_path)
-        try:
-            vila_pred = vila_prediction(
-                label.id,
-                vila_doc,
-                vila_predictor=vila_predictor,
-                layout_regions_predictor=layout_predictor,
-                equation_layout_regions_predictor=equation_layout_predictor,
-            )
+        # vila_doc = _load_pdf(item_pdf_path)
+        # try:
+        #    vila_pred = vila_prediction(
+        #        label.id,
+        #        vila_doc,
+        #        vila_predictor=vila_predictor,
+        #        layout_regions_predictor=layout_predictor,
+        #        equation_layout_regions_predictor=equation_layout_predictor,
+        #    )
 
-            title_scores["vila"].append(score(label, vila_pred, "title"))
-            abstract_scores["vila"].append(score(label, vila_pred, "abstract"))
-        except AssertionError as ex:
-            print("Unable to process PDF: {}!", label.id)
-
+        #    title_scores["vila"].append(score(label, vila_pred, "title"))
+        #    abstract_scores["vila"].append(score(label, vila_pred, "abstract"))
+        # except (AssertionError, IndexError) as ex:
+        #    print("Unable to process PDF: {}!", label.id)
 
     print("-------- TITLE --------")
     print(
@@ -228,20 +235,20 @@ if __name__ == "__main__":
             max(*title_scores["grobid"]),
         )
     )
-    # print(
-    #    "S2---\nMean: {}; Min: {}; Max: {}".format(
-    #        mean(title_scores["s2"]),
-    #        min(*title_scores["s2"]),
-    #        max(*title_scores["s2"]),
-    #    )
-    # )
     print(
-        "VILA---\nMean: {}; Min: {}; Max: {}".format(
-            mean(title_scores["vila"]),
-            min(*title_scores["vila"]),
-            max(*title_scores["vila"]),
+        "S2---\nMean: {}; Min: {}; Max: {}".format(
+            mean(title_scores["s2"]),
+            min(*title_scores["s2"]),
+            max(*title_scores["s2"]),
         )
     )
+    # print(
+    #    "VILA---\nMean: {}; Min: {}; Max: {}".format(
+    #        mean(title_scores["vila"]),
+    #        min(*title_scores["vila"]),
+    #        max(*title_scores["vila"]),
+    #    )
+    # )
 
     print("-------- ABSTRACT --------")
     print(
@@ -251,17 +258,17 @@ if __name__ == "__main__":
             max(*abstract_scores["grobid"]),
         )
     )
-    # print(
-    #    "S2---\nMean: {}; Min: {}; Max: {}".format(
-    #        mean(abstract_scores["s2"]),
-    #        min(*abstract_scores["s2"]),
-    #        max(*abstract_scores["s2"]),
-    #    )
-    # )
     print(
-        "VILA---\nMean: {}; Min: {}; Max: {}".format(
-            mean(abstract_scores["vila"]),
-            min(*abstract_scores["vila"]),
-            max(*abstract_scores["vila"]),
+        "S2---\nMean: {}; Min: {}; Max: {}".format(
+            mean(abstract_scores["s2"]),
+            min(*abstract_scores["s2"]),
+            max(*abstract_scores["s2"]),
         )
     )
+    # print(
+    #    "VILA---\nMean: {}; Min: {}; Max: {}".format(
+    #        mean(abstract_scores["vila"]),
+    #        min(*abstract_scores["vila"]),
+    #        max(*abstract_scores["vila"]),
+    #    )
+    # )
