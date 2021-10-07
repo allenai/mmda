@@ -1,5 +1,6 @@
 import io
 import xml.etree.ElementTree as et
+from typing import List
 
 import requests
 from mmda.parsers.parser import Parser
@@ -12,7 +13,11 @@ DEFAULT_API = "http://localhost:8070/api/processHeaderDocument"
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 
 
-def _get_token_spans(text: str, tokens: list[str], offset: int = 0) -> list[int]:
+def _null_span_group() -> SpanGroup:
+    return SpanGroup(spans=[], text="")
+
+
+def _get_token_spans(text: str, tokens: List[str], offset: int = 0) -> List[int]:
     assert len(text) > 0
     assert len(tokens) > 0
     assert offset >= 0
@@ -60,14 +65,12 @@ class GrobidHeaderParser(Parser):
         root = et.parse(io.StringIO(xml)).getroot()
 
         title = self._get_title(root)
-        if len(title.text) == 0:
-            raise RuntimeError(f"Unable to extract title: {input_pdf_path}!")
 
-        abstract = self._get_abstract(root, offset=len(title.text) + 1)
-        if len(abstract.text) == 0:
-            raise RuntimeError(f"Unable to extract abstract: {input_pdf_path}!")
+        # Here we +1 len because we add a "\n" later when joining (if title found)
+        abstract_offset = 0 if len(title.text) == 0 else (len(title.text) + 1)
+        abstract = self._get_abstract(root, offset=abstract_offset)
 
-        symbols = "\n".join([title.text, abstract.text])
+        symbols = "\n".join([t for t in [title.text, abstract.text] if len(t) > 0])
 
         document = Document(symbols=symbols)
         document.annotate(title=[title], abstract=[abstract])
@@ -78,7 +81,10 @@ class GrobidHeaderParser(Parser):
         matches = root.findall(".//tei:titleStmt/tei:title", NS)
 
         if len(matches) == 0:
-            return []
+            return _null_span_group()
+
+        if not matches[0].text:
+            return _null_span_group()
 
         text = matches[0].text.strip()
         tokens = text.split()
@@ -90,7 +96,7 @@ class GrobidHeaderParser(Parser):
         matches = root.findall(".//tei:profileDesc//tei:abstract//", NS)
 
         if len(matches) == 0:
-            return []
+            return _null_span_group()
 
         # An abstract may have many paragraphs
         text = "\n".join(m.text for m in matches)
