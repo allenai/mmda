@@ -182,7 +182,7 @@ class DictionaryWordPredictor(BasePredictor):
         puncset = set(string.punctuation)
         local_dictionary = set()
 
-        for symbol_group in document._symbols.split():
+        for symbol_group in document.symbols.split():
             # Toss out anything with punctutation
             if len(puncset & set(symbol_group)) > 0:
                 continue
