@@ -161,7 +161,6 @@ class DictionaryWordPredictor(BasePredictor):
                     text=combined_text,
                 )
 
-            # span_group.attach_doc(document)
             words.append(span_group)
 
         return words
