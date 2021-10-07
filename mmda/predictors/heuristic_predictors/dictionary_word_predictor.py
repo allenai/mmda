@@ -30,7 +30,7 @@ class DictionaryWordPredictor(BasePredictor):
         check the `tests/fixtures/example-dictionary.txt` file.
 
         The above example file contains base words, plurals, past-tense versions, etc.
-        Thus the heuristics here do not do any changes to word structure other than 
+        Thus the heuristics here do not do any changes to word structure other than
         basics:
 
           - Combine hyphenated words and see if they are in the dictionary
@@ -85,6 +85,11 @@ class DictionaryWordPredictor(BasePredictor):
         skip_first_token = False
 
         for curr_row, next_row in self._row_pairs(document):
+            # Skip first token and there is only one token -> skip entire row
+            if skip_first_token and len(curr_row.tokens) == 1:
+                skip_first_token = False
+                continue
+
             # Add all tokens except last to document words
             for i, token in enumerate(curr_row.tokens[:-1]):
                 if skip_first_token and i == 0:
@@ -156,7 +161,6 @@ class DictionaryWordPredictor(BasePredictor):
                     text=combined_text,
                 )
 
-            span_group.attach_doc(document)
             words.append(span_group)
 
         return words
@@ -178,7 +182,7 @@ class DictionaryWordPredictor(BasePredictor):
         puncset = set(string.punctuation)
         local_dictionary = set()
 
-        for symbol_group in document._symbols.split():
+        for symbol_group in document.symbols.split():
             # Toss out anything with punctutation
             if len(puncset & set(symbol_group)) > 0:
                 continue
