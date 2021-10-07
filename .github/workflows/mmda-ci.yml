@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.9"]
     name: Unit tests with Python ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v2
@@ -20,4 +20,5 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
+      - run: pip install -e .[dev]
       - run: pytest tests
