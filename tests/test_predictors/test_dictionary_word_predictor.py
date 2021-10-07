@@ -7,6 +7,9 @@ Tests for DictionaryWordPredictor
 import tempfile
 import unittest
 
+from typing import Optional, Set, List
+
+
 from mmda.predictors.heuristic_predictors.dictionary_word_predictor import (
     DictionaryWordPredictor,
 )
@@ -14,11 +17,10 @@ from mmda.types.document import Document, SpanGroup
 from mmda.types.span import Span
 
 
-def mock_document(symbols: str, spans: list[Span], rows: list[SpanGroup]) -> Document:
+def mock_document(symbols: str, spans: List[Span], rows: List[SpanGroup]) -> Document:
     doc = Document(symbols=symbols)
     doc.annotate(rows=rows)
     doc.annotate(tokens=[SpanGroup(spans=[span]) for span in spans])
-
     return doc
 
 
@@ -143,7 +145,6 @@ class TestDictionaryWordPredictor(unittest.TestCase):
             " ".join([w.text for w in words]),
         )
 
-    #
     def test_optional_plurarl_words_combined(self):
         # fmt:off
                #0         10        20        30        40        50        60        70
@@ -182,5 +183,36 @@ class TestDictionaryWordPredictor(unittest.TestCase):
 
         self.assertEqual(
             "Do you have any update(s)? Please share your update(s) now.",
+            " ".join([w.text for w in words]),
+        )
+
+    def test_next_row_single_token(self):
+        # fmt:off
+               #0         10 
+               #012345678901
+        text = "Many lin-es"
+        # fmt:on
+
+        spans = [
+            Span(start=0, end=4),  # Many
+            Span(start=5, end=9),  # lin-
+            Span(start=9, end=11),  # es
+        ]
+
+        rows = [
+            SpanGroup(spans=spans[0:2]),
+            SpanGroup(spans=spans[2:3]),
+        ]
+        document = mock_document(symbols=text, spans=spans, rows=rows)
+
+        with tempfile.NamedTemporaryFile() as f:
+            f.write("".encode("utf-8"))
+            f.flush()
+
+            predictor = DictionaryWordPredictor(dictionary_file_path=f.name)
+            words = predictor.predict(document)
+
+        self.assertEqual(
+            "Many lin-es",
             " ".join([w.text for w in words]),
         )

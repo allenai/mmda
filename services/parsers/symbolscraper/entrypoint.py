@@ -68,7 +68,7 @@ def serve():
     )
 
     # If either subprocess exits, so do we.
-    pids = set([nginx.pid, gunicorn.pid])
+    pids = {nginx.pid, gunicorn.pid}
     while True:
         pid, _ = os.wait()
         if pid in pids:
