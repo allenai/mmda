@@ -88,6 +88,8 @@ class GrobidHeaderParser(Parser):
             with open(output_json_path, 'w') as f_out:
                 json.dump(doc.to_json(), f_out, indent=4)
 
+        return doc
+
     def _parse_xml_to_doc(self, xml: str) -> Document:
 
         root = et.parse(io.StringIO(xml)).getroot()
