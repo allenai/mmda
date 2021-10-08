@@ -1,8 +1,17 @@
+"""
+
+@rarthur, @kylel
+
+"""
+
+import os
 import io
 import xml.etree.ElementTree as et
-from typing import List
+from typing import List, Optional
 
 import requests
+import tempfile
+import json
 from mmda.parsers.parser import Parser
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
@@ -60,15 +69,34 @@ class GrobidHeaderParser(Parser):
     def url(self) -> str:
         return self._url
 
-    def parse(self, input_pdf_path: str) -> Document:
-        xml = _post_document(self.url, input_pdf_path)
+    def parse(self, input_pdf_path: str,
+              output_json_path: Optional[str] = None,
+              tempdir: Optional[str] = None) -> Document:
+
+        xml = _post_document(url=self.url, input_pdf_path=input_pdf_path)
+
+        if tempdir:
+            os.makedirs(tempdir, exist_ok=True)
+            xmlfile = os.path.join(tempdir, os.path.basename(input_pdf_path).replace('.pdf', '.xml'))
+            with open(xmlfile, 'w') as f_out:
+                f_out.write(xml)
+
+        doc: Document = self._parse_xml_to_doc(xml=xml)
+
+        # TODO: remove `indent=4` for storage efficiency
+        if output_json_path:
+            with open(output_json_path, 'w') as f_out:
+                json.dump(doc.to_json(), f_out, indent=4)
+
+    def _parse_xml_to_doc(self, xml: str) -> Document:
+
         root = et.parse(io.StringIO(xml)).getroot()
 
-        title = self._get_title(root)
+        title = self._get_title(root=root)
 
         # Here we +1 len because we add a "\n" later when joining (if title found)
         abstract_offset = 0 if len(title.text) == 0 else (len(title.text) + 1)
-        abstract = self._get_abstract(root, offset=abstract_offset)
+        abstract = self._get_abstract(root=root, offset=abstract_offset)
 
         symbols = "\n".join([t for t in [title.text, abstract.text] if len(t) > 0])
 
