@@ -7,7 +7,6 @@ from statistics import mean
 from typing import Optional
 
 from mmda.eval.vlue import PredictedDoc, read_labels, score
-from mmda.parsers.grobid_parser import GrobidHeaderParser
 from mmda.parsers.symbol_scraper_parser import SymbolScraperParser
 from mmda.predictors.hf_predictors.vila_predictor import (
     BaseVILAPredictor,
@@ -21,7 +20,7 @@ from vila.pdftools.pdf_extractor import PDFExtractor
 
 
 @dataclass
-class VluePrediction(PredictedDoc):
+class VluePrediction:
     """Conforms to PredictedDoc protocol."""
 
     id: str  # pylint: disable=invalid-name
