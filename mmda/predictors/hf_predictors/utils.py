@@ -1,5 +1,5 @@
 from mmda.types.annotation import SpanGroup
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import itertools
 
 from mmda.types.document import Document
@@ -22,23 +22,45 @@ def get_visual_group_id(token: SpanGroup, field_name: str, defaults=-1) -> int:
     return field_value[0].id
 
 
-def convert_document_page_to_pdf_dict(document: Document):
-    """
-    Convert a document to a dictionary of the form:
-    {
-        'words': ['word1', 'word2', ...],
-        'bbox': [[x1, y1, x2, y2], [x1, y1, x2, y2], ...],
-        'block_ids': [0, 0, 0, 1 ...],
-        'line_ids': [0, 1, 1, 2 ...],
-        'labels': [0, 0, 0, 1 ...], # could be empty
-    }
+def convert_document_page_to_pdf_dict(
+    document: Document, page_width: int, page_height: int
+) -> Dict[str, List]:
+    """Convert a document to a dictionary of the form:
+        {
+            'words': ['word1', 'word2', ...],
+            'bbox': [[x1, y1, x2, y2], [x1, y1, x2, y2], ...],
+            'block_ids': [0, 0, 0, 1 ...],
+            'line_ids': [0, 1, 1, 2 ...],
+            'labels': [0, 0, 0, 1 ...], # could be empty
+        }
+
+    Args:
+        document (Document):
+            The input document object
+        page_width (int):
+            Typically the transformer model requires to use
+            the absolute coordinates for encoding the coordinates.
+            Set the correspnding page_width and page_height to convert the
+            relative coordinates to the absolute coordinates.
+        page_height (int):
+            Typically the transformer model requires to use
+            the absolute coordinates for encoding the coordinates.
+            Set the correspnding page_width and page_height to convert the
+            relative coordinates to the absolute coordinates.
+
+    Returns:
+        Dict[str, List]: The pdf_dict object
     """
 
     words = [token.symbols[0] for token in document.tokens]
     # TODO: Right now we assume the token could on have a single span.
 
-    bbox = [token.spans[0].box.coordinates for token in document.tokens]
-    # TODO: This returns relative coordinates to the document.
+    bbox = [
+        token.spans[0].box.get_absolute(
+            page_width=page_width, page_height=page_height
+        ).coordinates
+        for token in document.tokens
+    ]
 
     line_ids = [get_visual_group_id(token, Rows, -1) for token in document.tokens]
     # TODO: Right now we assume the token could span for one row of the
@@ -65,7 +87,7 @@ def convert_document_page_to_pdf_dict(document: Document):
 def convert_sequence_tagging_to_spans(
     token_prediction_sequence: List,
 ) -> List[Tuple[int, int, int]]:
-    """For a squence of token predictions, convert them to spans
+    """For a sequence of token predictions, convert them to spans
     of consecutive same predictions.
 
     Args:
