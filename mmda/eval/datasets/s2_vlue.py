@@ -67,7 +67,8 @@ if __name__ == "__main__":
     for split_id in _SUBSPLITS:
         for split in _TOKEN_TYPES:
             with open(
-                os.path.join(args.split_path, split_id, _TOKEN_FN.format(split))
+                os.path.join(args.split_path, split_id, _TOKEN_FN.format(split)),
+                encoding="utf-8",
             ) as f:
                 loaded = json.loads(f.read())
 
