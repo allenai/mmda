@@ -12,8 +12,8 @@ from dataclasses import dataclass, field
 
 def is_overlap_1d(start1: float, end1: float, start2: float, end2: float) -> bool:
     """Return whether two 1D intervals overlaps"""
-    assert start1 < end1
-    assert start2 < end2
+    assert start1 <= end1
+    assert start2 <= end2
 
     return not (start1 > end2 or end1 < start2)  # ll  # rr
 
