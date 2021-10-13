@@ -11,6 +11,7 @@ from mmda.parsers.symbol_scraper_parser import (
     SymbolScraperParser,
     logger as symbol_scraper_parser_logger,
 )
+from mmda.rasterizers.rasterizer import Rasterizer
 
 
 class PredictorConfig(BaseSettings):
@@ -43,15 +44,18 @@ class Predictor:
         Initialize your model using the passed parameters
         """
         self._config = config
-        self._sscraper = SymbolScraperParser("sscraper")
+        self._sscraper = SymbolScraperParser(sscraper_bin_path="sscraper")
         symbol_scraper_parser_logger.setLevel(logging.ERROR)
+        self._rasterizer = Rasterizer()
 
     def predict(self, instance: Instance) -> Prediction:
         with tempfile.TemporaryDirectory() as tempdir:
             pdf_path = f"{tempdir}/input.pdf"
             with open(pdf_path, "wb") as f:
                 f.write(base64.b64decode(instance.pdf))
-            doc = self._sscraper.parse(pdf_path, load_images=True)
+            doc = self._sscraper.parse(input_pdf_path=pdf_path)
+            images = self._rasterizer.rasterize(input_pdf_path=pdf_path, dpi=200)    # TODO <<
+            doc.images = images
             return Prediction(**doc.to_json(with_images=True))
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
