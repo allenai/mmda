@@ -154,23 +154,8 @@ class PDFPlumberParser(Parser):
         )
         self.dpi = dpi
 
-    def parse(
-        self,
-        input_pdf_path: str,
-        output_json_path: Optional[str] = None,
-        load_images=False,
-    ) -> Document:
-
+    def parse(self, input_pdf_path: str) -> Document:
         doc = self._load_pdf_as_doc(input_pdf_path)
-
-        if load_images:
-            doc.images = self.load_images(input_pdf_path)
-
-        # TODO: remove `indent=4` for storage efficiency
-        if output_json_path:
-            with open(output_json_path, "w") as f_out:
-                json.dump(doc.to_json(), f_out, indent=4)
-
         return doc
 
     def _load_page_tokens(

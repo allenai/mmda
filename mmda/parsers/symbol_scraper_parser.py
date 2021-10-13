@@ -32,9 +32,7 @@ class SymbolScraperParser(Parser):
         self.dpi = dpi
         self.sscraper_bin_path = sscraper_bin_path
 
-    def parse(self, input_pdf_path: str, output_json_path: Optional[str] = None,
-              tempdir: Optional[str] = None, load_images=False) -> Document:
-
+    def parse(self, input_pdf_path: str, tempdir: Optional[str] = None) -> Document:
         if tempdir is None:
             with tempfile.TemporaryDirectory() as tempdir:
                 xmlfile = self._run_sscraper(input_pdf_path=input_pdf_path, outdir=tempdir)
@@ -42,15 +40,6 @@ class SymbolScraperParser(Parser):
         else:
             xmlfile = self._run_sscraper(input_pdf_path=input_pdf_path, outdir=tempdir)
             doc: Document = self._parse_xml_to_doc(xmlfile=xmlfile)
-
-        if load_images:
-            doc.images = self.load_images(input_pdf_path)
-
-        # TODO: remove `indent=4` for storage efficiency
-        if output_json_path:
-            with open(output_json_path, 'w') as f_out:
-                json.dump(doc.to_json(), f_out, indent=4)
-
         return doc
 
     #
