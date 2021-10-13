@@ -27,6 +27,7 @@ def frombase64(img_str):
     img = pilimage.open(buffered)
     return img
 
+
 load_pdf_images_from_path = _convert_from_path 
 PILImage.tobase64 = tobase64 # This is the method applied to individual Image classes
 PILImage.to_json = tobase64 # Use the same API as the others
