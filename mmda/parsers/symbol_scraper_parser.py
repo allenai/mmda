@@ -20,14 +20,14 @@ from mmda.types.span import Span
 from mmda.types.box import Box
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
-from mmda.parsers.parser import BaseParser
+from mmda.parsers.parser import Parser
 from mmda.types.names import *
 
 
 logger = logging.getLogger(__name__)
 
 
-class SymbolScraperParser(BaseParser):
+class SymbolScraperParser(Parser):
     def __init__(self, sscraper_bin_path: str, dpi:int = None):
         self.dpi = dpi
         self.sscraper_bin_path = sscraper_bin_path

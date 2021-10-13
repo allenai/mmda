@@ -9,7 +9,7 @@ from mmda.types.span import Span
 from mmda.types.box import Box
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
-from mmda.parsers.parser import BaseParser
+from mmda.parsers.parser import Parser
 from mmda.types.names import *
 
 
@@ -66,7 +66,7 @@ def simple_line_detection(
     return lines
 
 
-class PDFPlumberParser(BaseParser):
+class PDFPlumberParser(Parser):
     def __init__(
         self,
         token_x_tolerance: int = 1.5,
