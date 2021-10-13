@@ -103,7 +103,7 @@ class Document:
                 # a) Check index if any conflicts (we require disjointness)
                 matched_span_group = new_span_group_indexer[span.start:span.end]
                 if matched_span_group:
-                    raise ValueError(f'Detected overlap with existing SpanGroup {matched_span_group} when attempting index {span}')
+                    raise ValueError(f'Detected overlap with existing SpanGroup {matched_span_group} when attempting index {span_group}')
 
                 # b) If no issues, add to index (for each span in span_group)
                 new_span_group_indexer[span.start:span.end] = span_group

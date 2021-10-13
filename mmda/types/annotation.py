@@ -6,14 +6,13 @@ Collections of Annotations are how one constructs a new Iterable of Group-type o
 
 """
 
-from mmda.types.names import Symbols
-from typing import List, Optional, Dict, Tuple, Type
 from abc import abstractmethod
 from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple, Type
 
-
-from mmda.types.span import Span
 from mmda.types.box import Box
+from mmda.types.names import Symbols
+from mmda.types.span import Span
 
 
 @dataclass
