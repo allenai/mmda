@@ -7,7 +7,6 @@ Monkey patch the PIL.Image methods to add base64 conversion
 
 import base64
 from io import BytesIO
-from pdf2image import convert_from_path as _convert_from_path
 
 from PIL import Image as pilimage
 from PIL.Image import Image as PILImage
@@ -28,7 +27,6 @@ def frombase64(img_str):
     return img
 
 
-load_pdf_images_from_path = _convert_from_path 
 PILImage.tobase64 = tobase64 # This is the method applied to individual Image classes
 PILImage.to_json = tobase64 # Use the same API as the others
 PILImage.frombase64 = frombase64 # This is bind to the module, used for loading the images
