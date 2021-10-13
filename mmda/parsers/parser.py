@@ -10,7 +10,6 @@ from abc import abstractmethod
 from typing import List, Optional, Protocol, Union
 
 from mmda.types.document import Document
-from mmda.types.image import load_pdf_images_from_path
 
 
 class Parser(Protocol):

@@ -3,11 +3,11 @@ from abc import abstractmethod
 from typing import List, Optional, Protocol, Union
 
 from mmda.types.document import Document
-from mmda.types.image import load_pdf_images_from_path
+from mmda.types.image import load_pdf_images_from_path, PILImage
 
 
 class Rasterizer(Protocol):
-    def rasterize(self, input_pdf_path: str, dpi: int, **kwargs) -> List["PIL.Image"]:
+    def rasterize(self, input_pdf_path: str, dpi: int, **kwargs) -> List[PILImage]:
         """Given an input PDF return a List[Image]
 
         Args:
