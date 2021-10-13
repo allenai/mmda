@@ -28,8 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class SymbolScraperParser(Parser):
-    def __init__(self, sscraper_bin_path: str, dpi:int = None):
-        self.dpi = dpi
+    def __init__(self, sscraper_bin_path: str):
         self.sscraper_bin_path = sscraper_bin_path
 
     def parse(self, input_pdf_path: str, tempdir: Optional[str] = None) -> Document:
