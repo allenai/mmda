@@ -23,6 +23,7 @@ class Parser(Protocol):
 
         Args:
             input_pdf_path (str): Path to the input PDF to process
+            output_json_path (str):  Optional path to the output JSON file
 
         Returns:
             Document: Depending on parser support at least symbols in the PDF
