@@ -38,7 +38,7 @@ class Document:
     def fields(self) -> List[str]:
         return self.__fields
 
-    # TODO: extend implementation to support DocBoxGroup
+     # TODO: extend implementation to support DocBoxGroup
     def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
         if not isinstance(query, SpanGroup):
             raise NotImplementedError(f'Currently only supports query of type SpanGroup')

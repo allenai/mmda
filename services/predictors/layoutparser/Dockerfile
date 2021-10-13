@@ -9,7 +9,6 @@ COPY services/predictors/layoutparser/requirements.txt .
 COPY services/predictors/layoutparser/setup.py .
 
 RUN pip install -r requirements.txt
-RUN pip install --upgrade .[dev]
 RUN pip install "git+https://github.com/facebookresearch/detectron2.git@v0.4#egg=detectron2"
 
 COPY services/predictors/layoutparser .
@@ -20,7 +19,7 @@ ENTRYPOINT ["/bin/bash"]
 # server image for running the API
 FROM dev AS server
 
-ENV ARTIFACTS_DIR /opt/ml/model
+ENV MODEL_CONFIG lp://efficientdet/PubLayNet
 ENV BATCH_SIZE 1
 ENV MODEL_SERVER_TIMEOUT 60
 ENV NUM_WORKERS 1

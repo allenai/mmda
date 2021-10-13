@@ -1,13 +1,16 @@
 import enum
 import json
 import time
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Dict
 
-from fastapi import Depends, HTTPException, FastAPI, Request, Response
+from mmda.types.document import Document as MmdaDocument
+import uvicorn
+
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from server.api_model import Instance, BoxGroup
+from server.api_model import SpanGroup
 from server.predictor import Predictor, PredictorConfig
 
 
@@ -41,16 +44,10 @@ def make_app(batch_size: int = 1):
         raise ValueError("Batch size must be positive integer")
 
     class InvocationsRequest(BaseModel):
-        """Represents the JSON body of a set of inference requests."""
-
-        instances: List[Instance] = Field(
-            description="A list of Instances over which to perform inference"
-        )
+        instances: List[Dict]
 
     class InvocationsResponse(BaseModel):
-        """The results of inference over each passed instance"""
-
-        predictions: List[List[BoxGroup]] = Field(description="The predictions")
+        predictions: List[List[SpanGroup]]
 
     app = FastAPI()
 
@@ -101,12 +98,11 @@ def make_app(batch_size: int = 1):
     ) -> Response:
         body_text = (await req.body()).decode()
         lines = [line.strip() for line in body_text.split("\n") if line.strip()]
-        instances = [Instance.parse_raw(line) for line in lines]
-        json_req = InvocationsRequest(instances=instances)
-        json_resp = perform_invocations(json_req, predictor)
+        instances = [json.loads(line) for line in lines]
+        predictions = perform_invocations(instances, predictor).predictions
 
         jsonl_resp = "\n".join(
-            json.dumps([p.dict() for p in pred]) for pred in json_resp.predictions
+            json.dumps([p.dict() for p in pred]) for pred in predictions
         )
 
         return PlainTextResponse(jsonl_resp, media_type=ContentType.JSONLINES.value)
@@ -115,18 +111,19 @@ def make_app(batch_size: int = 1):
     async def invocations(
         req: InvocationsRequest, predictor: Predictor = Depends(get_predictor)
     ) -> InvocationsResponse:
-        resp = perform_invocations(req, predictor)
+        resp = perform_invocations(req.instances, predictor)
         return resp
 
     def perform_invocations(
-        req: InvocationsRequest, predictor: Predictor
+        instances: List[MmdaDocument], predictor: Predictor
     ) -> InvocationsResponse:
         predictions = []
 
-        for batch in _batchify(req.instances, batch_size):
-            mmda_predictions = predictor.predict_batch(batch)
+        for batch in _batchify(instances, batch_size):
+            mmda_docs = [MmdaDocument.from_json(d) for d in batch]
+            mmda_predictions = predictor.predict_batch(mmda_docs)
             api_predictions = [
-                [BoxGroup.from_mmda(bg) for bg in batch] for batch in mmda_predictions
+                [SpanGroup.from_mmda(sg) for sg in batch] for batch in mmda_predictions
             ]
             predictions.extend(api_predictions)
 
@@ -134,14 +131,12 @@ def make_app(batch_size: int = 1):
 
     @app.get("/ping")
     async def health_check():
-        return {"message": "Okalee-dokalee"}
+        return {"message": "Ok"}
 
     return app
 
 
-def _batchify(
-    instances: Iterable[Instance], batch_size: int
-) -> Iterable[List[Instance]]:
+def _batchify(instances: Iterable[Dict], batch_size: int) -> Iterable[List[Dict]]:
     current_batch = []
 
     for instance in instances:
@@ -159,3 +154,10 @@ def _batchify(
 def initialize_api(batch_size: int = 1):
     get_predictor()
     return make_app(batch_size=batch_size)
+
+
+# For local development
+# To run production server, use entrypoint.py
+if __name__ == "__main__":
+    app = make_app()
+    uvicorn.run(app, port=8080)
