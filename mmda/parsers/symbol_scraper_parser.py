@@ -5,16 +5,16 @@ Dataclass for creating token streams from a document via SymbolScraper
 @kylel
 
 """
-
-from typing import Optional, List, Dict, Tuple, Union
-
 import os
 import json
+import logging
+import math
+import re
 import subprocess
 import tempfile
 
-import re
 from collections import defaultdict
+from typing import Optional, List, Dict, Tuple
 
 from mmda.types.span import Span
 from mmda.types.box import Box
@@ -24,8 +24,11 @@ from mmda.parsers.parser import BaseParser
 from mmda.types.names import *
 
 
+logger = logging.getLogger(__name__)
+
+
 class SymbolScraperParser(BaseParser):
-    def __init__(self, sscraper_bin_path: str, dpi:int =None):
+    def __init__(self, sscraper_bin_path: str, dpi:int = None):
         self.dpi = dpi
         self.sscraper_bin_path = sscraper_bin_path
 
@@ -59,7 +62,7 @@ class SymbolScraperParser(BaseParser):
             raise FileNotFoundError(f'{input_pdf_path} doesnt end in .pdf extension, which {self} expected')
         os.makedirs(outdir, exist_ok=True)
         cmd = [self.sscraper_bin_path, '-b', input_pdf_path, outdir]
-        subprocess.run(cmd)
+        self._run_and_log(cmd)
         xmlfile = os.path.join(outdir, os.path.basename(input_pdf_path).replace('.pdf', '.xml'))
         if not os.path.exists(xmlfile):
             raise FileNotFoundError(f'Parsing {input_pdf_path} may have failed. Cant find {xmlfile}.')
@@ -72,8 +75,10 @@ class SymbolScraperParser(BaseParser):
     def _build_from_sscraper_bbox(self, sscraper_bbox: str,
                                   sscraper_page_width: float,
                                   sscraper_page_height: float,
-                                  page_id: int) -> Box:
+                                  page_id: int) -> Optional[Box]:
         left, bottom, width, height = [float(element) for element in sscraper_bbox.split(' ')]
+        if any(math.isnan(num) for num in [left, bottom, width, height]):
+            return None
         return Box(l=left / sscraper_page_width,
                    t=(sscraper_page_height - bottom - height) / sscraper_page_height,
                    # annoyingly, sscraper goes other way
@@ -182,6 +187,8 @@ class SymbolScraperParser(BaseParser):
                                                               sscraper_page_width=page_to_metrics[page_id]['width'],
                                                               sscraper_page_height=page_to_metrics[page_id]['height'],
                                                               page_id=page_id)
+                        if not bbox:
+                            continue
                         char_bboxes.append(bbox)
                         token += char_info['text']
                     # sometimes, just empty tokens (e.g. figures)
@@ -245,6 +252,11 @@ class SymbolScraperParser(BaseParser):
             Rows: [row.to_json() for row in row_annos]
         }
 
+    def _run_and_log(self, cmd):
+        with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as proc:
+            for line in iter(proc.stdout):
+                logger.info(str(line, 'utf-8'))
+
     def _parse_xml_to_doc(self, xmlfile: str) -> Document:
 
         with open(xmlfile, 'r') as f_in:
@@ -255,13 +267,13 @@ class SymbolScraperParser(BaseParser):
         if runtime is None:
             raise ValueError(f'No Runtime for {xmlfile}')
         else:
-            print(f'Symbol Scraper took {runtime} sec for {xmlfile}...')
+            logger.info(f'Symbol Scraper took {runtime} sec for {xmlfile}...')
 
         # get page metrics
         page_to_metrics = self._parse_page_to_metrics(xml_lines=xml_lines)
-        print(f'\tNum pages: {len(page_to_metrics)}')
-        print(f"\tAvg tokens: {sum([metric['tokens'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
-        print(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        logger.info(f'\tNum pages: {len(page_to_metrics)}')
+        logger.info(f"\tAvg tokens: {sum([metric['tokens'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        logger.info(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
 
         # get token stream (grouped by page & row)
         page_to_row_to_tokens = self._parse_page_to_row_to_tokens(xml_lines=xml_lines, page_to_metrics=page_to_metrics)

@@ -1,27 +1,29 @@
 ifdef TAG
-	OPTIONAL_TAG = -$(TAG)
+	optional_tag = -$(TAG)
 endif
 
-IMAGE_NAME=mmda-symbolscraper$(OPTIONAL_TAG)
+image := mmda-symbolscraper$(optional_tag)
+mkfile_dir := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
 build-image:
-	docker build -t $(IMAGE_NAME) .
+	cd $(mkfile_dir)/../../.. &&\
+		docker build -t $(image) . -f services/parsers/symbolscraper/Dockerfile
 
 serve: build-image
 	docker run --rm \
 		-p 8080:8080 \
 		--env-file $(shell pwd)/docker.env \
 		-v $(shell pwd)/artifacts:/opt/ml/model:ro \
-		$(IMAGE_NAME) serve
+		$(image) serve
 
 type-check: build-image
-	docker run --rm --entrypoint /bin/bash $(IMAGE_NAME) -c 'mypy .'
+	docker run --rm --entrypoint /bin/bash $(image) -c 'mypy .'
 
 format-check: build-image
-	docker run --rm --entrypoint /bin/bash $(IMAGE_NAME) -c 'black --check .'
+	docker run --rm --entrypoint /bin/bash $(image) -c 'black --check .'
 
 format: build-image
-	docker run --rm -v $(shell pwd):/opt/ml/code --entrypoint bash $(IMAGE_NAME) -c 'black .'
+	docker run --rm -v $(shell pwd):/opt/ml/code --entrypoint bash $(image) -c 'black .'
 
 unit: build-image
-	docker run --rm --entrypoint /bin/bash $(IMAGE_NAME) -c 'pytest tests'
+	docker run --rm --entrypoint /bin/bash $(image) -c 'pytest tests'

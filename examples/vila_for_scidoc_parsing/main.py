@@ -1,21 +1,16 @@
+from typing import List
 import argparse
-import os
-from collections import defaultdict
 from copy import copy
+import os
 
-import layoutparser as lp
-from mmda.parsers.symbol_scraper_parser import SymbolScraperParser
-from mmda.predictors.hf_predictors.vila_predictor import HVILAPredictor, IVILAPredictor
-from mmda.predictors.lp_predictors import LayoutParserPredictor
-from mmda.types.annotation import SpanGroup
-from mmda.types.box import Box
-from mmda.types.document import Document
-from mmda.types.span import Span
 from tqdm import tqdm
-from vila.pdftools.pdf_extractor import PDFExtractor
+import layoutparser as lp
 
-ssparser = SymbolScraperParser(sscraper_bin_path="")  # A dummy ssparser
-pdf_extractor = PDFExtractor("pdfplumber")
+from mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from mmda.types.annotation import SpanGroup
+from mmda.predictors.lp_predictors import LayoutParserPredictor
+from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor, HVILAPredictor
+
 
 DOCBANK_LABEL_MAP = {
     "0": "paragraph",
@@ -35,18 +30,23 @@ DOCBANK_LABEL_MAP = {
 DOCBANK_LABEL_MAP = {int(key): val for key, val in DOCBANK_LABEL_MAP.items()}
 
 
-def _coordinates(box, canvas_width, canvas_height):
-    return lp.Rectangle(box.l, box.t, (box.l + box.w), (box.t + box.h))
-
-
 def draw_tokens(
-    image, doc_tokens, color_map=None, token_boundary_width=0, alpha=0.25, **kwargs
+    image,
+    doc_tokens: List[SpanGroup],
+    color_map=None,
+    token_boundary_width=0,
+    alpha=0.25,
+    **kwargs,
 ):
 
     w, h = image.size
     layout = [
         lp.TextBlock(
-            _coordinates(token.spans[0].box, w, h),
+            lp.Rectangle(
+                *token.spans[0]
+                .box.get_absolute(page_height=h, page_width=w)
+                .coordinates
+            ),
             type=token.type,
             text=token.symbols[0],
         )
@@ -63,13 +63,22 @@ def draw_tokens(
 
 
 def draw_blocks(
-    image, doc_tokens, color_map=None, token_boundary_width=0, alpha=0.25, **kwargs
+    image,
+    doc_tokens: List[SpanGroup],
+    color_map=None,
+    token_boundary_width=0,
+    alpha=0.25,
+    **kwargs,
 ):
 
     w, h = image.size
     layout = [
         lp.TextBlock(
-            _coordinates(token.box_group.boxes[0], w, h),
+            lp.Rectangle(
+                *token.box_group.boxes[0]
+                .get_absolute(page_height=h, page_width=w)
+                .coordinates
+            ),
             type=token.box_group.type,
             text=token.symbols[0],
         )
@@ -83,48 +92,6 @@ def draw_blocks(
         box_alpha=alpha,
         **kwargs,
     )
-
-
-def to_Box(textblock, page_id, page_with, page_height):
-    block = textblock.block
-    return Box(block.x_1, block.y_1, block.width, block.height, page_id)
-
-
-def convert_to_doc_object(pdf_tokens, pdf_images=None):
-
-    page_to_row_to_tokens = defaultdict(lambda: defaultdict(list))
-
-    for page_id, page_tokens in enumerate(pdf_tokens):
-        for line_id, line_tokens in enumerate(page_tokens.get_text_segments()):
-            for token_id, token in enumerate(line_tokens):
-                page_to_row_to_tokens[page_id][line_id].append(
-                    {
-                        "text": token.text,
-                        "bbox": to_Box(
-                            token, page_id, page_tokens.width, page_tokens.height
-                        ),
-                    }
-                )
-
-    doc_dict = ssparser._convert_nested_text_to_doc_json(
-        {
-            page: {row: tokens for row, tokens in row_to_tokens.items()}
-            for page, row_to_tokens in page_to_row_to_tokens.items()
-        }
-    )
-
-    doc = Document.from_json(doc_dict=doc_dict)
-    if pdf_images is not None:
-        doc.images = pdf_images
-    return doc
-
-
-def load_pdf(path_to_pdf):
-    pdf_tokens, pdf_images = pdf_extractor.load_tokens_and_image(
-        path_to_pdf,
-    )
-    doc = convert_to_doc_object(pdf_tokens, pdf_images)
-    return doc
 
 
 if __name__ == "__main__":
@@ -163,10 +130,13 @@ if __name__ == "__main__":
         "lp://efficientdet/MFD"
     )
 
+    pdfplumber_parser = PDFPlumberParser()
+
     pbar = tqdm(args.pdf_path)
     for pdf_path in pbar:
         pbar.set_description(f"Working on {pdf_path}")
-        doc = load_pdf(pdf_path)
+
+        doc = pdfplumber_parser.parse(input_pdf_path=pdf_path, load_images=True)
 
         # Obtaining Layout Predictions
         layout_regions = layout_predictor.predict(
@@ -183,9 +153,9 @@ if __name__ == "__main__":
         doc.annotate(preds=spans)
 
         save_folder = os.path.join(
-            args.export_folder, os.path.basename(pdf_path).split(".")[0]
+            args.export_folder, os.path.basename(pdf_path).rstrip(".pdf")
         )
-        os.makedirs(save_folder)
+        os.makedirs(save_folder, exist_ok=True)
 
         for pid in range(len(doc.pages)):
 

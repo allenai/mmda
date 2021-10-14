@@ -5,7 +5,7 @@ DictionaryWordPredictor -- Reads rows of text into dehyphenated words.
 """
 
 import string
-from typing import Optional
+from typing import Optional, Set, List
 
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 from mmda.types.annotation import Annotation, Span, SpanGroup
@@ -18,7 +18,7 @@ class DictionaryWordPredictor(BasePredictor):
     REQUIRED_BACKENDS = None
     REQUIRED_DOCUMENT_FIELDS = [Rows, Tokens]
 
-    _dictionary: Optional[set[str]] = None
+    _dictionary: Optional[Set[str]] = None
 
     def __init__(self, dictionary_file_path: str) -> None:
         """Build a predictor that indexes the given dictionary file.
@@ -30,7 +30,7 @@ class DictionaryWordPredictor(BasePredictor):
         check the `tests/fixtures/example-dictionary.txt` file.
 
         The above example file contains base words, plurals, past-tense versions, etc.
-        Thus the heuristics here do not do any changes to word structure other than 
+        Thus the heuristics here do not do any changes to word structure other than
         basics:
 
           - Combine hyphenated words and see if they are in the dictionary
@@ -42,7 +42,7 @@ class DictionaryWordPredictor(BasePredictor):
         self.dictionary_file_path = dictionary_file_path
 
     @property
-    def dictionary(self) -> set[str]:
+    def dictionary(self) -> Set[str]:
         """Global dictionary and not document specific. This dictionary is the basis for
         finding words and will be appended with document-level tokens.
 
@@ -57,7 +57,7 @@ class DictionaryWordPredictor(BasePredictor):
 
         return self._dictionary
 
-    def predict(self, document: Document) -> list[SpanGroup]:
+    def predict(self, document: Document) -> List[SpanGroup]:
         """Get words from a document as a list of SpanGroup.
 
         Args:
@@ -84,7 +84,13 @@ class DictionaryWordPredictor(BasePredictor):
 
         skip_first_token = False
 
-        for curr_row, next_row in self._row_pairs(document):
+        for curr_row, next_row in self._row_pairs(document=document):
+
+            # Skip first token and there is only one token -> skip entire row
+            if skip_first_token and len(curr_row.tokens) == 1:
+                skip_first_token = False
+                continue
+
             # Add all tokens except last to document words
             for i, token in enumerate(curr_row.tokens[:-1]):
                 if skip_first_token and i == 0:
@@ -156,8 +162,11 @@ class DictionaryWordPredictor(BasePredictor):
                     text=combined_text,
                 )
 
-            span_group.attach_doc(document)
             words.append(span_group)
+
+        # add IDs to each word
+        for i, word in enumerate(words):
+            word.id = i
 
         return words
 
@@ -174,11 +183,11 @@ class DictionaryWordPredictor(BasePredictor):
         # Consume from current row so don't skip last
         yield document.rows[-1], None
 
-    def _build_document_local_dictionary(self, document: Document) -> set[str]:
+    def _build_document_local_dictionary(self, document: Document) -> Set[str]:
         puncset = set(string.punctuation)
         local_dictionary = set()
 
-        for symbol_group in document._symbols.split():
+        for symbol_group in document.symbols.split():
             # Toss out anything with punctutation
             if len(puncset & set(symbol_group)) > 0:
                 continue

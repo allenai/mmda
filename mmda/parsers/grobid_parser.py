@@ -1,8 +1,17 @@
+"""
+
+@rauthur, @kylel
+
+"""
+
+import os
 import io
 import xml.etree.ElementTree as et
-from typing import Text
-
+from typing import List, Optional, Text
 import requests
+import tempfile
+import json
+
 from mmda.parsers.parser import Parser
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
@@ -13,7 +22,11 @@ DEFAULT_API = "http://localhost:8070/api/processHeaderDocument"
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 
 
-def _get_token_spans(text: str, tokens: list[str], offset: int = 0) -> list[int]:
+def _null_span_group() -> SpanGroup:
+    return SpanGroup(spans=[], text="")
+
+
+def _get_token_spans(text: str, tokens: List[str], offset: int = 0) -> List[int]:
     assert len(text) > 0
     assert len(tokens) > 0
     assert offset >= 0
@@ -40,10 +53,6 @@ def _post_document(url: str, input_pdf_path: str) -> str:
 
     return req.text
 
-
-_NULL_SPAN_GROUP = SpanGroup(spans=[], text="")
-
-
 class GrobidHeaderParser(Parser):
     """Grobid parser that uses header API methods to get title and abstract only. The
     current purpose of this class is evaluation against other methods for title and
@@ -59,16 +68,36 @@ class GrobidHeaderParser(Parser):
     def url(self) -> str:
         return self._url
 
-    def parse(self, input_pdf_path: str) -> Document:
-        xml = _post_document(self.url, input_pdf_path)
+    def parse(self, input_pdf_path: str,
+              output_json_path: Optional[str] = None,
+              tempdir: Optional[str] = None) -> Document:
+        xml = _post_document(url=self.url, input_pdf_path=input_pdf_path)
+
+        if tempdir:
+            os.makedirs(tempdir, exist_ok=True)
+            xmlfile = os.path.join(tempdir, os.path.basename(input_pdf_path).replace('.pdf', '.xml'))
+            with open(xmlfile, 'w') as f_out:
+                f_out.write(xml)
+
+        doc: Document = self._parse_xml_to_doc(xml=xml)
+
+        # TODO: remove `indent=4` for storage efficiency
+        if output_json_path:
+            with open(output_json_path, 'w') as f_out:
+                json.dump(doc.to_json(), f_out, indent=4)
+
+        return doc
+
+    def _parse_xml_to_doc(self, xml: str) -> Document:
         root = et.parse(io.StringIO(xml)).getroot()
 
-        title = self._get_title(root)
+        title = self._get_title(root=root)
 
-        abstract_offset = 0 if len(title.text) == 0 else len(title.text) + 1
-        abstract = self._get_abstract(root, offset=abstract_offset)
+        # Here we +1 len because we add a "\n" later when joining (if title found)
+        abstract_offset = 0 if len(title.text) == 0 else (len(title.text) + 1)
+        abstract = self._get_abstract(root=root, offset=abstract_offset)
 
-        symbols = "\n".join([title.text, abstract.text])
+        symbols = "\n".join([t for t in [title.text, abstract.text] if len(t) > 0])
 
         document = Document(symbols=symbols)
         document.annotate(title=[title], abstract=[abstract])
@@ -79,10 +108,10 @@ class GrobidHeaderParser(Parser):
         matches = root.findall(".//tei:titleStmt/tei:title", NS)
 
         if len(matches) == 0:
-            return _NULL_SPAN_GROUP
+            return _null_span_group()
 
         if not matches[0].text:
-            return _NULL_SPAN_GROUP
+            return _null_span_group()
 
         text = matches[0].text.strip()
         tokens = text.split()
@@ -94,7 +123,7 @@ class GrobidHeaderParser(Parser):
         matches = root.findall(".//tei:profileDesc//tei:abstract//", NS)
 
         if len(matches) == 0:
-            return _NULL_SPAN_GROUP
+            return _null_span_group()
 
         # An abstract may have many paragraphs
         text = "\n".join(m.text for m in matches)

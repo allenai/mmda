@@ -6,14 +6,13 @@ Collections of Annotations are how one constructs a new Iterable of Group-type o
 
 """
 
-from mmda.types.names import Symbols
-from typing import List, Optional, Dict, Tuple, Type
 from abc import abstractmethod
 from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple, Type
 
-
-from mmda.types.span import Span
 from mmda.types.box import Box
+from mmda.types.names import Symbols
+from mmda.types.span import Span
 
 
 @dataclass
@@ -89,7 +88,7 @@ class SpanGroup(Annotation):
 
     @property
     def symbols(self) -> List[str]:
-        return [self.doc._symbols[span.start : span.end] for span in self.spans]
+        return [self.doc.symbols[span.start : span.end] for span in self.spans]
 
     def to_json(self) -> Dict:
         span_group_dict = dict(
