@@ -1,20 +1,18 @@
-from collections import defaultdict
 import argparse
-from copy import copy
 import os
+from collections import defaultdict
+from copy import copy
 
-from tqdm import tqdm
 import layoutparser as lp
-from vila.pdftools.pdf_extractor import PDFExtractor
-
 from mmda.parsers.symbol_scraper_parser import SymbolScraperParser
-from mmda.types.document import Document
-from mmda.types.box import Box
-from mmda.types.span import Span
-from mmda.types.annotation import SpanGroup
+from mmda.predictors.hf_predictors.vila_predictor import HVILAPredictor, IVILAPredictor
 from mmda.predictors.lp_predictors import LayoutParserPredictor
-from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor, HVILAPredictor
-
+from mmda.types.annotation import SpanGroup
+from mmda.types.box import Box
+from mmda.types.document import Document
+from mmda.types.span import Span
+from tqdm import tqdm
+from vila.pdftools.pdf_extractor import PDFExtractor
 
 ssparser = SymbolScraperParser(sscraper_bin_path="")  # A dummy ssparser
 pdf_extractor = PDFExtractor("pdfplumber")
@@ -60,7 +58,7 @@ def draw_tokens(
         color_map=color_map,
         box_width=token_boundary_width,
         box_alpha=alpha,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -83,7 +81,7 @@ def draw_blocks(
         color_map=color_map,
         box_width=token_boundary_width,
         box_alpha=alpha,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -144,7 +142,7 @@ if __name__ == "__main__":
         type=str,
         default="pdf-predictions",
     )
-    
+
     args = parser.parse_args()
 
     if args.vila_type == "ivila":
@@ -164,15 +162,19 @@ if __name__ == "__main__":
     equation_layout_predictor = LayoutParserPredictor.from_pretrained(
         "lp://efficientdet/MFD"
     )
-    
+
     pbar = tqdm(args.pdf_path)
     for pdf_path in pbar:
         pbar.set_description(f"Working on {pdf_path}")
         doc = load_pdf(pdf_path)
 
         # Obtaining Layout Predictions
-        layout_regions = layout_predictor.predict(doc) # Detect content regions like paragraphs
-        equation_layout_regions = equation_layout_predictor.predict(doc) # Detect equation regions 
+        layout_regions = layout_predictor.predict(
+            doc
+        )  # Detect content regions like paragraphs
+        equation_layout_regions = equation_layout_predictor.predict(
+            doc
+        )  # Detect equation regions
 
         doc.annotate(blocks=layout_regions + equation_layout_regions)
 
@@ -180,20 +182,20 @@ if __name__ == "__main__":
         spans = vila_predictor.predict(doc)
         doc.annotate(preds=spans)
 
-        save_folder = os.path.join(args.export_folder, os.path.basename(pdf_path).split(".")[0])
+        save_folder = os.path.join(
+            args.export_folder, os.path.basename(pdf_path).split(".")[0]
+        )
         os.makedirs(save_folder)
 
         for pid in range(len(doc.pages)):
-            
+
             new_tokens = []
             for pred in doc.pages[pid].preds:
                 for token in pred.tokens:
                     _token = copy(token)
                     _token.type = DOCBANK_LABEL_MAP[pred.type]
-                    new_tokens.append(
-                        _token
-                    )
-                    
+                    new_tokens.append(_token)
+
             viz = draw_blocks(doc.images[pid], doc.pages[pid].blocks, alpha=0)
             viz = draw_tokens(viz, new_tokens, alpha=0.6)
 

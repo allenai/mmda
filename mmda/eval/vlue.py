@@ -1,4 +1,6 @@
 import json
+import random
+import string
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -48,6 +50,22 @@ def s2_prediction(id_: str) -> PredictedDoc:
     abstract = metadata.abstract if metadata.abstract else ""
 
     return DefaultPredictedDoc(id=id_, title=title, abstract=abstract)
+
+
+def random_prediction(label: LabeledDoc) -> PredictedDoc:
+    """
+    Jumbled ASCII lowercase characters of same length as title/abstract
+    """
+
+    def rand_str(n: int) -> str:
+        return "".join([random.choice(string.ascii_lowercase) for _ in range(n)])
+
+    random_title = rand_str(len(label.title))
+    random_abstract = rand_str(len(label.abstract))
+
+    return DefaultPredictedDoc(
+        id=label.id, title=random_title, abstract=random_abstract
+    )
 
 
 def read_labels(labels_json_path: str) -> list[LabeledDoc]:
