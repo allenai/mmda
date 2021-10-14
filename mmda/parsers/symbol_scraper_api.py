@@ -15,8 +15,9 @@ def parse_pdf():
         pdf_path = f"{tempdir}/input.pdf"
         with open(pdf_path, "wb") as f:
             f.write(request.get_data())
-        doc = sscraper.parse(pdf_path, load_images=True)
-        return doc.to_json(with_images=True)
+        doc = sscraper.parse(pdf_path)
+        # TODO: add image stuff here
+        return doc.to_json()
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8080"))

@@ -69,9 +69,7 @@ class GrobidHeaderParser(Parser):
     def url(self) -> str:
         return self._url
 
-    def parse(self, input_pdf_path: str,
-              output_json_path: Optional[str] = None,
-              tempdir: Optional[str] = None) -> Document:
+    def parse(self, input_pdf_path: str, tempdir: Optional[str] = None) -> Document:
 
         xml = _post_document(url=self.url, input_pdf_path=input_pdf_path)
 
@@ -82,12 +80,6 @@ class GrobidHeaderParser(Parser):
                 f_out.write(xml)
 
         doc: Document = self._parse_xml_to_doc(xml=xml)
-
-        # TODO: remove `indent=4` for storage efficiency
-        if output_json_path:
-            with open(output_json_path, 'w') as f_out:
-                json.dump(doc.to_json(), f_out, indent=4)
-
         return doc
 
     def _parse_xml_to_doc(self, xml: str) -> Document:
