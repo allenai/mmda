@@ -1,17 +1,17 @@
 """
 
-@rarthur, @kylel
+@rauthur, @kylel
 
 """
 
 import os
 import io
 import xml.etree.ElementTree as et
-from typing import List, Optional
-
+from typing import List, Optional, Text
 import requests
 import tempfile
 import json
+
 from mmda.parsers.parser import Parser
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
@@ -53,7 +53,6 @@ def _post_document(url: str, input_pdf_path: str) -> str:
 
     return req.text
 
-
 class GrobidHeaderParser(Parser):
     """Grobid parser that uses header API methods to get title and abstract only. The
     current purpose of this class is evaluation against other methods for title and
@@ -70,7 +69,6 @@ class GrobidHeaderParser(Parser):
         return self._url
 
     def parse(self, input_pdf_path: str, tempdir: Optional[str] = None) -> Document:
-
         xml = _post_document(url=self.url, input_pdf_path=input_pdf_path)
 
         if tempdir:
@@ -83,7 +81,6 @@ class GrobidHeaderParser(Parser):
         return doc
 
     def _parse_xml_to_doc(self, xml: str) -> Document:
-
         root = et.parse(io.StringIO(xml)).getroot()
 
         title = self._get_title(root=root)
