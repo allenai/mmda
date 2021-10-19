@@ -10,12 +10,12 @@ Model                                   | N  | Mean  | Std
 --------------------------------------- | -- | ----- | -----
 S2                                      | 18 | 0.882 | 0.267
 Grobid                                  | 18 | 0.782 | 0.382
+hvila-block-layoutlm-finetuned-docbank  | 18 | 0.451 | 0.455
+hvila-block-layoutlm-finetuned-grotoap2 | 18 | 0.575 | 0.455
+hvila-row-layoutlm-finetuned-docbank    | 18 | 0.639 | 0.384
+hvila-row-layoutlm-finetuned-grotoap2   | 18 | 0.808 | 0.343
 ivila-block-layoutlm-finetuned-docbank  | 18 | 0.614 | 0.427
 ivila-block-layoutlm-finetuned-grotoap2 | 18 | 0.658 | 0.381
-hvila-block-layoutlm-finetuned-docbank  | 18 | 0.451 | 0.455
-hvila-row-layoutlm-finetuned-docbank    | 18 | 0.639 | 0.384
-hvila-block-layoutlm-finetuned-grotoap2 | 18 | 0.575 | 0.455
-hvila-row-layoutlm-finetuned-grotoap2   | 18 | 0.808 | 0.343
 
 ### Abstract
 
@@ -23,54 +23,12 @@ Model                                   | N  | Mean  | Std
 --------------------------------------- | -- | ----- | -----
 S2                                      | 18 | 0.787 | 0.359
 Grobid                                  | 18 | 0.780 | 0.405
+hvila-block-layoutlm-finetuned-docbank  | 18 | 0.806 | 0.267
+hvila-block-layoutlm-finetuned-grotoap2 | 18 | 0.793 | 0.344
+hvila-row-layoutlm-finetuned-docbank    | 18 | 0.777 | 0.269
+hvila-row-layoutlm-finetuned-grotoap2   | 18 | 0.908 | 0.231
 ivila-block-layoutlm-finetuned-docbank  | 18 | 0.671 | 0.293
 ivila-block-layoutlm-finetuned-grotoap2 | 18 | 0.725 | 0.327
-hvila-block-layoutlm-finetuned-docbank  | 18 | 0.806 | 0.267
-hvila-row-layoutlm-finetuned-docbank    | 18 | 0.777 | 0.269
-hvila-block-layoutlm-finetuned-grotoap2 | 18 | 0.793 | 0.344
-hvila-row-layoutlm-finetuned-grotoap2   | 18 | 0.908 | 0.231
-
-
-
-```
--------- TITLE --------
-grobid---
-N: 18; Mean: 0.7817425710219672; Std: 0.3823517791015183
-hvila-block-layoutlm-finetuned-docbank---
-N: 18; Mean: 0.45068281928211157; Std: 0.45471671005951186
-hvila-block-layoutlm-finetuned-grotoap2---
-N: 18; Mean: 0.5749837108144917; Std: 0.45468113195450943
-hvila-row-layoutlm-finetuned-docbank---
-N: 18; Mean: 0.6385603164993433; Std: 0.38432007142533864
-hvila-row-layoutlm-finetuned-grotoap2---
-N: 18; Mean: 0.8075431628380263; Std: 0.34291789113019977
-ivila-block-layoutlm-finetuned-docbank---
-N: 18; Mean: 0.6136409163668325; Std: 0.42674025123269516
-ivila-block-layoutlm-finetuned-grotoap2---
-N: 18; Mean: 0.6581086104444326; Std: 0.38131467540590275
-s2---
-N: 18; Mean: 0.8826942058436625; Std: 0.26666074571314874
--------- ABSTRACT --------
-grobid---
-N: 18; Mean: 0.7798620127409269; Std: 0.40544842165205675
-hvila-block-layoutlm-finetuned-docbank---
-N: 18; Mean: 0.8061344751466513; Std: 0.2670278505067842
-hvila-block-layoutlm-finetuned-grotoap2---
-N: 18; Mean: 0.7925158589657537; Std: 0.34406431480167976
-hvila-row-layoutlm-finetuned-docbank---
-N: 18; Mean: 0.7768576674165859; Std: 0.2687481497765869
-hvila-row-layoutlm-finetuned-grotoap2---
-N: 18; Mean: 0.9083742517833443; Std: 0.2305558534465728
-ivila-block-layoutlm-finetuned-docbank---
-N: 18; Mean: 0.6711062276188489; Std: 0.2930104554418168
-ivila-block-layoutlm-finetuned-grotoap2---
-N: 18; Mean: 0.725095298664866; Std: 0.32683248262288206
-s2---
-N: 18; Mean: 0.7867807167597486; Std: 0.35866026124254563
-```
-
-
-
 
 These scores are based on 18 of the documents excluding the following SHAs which fail for VILA:
 
