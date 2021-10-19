@@ -16,11 +16,10 @@ import warnings
 
 from mmda.types.box import Box
 from mmda.types.span import Span
-from mmda.types.image import Image
+from mmda.types.image import pilimage, PILImage
 from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
 from mmda.types.indexers import Indexer, SpanGroupIndexer
 from mmda.types.names import Symbols, Images
-from mmda.types.image import Image as DocImage
 from mmda.utils.tools import merge_neighbor_spans, find_overlapping_tokens_for_box, allocate_overlapping_tokens_for_box
 
 class Document:
@@ -28,7 +27,7 @@ class Document:
     REQUIRED_FIELDS = [Symbols, Images]
     UNALLOWED_FIELD_NAMES = ['fields']
 
-    def __init__(self, symbols: str, images: Optional[List["Image.Image"]] = None):
+    def __init__(self, symbols: str, images: Optional[List[PILImage]] = None):
         self.symbols = symbols
         self.images = images if images else []
         self.__fields = []
@@ -38,7 +37,7 @@ class Document:
     def fields(self) -> List[str]:
         return self.__fields
 
-    # TODO: extend implementation to support DocBoxGroup
+     # TODO: extend implementation to support DocBoxGroup
     def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
         if not isinstance(query, SpanGroup):
             raise NotImplementedError(f'Currently only supports query of type SpanGroup')
@@ -199,7 +198,7 @@ class Document:
         symbols = doc_dict[Symbols]
         images_dict = doc_dict.get(Images, None)
         if images_dict:
-            images = [DocImage.frombase64(image_str) for image_str in images_dict]
+            images = [PILImage.frombase64(image_str) for image_str in images_dict]
         else:
             images = None
         doc = cls(symbols=symbols, images=images)
@@ -262,7 +261,7 @@ class Document:
             image_files = sorted(
                 image_files, key=lambda x: int(os.path.basename(x).replace('.png', ''))
             )
-            images = [Image.load(image_file) for image_file in image_files]     # TODO[kylel]: not how to load PIL images
+            images = [PILImage.load(image_file) for image_file in image_files]
         else:
             json_path = path
             images = None
