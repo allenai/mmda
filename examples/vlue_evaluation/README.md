@@ -6,37 +6,58 @@ In the tables below S2 uses metadata retrieved directly from the [Semantic Schol
 
 ### Title
 
-Model                                   | N  | Mean  | Std
---------------------------------------- | -- | ----- | -----
-S2                                      | 18 | 0.882 | 0.267
-Grobid                                  | 18 | 0.782 | 0.382
-hvila-block-layoutlm-finetuned-docbank  | 18 | 0.451 | 0.455
-hvila-block-layoutlm-finetuned-grotoap2 | 18 | 0.575 | 0.455
-hvila-row-layoutlm-finetuned-docbank    | 18 | 0.639 | 0.384
-hvila-row-layoutlm-finetuned-grotoap2   | 18 | 0.808 | 0.343
-ivila-block-layoutlm-finetuned-docbank  | 18 | 0.614 | 0.427
-ivila-block-layoutlm-finetuned-grotoap2 | 18 | 0.658 | 0.381
+Model                                   | Parser     | N  | Mean  | Std
+--------------------------------------- | ---------- | -- | ----- | -----
+S2                                      | -          | 16 | 0.920 | 0.210
+Grobid                                  | -          | 16 | 0.870 | 0.300
+hvila-block-layoutlm-finetuned-docbank  | SScraper   | 16 | 0.406 | 0.437
+hvila-block-layoutlm-finetuned-grotoap2 | SScraper   | 16 | 0.552 | 0.432
+hvila-row-layoutlm-finetuned-docbank    | SScraper   | 16 | 0.466 | 0.379
+hvila-row-layoutlm-finetuned-grotoap2   | SScraper   | 16 | 0.584 | 0.408
+ivila-block-layoutlm-finetuned-docbank  | SScraper   | 16 | 0.658 | 0.430
+ivila-block-layoutlm-finetuned-grotoap2 | SScraper   | 16 | 0.703 | 0.356
+hvila-block-layoutlm-finetuned-docbank  | PDFPlumber | 16 | 0.446 | 0.449
+hvila-block-layoutlm-finetuned-grotoap2 | PDFPlumber | 16 | 0.585 | 0.448
+hvila-row-layoutlm-finetuned-docbank    | PDFPlumber | 16 | 0.637 | 0.409
+hvila-row-layoutlm-finetuned-grotoap2   | PDFPlumber | 16 | 0.851 | 0.295
+ivila-block-layoutlm-finetuned-docbank  | PDFPlumber | 16 | 0.614 | 0.412
+ivila-block-layoutlm-finetuned-grotoap2 | PDFPlumber | 16 | 0.680 | 0.358
+
 
 ### Abstract
 
-Model                                   | N  | Mean  | Std
---------------------------------------- | -- | ----- | -----
-S2                                      | 18 | 0.787 | 0.359
-Grobid                                  | 18 | 0.780 | 0.405
-hvila-block-layoutlm-finetuned-docbank  | 18 | 0.806 | 0.267
-hvila-block-layoutlm-finetuned-grotoap2 | 18 | 0.793 | 0.344
-hvila-row-layoutlm-finetuned-docbank    | 18 | 0.777 | 0.269
-hvila-row-layoutlm-finetuned-grotoap2   | 18 | 0.908 | 0.231
-ivila-block-layoutlm-finetuned-docbank  | 18 | 0.671 | 0.293
-ivila-block-layoutlm-finetuned-grotoap2 | 18 | 0.725 | 0.327
+Model                                   | Parser     | N  | Mean  | Std
+--------------------------------------- | ---------- | -- | ----- | -----
+S2                                      | -          | 16 | 0.823 | 0.317
+Grobid                                  | -          | 16 | 0.816 | 0.377
+hvila-block-layoutlm-finetuned-docbank  | SScraper   | 16 | 0.618 | 0.409
+hvila-block-layoutlm-finetuned-grotoap2 | SScraper   | 16 | 0.832 | 0.254
+hvila-row-layoutlm-finetuned-docbank    | SScraper   | 16 | 0.811 | 0.210
+hvila-row-layoutlm-finetuned-grotoap2   | SScraper   | 16 | 0.814 | 0.299
+ivila-block-layoutlm-finetuned-docbank  | SScraper   | 16 | 0.604 | 0.328
+ivila-block-layoutlm-finetuned-grotoap2 | SScraper   | 16 | 0.744 | 0.306
+hvila-block-layoutlm-finetuned-docbank  | PDFPlumber | 16 | 0.865 | 0.181
+hvila-block-layoutlm-finetuned-grotoap2 | PDFPlumber | 16 | 0.841 | 0.286
+hvila-row-layoutlm-finetuned-docbank    | PDFPlumber | 16 | 0.829 | 0.191
+hvila-row-layoutlm-finetuned-grotoap2   | PDFPlumber | 16 | 0.970 | 0.026
+ivila-block-layoutlm-finetuned-docbank  | PDFPlumber | 16 | 0.690 | 0.252
+ivila-block-layoutlm-finetuned-grotoap2 | PDFPlumber | 16 | 0.775 | 0.289
 
-These scores are based on 18 of the documents excluding the following SHAs which fail for VILA:
+
+These scores are based on 16 of the documents excluding the following SHAs which fail for PDF Plumber:
 
 ```
 396fb2b6ec96ff74e22ddd2484a9728257cccfbf
 3ef6e51baee01b4c90c188a964f2298b7c309b07
 4277d1ec41d88d595a0d80e4ab4146d8c2db2539
 564a73c07436e1bd75e31b54825d2ba8e4fb68b7
+```
+
+Also excluded are these SHAs which fail on SymbolScraper (failing SHAs above already removed):
+
+```
+25b3966066bfe9d17dfa2384efd57085f0c546a5
+9b69f0ca8bbc617bb48d76f73d269af5230b1a5e
 ```
 
 ## Dataset labels
