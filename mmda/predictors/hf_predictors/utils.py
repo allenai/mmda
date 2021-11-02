@@ -1,7 +1,10 @@
-from mmda.types.annotation import SpanGroup
 from typing import List, Tuple, Dict
 import itertools
+import warnings
 
+import numpy as np 
+
+from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.types.names import *
 
@@ -56,12 +59,20 @@ def convert_document_page_to_pdf_dict(
     words = [token.symbols[0] for token in document.tokens]
     # TODO: Right now we assume the token could only have a single span.
 
-    bbox = [
+    bbox = np.array([
         token.spans[0].box.get_absolute(
             page_width=page_width, page_height=page_height
         ).coordinates
         for token in document.tokens
-    ]
+    ])
+
+    if bbox.max() > 1000:
+        warnings.warn(
+            "The absolute coordinates are larger than 1000. "
+            "Please check whether you've set the page_width and page_height correctly."
+        )
+        bbox = bbox.clip(0, 1000)
+
 
     line_ids = [get_visual_group_id(token, Rows, -1) for token in document.tokens]
     # TODO: Right now we assume the token could span for one row of the document.
@@ -76,7 +87,7 @@ def convert_document_page_to_pdf_dict(
 
     return {
         "words": words,
-        "bbox": bbox,
+        "bbox": bbox.tolist(),
         "block_ids": block_ids,
         "line_ids": line_ids,
         "labels": labels,
