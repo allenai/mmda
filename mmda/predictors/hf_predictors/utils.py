@@ -66,11 +66,17 @@ def convert_document_page_to_pdf_dict(
         for token in document.tokens
     ])
 
-    if bbox.max() > 1000:
+    if bbox.max() > 1000 or bbox.min() < 0:
         warnings.warn(
             "The absolute coordinates are larger than 1000. "
             "Please check whether you've set the page_width and page_height correctly."
         )
+    if bbox.min() < 0:
+        warnings.warn(
+            "The absolute coordinates are smaller than 0. "
+            "You might need to check the whether the PDF parser works as expected."
+        )
+    if bbox.max() > 1000 or bbox.min() < 0:
         bbox = bbox.clip(0, 1000)
 
 
