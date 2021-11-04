@@ -1,23 +1,17 @@
-# MMDA - multimodal document analysis
+# MMDA - Multimodal Document Analysis
 
-This is work in progress...
+MMDA aims to simplify the analysis of layout-rich documents: 
+
+![Overview of the MMDA](.github/mmda.png)
 
 ## Setup
 
 ```bash
 conda create -n mmda python=3.8
-pip install -r requirements.txt
+pip install -e .
 ```
-
-## Parsers
-
-* [SymbolScraper](https://github.com/zanibbi/SymbolScraper/commit/bd3b04de61c7cc390d4219358ca0cd95e43aae50) - Apache 2.0
-
-    * Quoted from their `README`: From the main directory, issue `make`. This will run the Maven build system, download dependencies, etc., compile source files and generate .jar files in `./target`. Finally, a bash script `bin/sscraper` is generated, so that the program can be easily used in different directories.
     
-    
-## Library walkthrough
-
+## Usage Overview
 
 #### 1. Creating a Document for the first time
 
@@ -117,3 +111,30 @@ Document._build_span_type_to_index()
 
 to keep the indices up-to-date with your modified `DocSpan`.
 
+
+## Full Details 
+
+### MMDA Document Parsers
+
+* [SymbolScraper](https://github.com/zanibbi/SymbolScraper/commit/bd3b04de61c7cc390d4219358ca0cd95e43aae50) - Apache 2.0
+
+    * Quoted from their `README`: From the main directory, issue `make`. This will run the Maven build system, download dependencies, etc., compile source files and generate .jar files in `./target`. Finally, a bash script `bin/sscraper` is generated, so that the program can be easily used in different directories.
+
+* [PDFPlumber](https://github.com/jsvine/pdfplumber) - MIT
+
+### The MMDA Document Object
+
+- Indexing 
+
+- Querying 
+
+- Chaining 
+
+### MMDA Document Predictors
+
+- Heuristic Predictors 
+    - Sentence Boundary Predictor 
+- HuggingFace Transformer Predictors 
+    - VILA Predictor 
+- Visual Layout Predictor 
+    - LayoutParser Predictor 
