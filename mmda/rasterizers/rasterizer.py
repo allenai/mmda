@@ -1,15 +1,15 @@
+from typing import Iterable, Protocol
 
-from abc import abstractmethod
-from typing import List, Optional, Union
-
-import pdf2image
-
-from mmda.types.document import Document
 from mmda.types.image import PILImage
 
+try:
+    import pdf2image
+except ImportError:
+    pass
 
-class Rasterizer:
-    def rasterize(self, input_pdf_path: str, dpi: int, **kwargs) -> List[PILImage]:
+
+class Rasterizer(Protocol):
+    def rasterize(self, input_pdf_path: str, dpi: int, **kwargs) -> Iterable[PILImage]:
         """Given an input PDF return a List[Image]
 
         Args:
@@ -19,8 +19,11 @@ class Rasterizer:
                        the pdf. Higher DPI values mean clearer images (also larger file sizes).
 
         Returns:
-            List[Image]
+            Iterable[PILImage]
         """
+        raise NotImplementedError
+
+class PDF2ImageRasterizer(Rasterizer):
+    def rasterize(self, input_pdf_path: str, dpi: int, **kwargs) -> Iterable[PILImage]:
         images = pdf2image.convert_from_path(pdf_path=input_pdf_path, dpi=dpi)
         return images
-
