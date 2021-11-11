@@ -5,25 +5,16 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass
 from statistics import mean, stdev
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List
 
-from mmda.eval.vlue import (
-    LabeledDoc,
-    PredictedDoc,
-    grobid_prediction,
-    random_prediction,
-    read_labels,
-    s2_prediction,
-    score,
-)
+from mmda.eval.vlue import (LabeledDoc, PredictedDoc, grobid_prediction,
+                            read_labels, s2_prediction, score)
 from mmda.parsers.grobid_parser import GrobidHeaderParser
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.parsers.symbol_scraper_parser import SymbolScraperParser
-from mmda.predictors.hf_predictors.vila_predictor import (
-    BaseVILAPredictor,
-    HVILAPredictor,
-    IVILAPredictor,
-)
+from mmda.predictors.hf_predictors.vila_predictor import (BaseVILAPredictor,
+                                                          HVILAPredictor,
+                                                          IVILAPredictor)
 from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from mmda.types.annotation import SpanGroup
