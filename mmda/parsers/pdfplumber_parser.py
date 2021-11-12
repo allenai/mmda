@@ -1,16 +1,8 @@
-from typing import Optional, List, Dict, Tuple, Union
+from typing import Dict, List, Optional
 
-import os
-import json
 import pdfplumber
-import pandas as pd
-
-from mmda.types.span import Span
-from mmda.types.box import Box
-from mmda.types.annotation import SpanGroup
-from mmda.types.document import Document
-from mmda.parsers.parser import Parser
-from mmda.types.names import *
+from mmda.types.nouveau.base import Box, Document, Span, SpanGroup
+from mmda.types.nouveau.protocol import Parser
 
 
 def simple_line_detection(
@@ -217,8 +209,8 @@ class PDFPlumberParser(Parser):
             )
             line_to_tokens = simple_line_detection(
                 page_tokens=page_tokens,
-                x_tolerance=self.line_x_tolerance/cur_page.width,
-                y_tolerance=self.line_y_tolerance/cur_page.height,
+                x_tolerance=self.line_x_tolerance / cur_page.width,
+                y_tolerance=self.line_y_tolerance / cur_page.height,
             )
             page_to_line_to_tokens[page_id] = line_to_tokens
 
@@ -254,10 +246,10 @@ class PDFPlumberParser(Parser):
                 row = SpanGroup(
                     spans=[
                         Span(
-                            start=row_tokens[0][0].start,
-                            end=row_tokens[-1][0].end,
+                            start=row_tokens[0].spans[0].start,
+                            end=row_tokens[-1].spans[0].end,
                             box=Box.small_boxes_to_big_box(
-                                boxes=[span.box for t in row_tokens for span in t]
+                                boxes=[span.box for t in row_tokens for span in t.spans]
                             ),
                         )
                     ]
@@ -268,10 +260,10 @@ class PDFPlumberParser(Parser):
             page = SpanGroup(
                 spans=[
                     Span(
-                        start=page_rows[0][0].start,
-                        end=page_rows[-1][0].end,
+                        start=page_rows[0].spans[0].start,
+                        end=page_rows[-1].spans[0].end,
                         box=Box.small_boxes_to_big_box(
-                            boxes=[span.box for r in page_rows for span in r]
+                            boxes=[span.box for r in page_rows for span in r.spans]
                         ),
                     )
                 ]
@@ -285,15 +277,19 @@ class PDFPlumberParser(Parser):
         for k, token in enumerate(token_annos):
             token.id = k
         return {
-            Symbols: text,
-            Pages: [page.to_json() for page in page_annos],
-            Tokens: [token.to_json() for token in token_annos],
-            Rows: [row.to_json() for row in row_annos],
+            "symbols": text,
+            "pages": [page for page in page_annos],
+            "tokens": [token for token in token_annos],
+            "rows": [row for row in row_annos],
         }
 
     def _load_pdf_as_doc(self, input_pdf_path: str) -> Document:
-
         page_to_line_to_tokens = self._load_pdf_tokens(input_pdf_path)
         doc_json = self._convert_nested_text_to_doc_json(page_to_line_to_tokens)
-        doc = Document.from_json(doc_json)
+
+        doc = Document(doc_json["symbols"])
+        doc._.pages = doc_json["pages"]
+        doc._.tokens = doc_json["tokens"]
+        doc._.rows = doc_json["rows"]
+
         return doc

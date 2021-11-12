@@ -5,11 +5,9 @@ from dataclasses import dataclass
 from typing import Dict, Iterable, Tuple
 
 import pytesseract
-from mmda.predictors.base_predictors.base_predictor import BasePredictor
-from mmda.types.annotation import BoxGroup
 from mmda.types.box import Box
-from mmda.types.document import Document
-from mmda.types.names import Images
+from mmda.types.nouveau.base import BoxGroup, Document, Span, SpanGroup
+from mmda.types.nouveau.protocol import BoxPredictor
 
 
 @dataclass
@@ -44,10 +42,7 @@ class TesseractData:
         )
 
 
-class TesseractBlockPredictor(BasePredictor):
-    REQUIRED_BACKENDS = ["pytesseract"]
-    REQUIRED_DOCUMENT_FIELDS = [Images]
-
+class TesseractBlockPredictor(BoxPredictor):
     def predict(self, document: Document) -> Iterable[BoxGroup]:
         box_groups = []
 
@@ -92,7 +87,6 @@ class TesseractBlockPredictor(BasePredictor):
 
                 box_groups.append(
                     BoxGroup(
-                        id=key,
                         boxes=[
                             Box(l=min_l, t=min_t, w=w, h=h, page=idx).get_relative(
                                 image.width, image.height
