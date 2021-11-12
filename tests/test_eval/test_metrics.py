@@ -1,6 +1,7 @@
 import unittest
 
-from mmda.eval.metrics import levenshtein
+from mmda.eval.metrics import box_overlap, levenshtein
+from mmda.types.box import Box
 
 
 class TestLevenshteinDistance(unittest.TestCase):
@@ -18,3 +19,54 @@ class TestLevenshteinDistance(unittest.TestCase):
     def test_case_sensitivity(self):
         assert levenshtein("Hello", "heLlo") == 2
         assert levenshtein("Hello", "heLlo", case_sensitive=False) == 0
+
+
+class TestBoxOverlap(unittest.TestCase):
+    def _box(self, l, t, w, h):
+        return Box(l=l, t=t, w=w, h=h, page=0)
+
+    def test_consumed(self):
+        box = self._box(1.0, 2.0, 3.0, 3.0)
+        container = self._box(0.0, 0.0, 4.0, 5.0)
+
+        assert box_overlap(box, container) == 1.0
+
+    def test_no_overlap(self):
+        box = self._box(0.0, 0.0, 1.0, 1.0)
+        container = self._box(2.0, 2.0, 1.0, 1.0)
+
+        assert box_overlap(box, container) == 0.0
+
+    def test_partially_contained_top(self):
+        box = self._box(1.0, 0.0, 1.0, 2.0)
+        container = self._box(0.0, 1.0, 100.0, 2.0)
+
+        assert box_overlap(box, container) == 0.5
+        assert box_overlap(container, box) == 1.0 / 200.0
+
+    def test_partially_contained_bottom(self):
+        box = self._box(1.0, 1.0, 1.0, 2.0)
+        container = self._box(0.0, 0.0, 100.0, 2.0)
+
+        assert box_overlap(box, container) == 0.5
+        assert box_overlap(container, box) == 1.0 / 200.0
+
+    def test_partially_contained_left(self):
+        box = self._box(0.0, 2.0, 2.0, 1.0)
+        container = self._box(1.0, 1.0, 2.0, 100.0)
+
+        assert box_overlap(box, container) == 0.5
+        assert box_overlap(container, box) == 1.0 / 200.0
+
+    def test_partially_contained_right(self):
+        box = self._box(1.0, 1.0, 2.0, 1.0)
+        container = self._box(0.0, 0.0, 2.0, 100.0)
+
+        assert box_overlap(box, container) == 0.5
+        assert box_overlap(container, box) == 1.0 / 200.0
+
+    def test_partially_contained_corner(self):
+        box = self._box(1.0, 0.0, 2.0, 2.0)
+        container = self._box(0.0, 1.0, 2.0, 2.0)
+
+        assert box_overlap(box, container) == 0.25
