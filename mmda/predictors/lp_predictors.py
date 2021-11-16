@@ -14,8 +14,9 @@ class LayoutParserPredictor(BasePredictor):
     REQUIRED_BACKENDS = ["layoutparser"]
     REQUIRED_DOCUMENT_FIELDS = [Pages, Images]
 
-    def __init__(self, model):
+    def __init__(self, model, debug=True):
         self.model = model
+        self.debug = debug
 
     @classmethod
     def from_pretrained(
@@ -101,7 +102,7 @@ class LayoutParserPredictor(BasePredictor):
         """
         document_prediction = []
 
-        for image_index, image in enumerate(tqdm(document.images)):
+        for image_index, image in enumerate(tqdm(document.images, disable=(not self.debug))):
             model_outputs = self.model.detect(image)
             document_prediction.extend(
                 self.postprocess(model_outputs, image_index, image)

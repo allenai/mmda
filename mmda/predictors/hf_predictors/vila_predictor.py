@@ -47,12 +47,13 @@ class BaseVILAPredictor(BaseHFPredictor):
     REQUIRED_DOCUMENT_FIELDS = [Pages, Tokens]
 
     def __init__(
-        self, model: Any, config: Any, tokenizer: Any, preprocessor, device=None
+        self, model: Any, config: Any, tokenizer: Any, preprocessor, device=None, debug=True
     ):
         self.model = model
         self.tokenizer = tokenizer
         self.config = config
         self.preprocessor = preprocessor
+        self.debug = debug
 
         if device is None:
             self.device = model.device
@@ -85,7 +86,7 @@ class BaseVILAPredictor(BaseHFPredictor):
                 tokenizer, VILAPreprocessorConfig(**preprocessor_config)
             )
 
-        return cls(model, config, tokenizer, preprocessor, device)
+        return cls(model, config, tokenizer, preprocessor, device, debug)
 
     @staticmethod
     @abstractmethod
@@ -145,7 +146,7 @@ class BaseVILAPredictor(BaseHFPredictor):
     def predict(self, document: Document) -> List[Annotation]:
 
         page_prediction_results = []
-        for page_id, page in enumerate(tqdm(document.pages)):
+        for page_id, page in enumerate(tqdm(document.pages, disable=(not self.debug))):
 
             page_width, page_height = document.images[page_id].size
 
@@ -227,6 +228,7 @@ class HVILAPredictor(BaseVILAPredictor):
         model_name_or_path: str,
         preprocessor=None,
         device: str = None,
+        debug=True,
         **preprocessor_config
     ):
         config = HierarchicalModelConfig.from_pretrained(model_name_or_path)
@@ -240,7 +242,7 @@ class HVILAPredictor(BaseVILAPredictor):
                 tokenizer, VILAPreprocessorConfig(**preprocessor_config)
             )
 
-        return cls(model, config, tokenizer, preprocessor, device)
+        return cls(model, config, tokenizer, preprocessor, device, debug)
 
     @staticmethod
     def initialize_preprocessor(tokenizer, config):
