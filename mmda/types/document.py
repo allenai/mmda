@@ -21,7 +21,7 @@ from mmda.utils.tools import allocate_overlapping_tokens_for_box, merge_neighbor
 
 class Document:
 
-    REQUIRED_FIELDS = [Symbols]
+    SPECIAL_FIELDS = [Symbols, Images]
     UNALLOWED_FIELD_NAMES = ["fields"]
 
     def __init__(self, symbols: str):
@@ -51,8 +51,8 @@ class Document:
         # 1) check validity of field names
         for field_name in kwargs.keys():
             assert (
-                field_name not in self.REQUIRED_FIELDS
-            ), f"The field_name {field_name} should not be in {self.REQUIRED_FIELDS}."
+                field_name not in self.SPECIAL_FIELDS
+            ), f"The field_name {field_name} should not be in {self.SPECIAL_FIELDS}."
 
             assert field_name not in dir(
                 self
@@ -263,7 +263,7 @@ class Document:
         # 2) convert span group dicts to span gropus
         field_name_to_span_groups = {}
         for field_name, span_group_dicts in doc_dict.items():
-            if field_name not in doc.REQUIRED_FIELDS:
+            if field_name not in doc.SPECIAL_FIELDS:
                 span_groups = [
                     SpanGroup.from_json(span_group_dict=span_group_dict)
                     for span_group_dict in span_group_dicts
