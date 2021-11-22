@@ -202,6 +202,11 @@ class SymbolScraperParser(Parser):
                 # process tokens in this row
                 row_tokens: List[SpanGroup] = []
                 for k, token in enumerate(tokens):
+                    # TODO: this is a graphical token specific to SScraper. We process it here,
+                    # instead of in XML so we can still reuse XML cache. But this should be replaced w/ better
+                    # SScraper at some point.
+                    if token['text'] == 'fraction(-)':
+                        continue
                     text += token['text']
                     end = start + len(token['text'])
                     # make token
