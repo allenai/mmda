@@ -21,9 +21,3 @@ services:
       dockerfile: pipeline/docker/predictors/vila/Dockerfile
       args:
         MODEL_CONFIG: pipeline/vila-model-weights
-
-  python:
-    container_name: mmda
-    build:
-      context: ../..
-      dockerfile: pipeline/docker/Dockerfile
