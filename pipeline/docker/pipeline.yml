@@ -2,14 +2,14 @@ version: '3.7'
 services:
   symbolscraper:
     container_name: mmda-sscraper
-    ports: ["8081:8080"]
+    ports: ["8081:80"]
     build:
       context: ../..
       dockerfile: pipeline/docker/parsers/symbolscraper/Dockerfile
 
   layoutparser:
     container_name: mmda-layoutparser
-    ports: ["8082:8080"]
+    ports: ["8082:80"]
     environment:
       MODEL_CONFIG: lp://efficientdet/PubLayNet,lp://efficientdet/MFD
     build:
@@ -18,7 +18,7 @@ services:
 
   vila:
     container_name: mmda-vila
-    ports: ["8083:8080"]
+    ports: ["8083:80"]
     build:
       context: ../..
       dockerfile: pipeline/docker/predictors/vila/Dockerfile
