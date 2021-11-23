@@ -4,32 +4,29 @@
 
 """
 
-from abc import abstractmethod
-from dataclasses import dataclass
-from typing import List, Optional, Dict, Type
+import itertools
 import json
 import os
-from glob import glob
-from copy import deepcopy
-import itertools
 import warnings
+from copy import deepcopy
+from glob import glob
+from typing import Dict, Iterable, List, Optional
 
-from mmda.types.box import Box
-from mmda.types.span import Span
-from mmda.types.image import pilimage, PILImage
 from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
+from mmda.types.image import PILImage
 from mmda.types.indexers import Indexer, SpanGroupIndexer
-from mmda.types.names import Symbols, Images
-from mmda.utils.tools import merge_neighbor_spans, find_overlapping_tokens_for_box, allocate_overlapping_tokens_for_box
+from mmda.types.names import Images, Symbols
+from mmda.utils.tools import allocate_overlapping_tokens_for_box, merge_neighbor_spans
+
 
 class Document:
 
-    REQUIRED_FIELDS = [Symbols, Images]
-    UNALLOWED_FIELD_NAMES = ['fields']
+    SPECIAL_FIELDS = [Symbols, Images]
+    UNALLOWED_FIELD_NAMES = ["fields"]
 
-    def __init__(self, symbols: str, images: Optional[List[PILImage]] = None):
+    def __init__(self, symbols: str):
         self.symbols = symbols
-        self.images = images if images else []
+        self.images = []
         self.__fields = []
         self.__indexers: Dict[str, Indexer] = {}
 
@@ -37,22 +34,30 @@ class Document:
     def fields(self) -> List[str]:
         return self.__fields
 
-     # TODO: extend implementation to support DocBoxGroup
+    # TODO: extend implementation to support DocBoxGroup
     def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
         if not isinstance(query, SpanGroup):
-            raise NotImplementedError(f'Currently only supports query of type SpanGroup')
+            raise NotImplementedError(
+                f"Currently only supports query of type SpanGroup"
+            )
         return self.__indexers[field_name].find(query=query)
 
-    def annotate(self, is_overwrite: bool = False, **kwargs: List[Annotation]) -> None:
+    def annotate(
+        self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
+    ) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
         """
         # 1) check validity of field names
         for field_name in kwargs.keys():
-            assert field_name not in self.REQUIRED_FIELDS, \
-                f"The field_name {field_name} should not be in {self.REQUIRED_FIELDS}."
-            assert field_name not in dir(self), \
-                f"The field_name {field_name} should not conflict with existing class properties"
+            assert (
+                field_name not in self.SPECIAL_FIELDS
+            ), f"The field_name {field_name} should not be in {self.SPECIAL_FIELDS}."
+
+            assert field_name not in dir(
+                self
+            ), f"The field_name {field_name} should not conflict with existing class properties"
+
             if field_name in self.fields and not is_overwrite:
                 raise AssertionError(
                     f"This field name {field_name} already exists. To override, set `is_overwrite=True`"
@@ -68,22 +73,54 @@ class Document:
             annotations = deepcopy(annotations)
 
             annotation_types = {type(a) for a in annotations}
-            assert len(annotation_types) == 1, f'Annotations in field_name {field_name} more than 1 type: {annotation_types}'
+            assert (
+                len(annotation_types) == 1
+            ), f"Annotations in field_name {field_name} more than 1 type: {annotation_types}"
             annotation_type = annotation_types.pop()
 
             if annotation_type == SpanGroup:
-                span_groups = self._annotate_span_group(span_groups=annotations, field_name=field_name)
+                span_groups = self._annotate_span_group(
+                    span_groups=annotations, field_name=field_name
+                )
             elif annotation_type == BoxGroup:
                 # TODO: not good. BoxGroups should be stored on their own, not auto-generating SpanGroups.
-                span_groups = self._annotate_box_group(box_groups=annotations, field_name=field_name)
+                span_groups = self._annotate_box_group(
+                    box_groups=annotations, field_name=field_name
+                )
             else:
-                raise NotImplementedError(f'Unsupported annotation type {annotation_type} for {field_name}')
+                raise NotImplementedError(
+                    f"Unsupported annotation type {annotation_type} for {field_name}"
+                )
 
             # register fields
             setattr(self, field_name, span_groups)
             self.__fields.append(field_name)
 
-    def _annotate_span_group(self, span_groups: List[SpanGroup], field_name: str) -> List[SpanGroup]:
+    def annotate_images(
+        self, images: Iterable[PILImage], is_overwrite: bool = False
+    ) -> None:
+        if not is_overwrite and len(self.images) > 0:
+            raise AssertionError(
+                "This field name {Images} already exists. To override, set `is_overwrite=True`"
+            )
+
+        if len(images) == 0:
+            raise AssertionError("No images were provided")
+
+        image_types = {type(a) for a in images}
+        assert len(image_types) == 1, f"Images contain more than 1 type: {image_types}"
+        image_type = image_types.pop()
+
+        if not issubclass(image_type, PILImage):
+            raise NotImplementedError(
+                f"Unsupported image type {image_type} for {Images}"
+            )
+
+        self.images = images
+
+    def _annotate_span_group(
+        self, span_groups: List[SpanGroup], field_name: str
+    ) -> List[SpanGroup]:
         """Annotate the Document using a bunch of span groups.
         It will associate the annotations with the document symbols.
         """
@@ -100,19 +137,23 @@ class Document:
             #  TODO: can be cleaned up; encapsulate the checker somewhere else
             for span in span_group:
                 # a) Check index if any conflicts (we require disjointness)
-                matched_span_group = new_span_group_indexer[span.start:span.end]
+                matched_span_group = new_span_group_indexer[span.start : span.end]
                 if matched_span_group:
-                    raise ValueError(f'Detected overlap with existing SpanGroup {matched_span_group} when attempting index {span_group}')
+                    raise ValueError(
+                        f"Detected overlap with existing SpanGroup {matched_span_group} when attempting index {span_group}"
+                    )
 
                 # b) If no issues, add to index (for each span in span_group)
-                new_span_group_indexer[span.start:span.end] = span_group
+                new_span_group_indexer[span.start : span.end] = span_group
 
         # add new index to Doc
         self.__indexers[field_name] = new_span_group_indexer
 
         return span_groups
 
-    def _annotate_box_group(self, box_groups: List[BoxGroup], field_name: str) -> List[SpanGroup]:
+    def _annotate_box_group(
+        self, box_groups: List[BoxGroup], field_name: str
+    ) -> List[SpanGroup]:
         """Annotate the Document using a bunch of box groups.
         It will associate the annotations with the document symbols.
         """
@@ -130,37 +171,48 @@ class Document:
                 # Caching the page tokens to avoid duplicated search
 
                 if box.page not in all_page_tokens:
-                    cur_page_tokens = all_page_tokens[box.page] = list(itertools.chain.from_iterable(span_group.spans for span_group in self.pages[box.page].tokens))
+                    cur_page_tokens = all_page_tokens[box.page] = list(
+                        itertools.chain.from_iterable(
+                            span_group.spans
+                            for span_group in self.pages[box.page].tokens
+                        )
+                    )
                 else:
                     cur_page_tokens = all_page_tokens[box.page]
 
                 # Find all the tokens within the box
-                tokens_in_box, remaining_tokens = allocate_overlapping_tokens_for_box(token_spans=cur_page_tokens, box=box)
+                tokens_in_box, remaining_tokens = allocate_overlapping_tokens_for_box(
+                    token_spans=cur_page_tokens, box=box
+                )
                 all_page_tokens[box.page] = remaining_tokens
 
-                all_token_spans_with_box_group.extend(
-                    tokens_in_box
-                )
+                all_token_spans_with_box_group.extend(tokens_in_box)
 
             derived_span_groups.append(
                 SpanGroup(
-                    spans = merge_neighbor_spans(spans=all_token_spans_with_box_group, distance=1),
-                    box_group = box_group,
-                    #id = box_id,
+                    spans=merge_neighbor_spans(
+                        spans=all_token_spans_with_box_group, distance=1
+                    ),
+                    box_group=box_group,
+                    # id = box_id,
                 )
-                # TODO Right now we cannot assign the box id, or otherwise running doc.blocks will 
-                # generate blocks out-of-the-specified order. 
+                # TODO Right now we cannot assign the box id, or otherwise running doc.blocks will
+                # generate blocks out-of-the-specified order.
             )
 
         del all_page_tokens
 
-        derived_span_groups = sorted(derived_span_groups, key=lambda span_group:span_group.start)
+        derived_span_groups = sorted(
+            derived_span_groups, key=lambda span_group: span_group.start
+        )
         # ensure they are ordered based on span indices
 
         for box_id, span_group in enumerate(derived_span_groups):
             span_group.id = box_id
 
-        return self._annotate_span_group(span_groups=derived_span_groups, field_name=field_name)
+        return self._annotate_span_group(
+            span_groups=derived_span_groups, field_name=field_name
+        )
 
     #
     #   to & from JSON
@@ -184,11 +236,15 @@ class Document:
             doc_dict[Images] = [image.to_json() for image in self.images]
 
         # figure out which fields to serialize
-        fields = self.fields if fields is None else fields              # use all fields unless overridden
+        fields = (
+            self.fields if fields is None else fields
+        )  # use all fields unless overridden
 
         # add to doc dict
         for field in fields:
-            doc_dict[field] = [doc_span_group.to_json() for doc_span_group in getattr(self, field)]
+            doc_dict[field] = [
+                doc_span_group.to_json() for doc_span_group in getattr(self, field)
+            ]
 
         return doc_dict
 
@@ -196,17 +252,18 @@ class Document:
     def from_json(cls, doc_dict: Dict) -> "Document":
         # 1) instantiate basic Document
         symbols = doc_dict[Symbols]
+        doc = cls(symbols=symbols)
+
         images_dict = doc_dict.get(Images, None)
         if images_dict:
-            images = [PILImage.frombase64(image_str) for image_str in images_dict]
-        else:
-            images = None
-        doc = cls(symbols=symbols, images=images)
+            doc.annotate_images(
+                [PILImage.frombase64(image_str) for image_str in images_dict]
+            )
 
         # 2) convert span group dicts to span gropus
         field_name_to_span_groups = {}
         for field_name, span_group_dicts in doc_dict.items():
-            if field_name not in doc.REQUIRED_FIELDS:
+            if field_name not in doc.SPECIAL_FIELDS:
                 span_groups = [
                     SpanGroup.from_json(span_group_dict=span_group_dict)
                     for span_group_dict in span_group_dicts
@@ -236,10 +293,14 @@ class Document:
             ), f"When with_images={with_images} and images_in_json={images_in_json}, it requires the path to be a folder"
             # f-string equals like f"{with_images=}" will break the black formatter and won't work for python < 3.8
 
-        doc_json: Dict = self.to_json(fields=fields, with_images=with_images and images_in_json)
+        doc_json: Dict = self.to_json(
+            fields=fields, with_images=with_images and images_in_json
+        )
 
         if with_images and not images_in_json:
-            json_path = os.path.join(path, "document.json")     # TODO[kylel]: avoid hard-code
+            json_path = os.path.join(
+                path, "document.json"
+            )  # TODO[kylel]: avoid hard-code
 
             with open(json_path, "w") as fp:
                 json.dump(doc_json, fp)
@@ -259,7 +320,7 @@ class Document:
             json_path = os.path.join(path, "document.json")
             image_files = glob(os.path.join(path, "*.png"))
             image_files = sorted(
-                image_files, key=lambda x: int(os.path.basename(x).replace('.png', ''))
+                image_files, key=lambda x: int(os.path.basename(x).replace(".png", ""))
             )
             images = [PILImage.load(image_file) for image_file in image_files]
         else:

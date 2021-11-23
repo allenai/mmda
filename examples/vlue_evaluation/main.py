@@ -5,29 +5,20 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass
 from statistics import mean, stdev
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List
 
-from mmda.eval.vlue import (
-    LabeledDoc,
-    PredictedDoc,
-    grobid_prediction,
-    random_prediction,
-    read_labels,
-    s2_prediction,
-    score,
-)
+from mmda.eval.vlue import (LabeledDoc, PredictedDoc, grobid_prediction,
+                            read_labels, s2_prediction, score)
 from mmda.parsers.grobid_parser import GrobidHeaderParser
+from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.parsers.symbol_scraper_parser import SymbolScraperParser
-from mmda.predictors.hf_predictors.vila_predictor import (
-    BaseVILAPredictor,
-    HVILAPredictor,
-    IVILAPredictor,
-)
+from mmda.predictors.hf_predictors.vila_predictor import (BaseVILAPredictor,
+                                                          HVILAPredictor,
+                                                          IVILAPredictor)
 from mmda.predictors.lp_predictors import LayoutParserPredictor
+from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from mmda.types.annotation import SpanGroup
-from mmda.types.box import Box
 from mmda.types.document import Document
-from vila.pdftools.pdf_extractor import PDFExtractor
 
 
 @dataclass
@@ -37,52 +28,6 @@ class VluePrediction:
     id: str  # pylint: disable=invalid-name
     title: str
     abstract: str
-
-
-# Misc. required things for VILA document conversion code
-SS_PARSER = SymbolScraperParser(sscraper_bin_path="")  # A dummy ssparser
-PDF_EXTRACTOR = PDFExtractor("pdfplumber")
-
-
-def _to_box(textblock, page_id) -> Box:
-    block = textblock.block
-    return Box(block.x_1, block.y_1, block.width, block.height, page_id)
-
-
-def _convert_to_doc_object(pdf_tokens, pdf_images=None):
-    page_to_row_to_tokens = defaultdict(lambda: defaultdict(list))
-
-    for page_id, page_tokens in enumerate(pdf_tokens):
-        for line_id, line_tokens in enumerate(page_tokens.get_text_segments()):
-            for _token_id, token in enumerate(line_tokens):
-                page_to_row_to_tokens[page_id][line_id].append(
-                    {
-                        "text": token.text,
-                        "bbox": _to_box(token, page_id),
-                    }
-                )
-
-    doc_dict = (
-        SS_PARSER._convert_nested_text_to_doc_json(  # pylint: disable=protected-access
-            {
-                page: dict(row_to_tokens.items())
-                for page, row_to_tokens in page_to_row_to_tokens.items()
-            }
-        )
-    )
-
-    doc = Document.from_json(doc_dict=doc_dict)
-    if pdf_images is not None:
-        doc.images = pdf_images
-    return doc
-
-
-def _load_pdf(path_to_pdf: str):
-    pdf_tokens, pdf_images = PDF_EXTRACTOR.load_tokens_and_image(
-        path_to_pdf,
-    )
-    doc = _convert_to_doc_object(pdf_tokens, pdf_images)
-    return doc
 
 
 def _vila_docbank_extract_entities(types: List[str]):
@@ -163,18 +108,7 @@ def vila_prediction(
     doc: Document,
     vila_predictor: BaseVILAPredictor,  # pylint: disable=redefined-outer-name
     vila_extractor: Callable[[Document], Dict[str, List[SpanGroup]]],
-    layout_regions_predictor: LayoutParserPredictor,
-    equation_layout_regions_predictor: Optional[LayoutParserPredictor] = None,
 ) -> VluePrediction:
-    # Predict regions
-    layout_regions = layout_regions_predictor.predict(doc)
-    equation_layout_regions = (
-        equation_layout_regions_predictor.predict(doc)
-        if equation_layout_regions_predictor
-        else []
-    )
-    doc.annotate(blocks=layout_regions + equation_layout_regions)
-
     # Predict token types
     span_groups = vila_predictor.predict(doc)
     doc.annotate(preds=span_groups)
@@ -268,6 +202,8 @@ if __name__ == "__main__":
     parser.add_argument("--pdfs-basedir", type=str, nargs="?", required=True)
     parser.add_argument("--labels-json-path", type=str, nargs="?", required=True)
     parser.add_argument("--output-csv-path", type=str, nargs="?", required=True)
+    parser.add_argument("--vila-parser", type=str, nargs="?", required=True)
+    parser.add_argument("--sscraper-path", type=str, nargs="?", required=False)
     args = parser.parse_args()
 
     def pdf_path(id_: str) -> str:
@@ -277,7 +213,15 @@ if __name__ == "__main__":
     abstract_scores = defaultdict(list)
     labels = read_labels(args.labels_json_path)
 
+    rasterizer = PDF2ImageRasterizer()
     grobid_parser = GrobidHeaderParser()
+
+    if args.vila_parser == "pdfplumber":
+        vila_parser = PDFPlumberParser()
+    elif args.vila_parser == "sscraper":
+        if args.sscraper_path is None:
+            raise RuntimeError("Please provide --sscraper-path!")
+        vila_parser = SymbolScraperParser(args.sscraper_path)
 
     with open(args.output_csv_path, "w", newline="") as csvfile:
         fields = [
@@ -295,10 +239,14 @@ if __name__ == "__main__":
         for label in labels:
             # Known failing PDFs are excluded ...
             if label.id in [
+                # PDF Plumber failures
                 "396fb2b6ec96ff74e22ddd2484a9728257cccfbf",
                 "3ef6e51baee01b4c90c188a964f2298b7c309b07",
                 "4277d1ec41d88d595a0d80e4ab4146d8c2db2539",
                 "564a73c07436e1bd75e31b54825d2ba8e4fb68b7",
+                # SymbolScraper failures
+                "25b3966066bfe9d17dfa2384efd57085f0c546a5",
+                "9b69f0ca8bbc617bb48d76f73d269af5230b1a5e",
             ]:
                 continue
 
@@ -345,16 +293,22 @@ if __name__ == "__main__":
                 "hvila-block-layoutlm-finetuned-grotoap2",
                 "hvila-row-layoutlm-finetuned-grotoap2",
             ]:
+                vila_doc = vila_parser.parse(item_pdf_path)
+
+                images = rasterizer.rasterize(item_pdf_path, dpi=72)
+                vila_doc.annotate_images(images=images)
+
+                layout_regions = layout_predictor.predict(vila_doc)
+                equation_layout_regions = equation_layout_predictor.predict(vila_doc)
+                vila_doc.annotate(blocks=layout_regions + equation_layout_regions)
+
                 vila_predictor, vila_extractor = _vila_models(vila_model_name)
-                vila_doc = _load_pdf(item_pdf_path)
 
                 vila_pred = vila_prediction(
                     label.id,
                     vila_doc,
                     vila_predictor=vila_predictor,
                     vila_extractor=vila_extractor,
-                    layout_regions_predictor=layout_predictor,
-                    equation_layout_regions_predictor=equation_layout_predictor,
                 )
 
                 title_scores[vila_model_name].append(score(label, vila_pred, "title"))

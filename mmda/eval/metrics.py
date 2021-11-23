@@ -1,3 +1,6 @@
+from mmda.types.box import Box
+
+
 def levenshtein(s1: str, s2: str, case_sensitive: bool = True) -> int:
     """See https://en.wikipedia.org/wiki/Levenshtein_distance.
 
@@ -36,3 +39,42 @@ def levenshtein(s1: str, s2: str, case_sensitive: bool = True) -> int:
         v1 = [0 for _ in range(len(s2) + 1)]
 
     return v0[len(s2)]
+
+
+def box_overlap(box: Box, container: Box) -> float:
+    """Returns the percentage of area of a box inside of a container."""
+    bl, bt, bw, bh = box.xywh
+    br = bl + bw
+    bb = bt + bh
+
+    cl, ct, cw, ch = container.xywh
+    cr = cl + cw
+    cb = ct + ch
+
+    if bl >= cr:
+        # Box is 'after' right side of container
+        return 0.0
+    if br <= cl:
+        # Box is 'before' left side of container
+        return 0.0
+    if bt >= cb:
+        # Box is 'below' bottom of container
+        return 0.0
+    if bb <= ct:
+        # Box is 'above' top of container
+        return 0.0
+
+    if bl >= cl and br <= cr and bt >= ct and bb <= cb:
+        # Fully contained in container
+        return 1.0
+
+    # Bounded space coordinates
+    sl = max([bl, cl])
+    sr = min([br, cr])
+    st = max([bt, ct])
+    sb = min([bb, cb])
+
+    sw = sr - sl
+    sh = sb - st
+
+    return (sw * sh) / (bw * bh)
