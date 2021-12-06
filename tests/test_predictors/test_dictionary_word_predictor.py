@@ -60,6 +60,7 @@ class TestDictionaryWordPredictor(unittest.TestCase):
 
             predictor = DictionaryWordPredictor(dictionary_file_path=f.name)
             words = predictor.predict(document)
+            document.annotate(words=words)
 
         self.assertEqual(
             "The goal of meta-learning is to train a model on a variety of learning tasks",

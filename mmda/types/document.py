@@ -13,7 +13,7 @@ from glob import glob
 from typing import Dict, Iterable, List, Optional
 
 from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
-from mmda.types.image import PILImage
+from mmda.types.image import PILImage, pilimage
 from mmda.types.indexers import Indexer, SpanGroupIndexer
 from mmda.types.names import Images, Symbols
 from mmda.utils.tools import allocate_overlapping_tokens_for_box, merge_neighbor_spans
@@ -275,62 +275,3 @@ class Document:
 
         return doc
 
-    #
-    #   for serialization
-    #
-
-    def save(
-        self,
-        path: str,
-        fields: Optional[List[str]] = None,
-        with_images=True,
-        images_in_json=False,
-    ):
-
-        if with_images and not images_in_json:
-            assert os.path.isdir(
-                path
-            ), f"When with_images={with_images} and images_in_json={images_in_json}, it requires the path to be a folder"
-            # f-string equals like f"{with_images=}" will break the black formatter and won't work for python < 3.8
-
-        doc_json: Dict = self.to_json(
-            fields=fields, with_images=with_images and images_in_json
-        )
-
-        if with_images and not images_in_json:
-            json_path = os.path.join(
-                path, "document.json"
-            )  # TODO[kylel]: avoid hard-code
-
-            with open(json_path, "w") as fp:
-                json.dump(doc_json, fp)
-
-            for pid, image in enumerate(self.images):
-                image.save(os.path.join(path, f"{pid}.png"))
-        else:
-            with open(path, "w") as fp:
-                json.dump(doc_json, fp)
-
-    @classmethod
-    def load(cls, path: str) -> "Document":
-        """Instantiate a Document object from its serialization.
-        If path is a directory, loads the JSON for the Document along with all Page images
-        If path is a file, just loads the JSON for the Document, assuming no Page images"""
-        if os.path.isdir(path):
-            json_path = os.path.join(path, "document.json")
-            image_files = glob(os.path.join(path, "*.png"))
-            image_files = sorted(
-                image_files, key=lambda x: int(os.path.basename(x).replace(".png", ""))
-            )
-            images = [PILImage.load(image_file) for image_file in image_files]
-        else:
-            json_path = path
-            images = None
-
-        with open(json_path, "r") as fp:
-            json_data = json.load(fp)
-
-        doc: Document = cls.from_json(doc_dict=json_data)
-        doc.images = images
-
-        return doc
