@@ -63,14 +63,18 @@ class SpanPredictor(Protocol):
         """
 
 
+SpanGroupOrGroups = Union[SpanGroup, Iterable[SpanGroup]]
+
+
 class Extractor(Protocol):
     @abstractmethod
-    def extract(self, document: Document) -> Union[SpanGroup, Iterable[SpanGroup]]:
-        """Extract information from an annotated document.
+    def extract(self, span_group: SpanGroupOrGroups) -> SpanGroupOrGroups:
+        """Extract information from an annotated span group(s).
 
         Args:
-            document (Document): The parsed document
+            span_group (Union[SpanGroup, Iterable[SpanGroup]]): Annotated groups
 
         Returns:
-            Union[SpanGroup, Iterable[SpanGroup]]: A span group with any custom annotations
+            Union[SpanGroup, Iterable[SpanGroup]]: A span group with any additional
+                custom annotations
         """

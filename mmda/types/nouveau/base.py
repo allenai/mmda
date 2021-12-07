@@ -73,7 +73,21 @@ class Document(UserDataMixin):
         Args:
             value (Any): A span or box group (DocAttachable)
         """
-        value.attach_doc(self)
+        if isinstance(value, DocAttachable):
+            print(value)
+            value.attach_doc(self)
+
+    @property
+    def pages(self) -> Iterable["SpanGroup"]:
+        return self._.pages
+
+    @property
+    def images(self) -> Iterable[PILImage]:
+        return self._.images
+
+    @images.setter
+    def images(self, images: Iterable[PILImage]):
+        self._.images = images
 
 
 @dataclass
