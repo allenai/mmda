@@ -1,7 +1,7 @@
-from mmda.types.annotation import SpanGroup
-from typing import List, Tuple, Dict
 import itertools
+from typing import Dict, List, Tuple
 
+from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.types.names import *
 
@@ -57,9 +57,9 @@ def convert_document_page_to_pdf_dict(
     # TODO: Right now we assume the token could only have a single span.
 
     bbox = [
-        token.spans[0].box.get_absolute(
-            page_width=page_width, page_height=page_height
-        ).coordinates
+        token.spans[0]
+        .box.get_absolute(page_width=page_width, page_height=page_height)
+        .coordinates
         for token in document.tokens
     ]
 
@@ -81,7 +81,6 @@ def convert_document_page_to_pdf_dict(
         "line_ids": line_ids,
         "labels": labels,
     }
-
 
 
 def convert_sequence_tagging_to_spans(

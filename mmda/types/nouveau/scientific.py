@@ -1,7 +1,7 @@
-from abc import abstractmethod
+import itertools
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterable
+from typing import Iterable, Optional
 
 from mmda.types.nouveau.base import BoxGroup, Document, Span, SpanGroup
 from mmda.types.nouveau.protocol import Extractor
@@ -24,37 +24,14 @@ class TokenType(Enum):
     Caption = 14
     Header = 15
     Footer = 16
-
-
-@dataclass
-class TitleGroup(SpanGroup):
-    def __init__(self, id: str, spans: Iterable[Span], doc: Document):
-        super().__init__(id, spans, doc)
-
-    @property
-    def text(self) -> str:
-        return self._.text
-
-    @text.setter
-    def text(self, text: str):
-        self._.text = text
-
-
-class TitleExtractor(Extractor):
-    @abstractmethod
-    def extract(self, document: Document) -> TitleGroup:
-        """Returns an annotated title group.
-
-        Args:
-            document (Document): The parsed document
-
-        Returns:
-            TitleGroup: Title group with text parsed from raw
-        """
+    Unknown = 99
 
 
 @dataclass
 class TokenGroup(SpanGroup):
+    def __init__(self, spans: Iterable[Span]):
+        super().__init__(spans)
+
     @property
     def type(self) -> TokenType:
         return self._.type
@@ -65,13 +42,83 @@ class TokenGroup(SpanGroup):
 
 
 @dataclass
+class TitleGroup(SpanGroup):
+    def __init__(self, spans: Iterable[Span]):
+        super().__init__(spans)
+
+    @classmethod
+    def null_instance(cls):
+        title_group = cls(spans=[])
+        title_group.text = None
+
+        return title_group
+
+    @property
+    def text(self) -> Optional[str]:
+        return self._.text
+
+    @text.setter
+    def text(self, text: str):
+        self._.text = text
+
+
+@dataclass
 class AbstractGroup(SpanGroup):
+    pass
+
+
+@dataclass
+class AuthorGroup(SpanGroup):
     pass
 
 
 @dataclass
 class BibliographyGroup(SpanGroup):
     pass
+
+    @classmethod
+    def null_instance(cls):
+        bib_group = cls(spans=[])
+
+        return bib_group
+
+
+class TokenGroupTitleExtractor(Extractor):
+    """Prioritizes the first token group tagged as title."""
+
+    def extract(self, document: Document) -> TitleGroup:
+        # Custom field with TokenGroup
+        preds: Iterable[TokenGroup] = document._.preds
+        token_groups = [x for x in preds if x.type == TokenType.Title]
+
+        if len(token_groups) == 0:
+            return TitleGroup.null_instance()
+
+        title_texts = token_groups[0].symbols
+        title_spans = list(itertools.chain(*[x.spans for x in token_groups]))
+        title_group = TitleGroup(spans=title_spans)
+        title_group.text = " ".join(title_texts)
+
+        return title_group
+
+
+class TokenGroupBibliographyExtractor(Extractor):
+    """Grab all the entries around bibliographies from GROTOAP2."""
+
+    def extract(self, document: Document) -> BibliographyGroup:
+        # Custom field with TokenGroup
+        preds: Iterable[TokenGroup] = document._.preds
+        token_groups = [x for x in preds if x.type == TokenType.Bibliography]
+
+        if len(token_groups) == 0:
+            return BibliographyGroup.null_instance()
+
+        # bib_texts = token_groups[0].symbols
+        bib_spans = list(itertools.chain(*[x.spans for x in token_groups]))
+        bib_group = BibliographyGroup(spans=bib_spans)
+        # bib_group.text = " ".join(bib_texts)
+
+        return bib_group
 
 
 class ResearchArticle(Document):
@@ -83,6 +130,15 @@ class ResearchArticle(Document):
 
     def __init__(self, symbols: str):
         super().__init__(symbols)
+
+    @classmethod
+    def from_document(cls, document: Document) -> "ResearchArticle":
+        article = ResearchArticle(document.symbols)
+        article._.pages = document.pages
+        article._.tokens = document.tokens
+        article._.rows = document.rows
+
+        return article
 
     @property
     def blocks(self) -> Iterable[BoxGroup]:
@@ -100,8 +156,18 @@ class ResearchArticle(Document):
     def title(self, title: TitleGroup):
         self._.title = title
 
+    @property
     def abstract(self) -> AbstractGroup:
         return self._.abstract
 
+    @abstract.setter
+    def abstract(self, abstract: AbstractGroup):
+        self._.abstract = abstract
+
+    @property
     def bibliography(self) -> Iterable[BibliographyGroup]:
         return self._.bibliography
+
+    @bibliography.setter
+    def bibliography(self, bibliography: BibliographyGroup):
+        self._.bibliography = bibliography

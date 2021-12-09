@@ -2,29 +2,28 @@
 # https://github.com/allenai/VILA/blob/dd242d2fcbc5fdcf05013174acadb2dc896a28c3/src/vila/predictors.py#L1
 # to reduce the dependency on the VILA package.
 
-from typing import List, Union, Dict, Any, Tuple
-from abc import abstractmethod
-from dataclasses import dataclass
 import inspect
 import itertools
+from abc import abstractmethod
+from dataclasses import dataclass
+from typing import Any, Dict, List, Tuple, Union
 
-from tqdm import tqdm
 import torch
-from transformers import AutoTokenizer, AutoConfig, AutoModelForTokenClassification
-from vila.models.hierarchical_model import (
-    HierarchicalModelForTokenClassification,
-    HierarchicalModelConfig,
-)
-from vila.dataset.preprocessors import instantiate_dataset_preprocessor
-
-from mmda.types.names import *
-from mmda.types.annotation import Annotation, Span, SpanGroup
-from mmda.types.document import Document
+from mmda.predictors.hf_predictors.base_hf_predictor import BaseHFPredictor
 from mmda.predictors.hf_predictors.utils import (
     convert_document_page_to_pdf_dict,
     convert_sequence_tagging_to_spans,
 )
-from mmda.predictors.hf_predictors.base_hf_predictor import BaseHFPredictor
+from mmda.types.annotation import Annotation, Span, SpanGroup
+from mmda.types.document import Document
+from mmda.types.names import *
+from tqdm import tqdm
+from transformers import AutoConfig, AutoModelForTokenClassification, AutoTokenizer
+from vila.dataset.preprocessors import instantiate_dataset_preprocessor
+from vila.models.hierarchical_model import (
+    HierarchicalModelConfig,
+    HierarchicalModelForTokenClassification,
+)
 
 
 def columns_used_in_model_inputs(model):
@@ -139,6 +138,9 @@ class BaseVILAPredictor(BaseHFPredictor):
 
             start = min([ele.start for ele in cur_spans])
             end = max([ele.end for ele in cur_spans])
+            # FIXME: grow box here around all tokens
+
+            # FIXME: pass box from above onwards
             prediction_spans.append(SpanGroup([Span(start, end)], type=label))
         return prediction_spans
 
@@ -150,14 +152,15 @@ class BaseVILAPredictor(BaseHFPredictor):
             page_width, page_height = document.images[page_id].size
 
             pdf_dict = convert_document_page_to_pdf_dict(
-                page, page_width=page_width,page_height=page_height
+                page, page_width=page_width, page_height=page_height
             )
             # VILA models trained based on absolute page width rather than the
-            # size (1000, 1000) in vanilla LayoutLM models 
-            
+            # size (1000, 1000) in vanilla LayoutLM models
+
             model_inputs = self.preprocess(pdf_dict)
             model_outputs = self.model(**self.model_input_collator(model_inputs))
             model_predictions = self.get_category_prediction(model_outputs)
+
             page_prediction_results.extend(
                 self.postprocess(page, pdf_dict, model_inputs, model_predictions)
             )
