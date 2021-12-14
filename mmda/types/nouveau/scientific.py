@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Iterable, Optional
 
+from mmda.predictors.heuristic_predictors.grobid_citation_predictor import get_title
 from mmda.types.nouveau.base import BoxGroup, Document, Span, SpanGroup
 from mmda.types.nouveau.protocol import Extractor
 
@@ -74,13 +75,30 @@ class AuthorGroup(SpanGroup):
 
 @dataclass
 class BibliographyGroup(SpanGroup):
-    pass
+    def __init__(self, spans: Iterable[Span]):
+        super().__init__(spans)
 
     @classmethod
     def null_instance(cls):
         bib_group = cls(spans=[])
 
         return bib_group
+
+    @property
+    def text(self) -> str:
+        return self._.text
+
+    @text.setter
+    def text(self, value: str):
+        self._.text = value
+
+    @property
+    def title(self) -> str:
+        return self._.title
+
+    @title.setter
+    def title(self, value: str):
+        self._.title = value
 
 
 class TokenGroupTitleExtractor(Extractor):
@@ -103,22 +121,23 @@ class TokenGroupTitleExtractor(Extractor):
 
 
 class TokenGroupBibliographyExtractor(Extractor):
-    """Grab all the entries around bibliographies from GROTOAP2."""
+    """Grab all the entries around bibliographies and parse with Grobid."""
 
-    def extract(self, document: Document) -> BibliographyGroup:
-        # Custom field with TokenGroup
+    def extract(self, document: Document) -> Iterable[BibliographyGroup]:
         preds: Iterable[TokenGroup] = document._.preds
         token_groups = [x for x in preds if x.type == TokenType.Bibliography]
 
         if len(token_groups) == 0:
             return BibliographyGroup.null_instance()
 
-        # bib_texts = token_groups[0].symbols
-        bib_spans = list(itertools.chain(*[x.spans for x in token_groups]))
-        bib_group = BibliographyGroup(spans=bib_spans)
-        # bib_group.text = " ".join(bib_texts)
+        bib_spans = [x.spans for x in token_groups]
+        bib_groups = [BibliographyGroup(spans=spans) for spans in bib_spans]
 
-        return bib_group
+        for bib_group in bib_groups:
+            bib_group.text = document.symbols_for(bib_group)[0]
+            bib_group.title = get_title(bib_group.text)
+
+        return bib_groups
 
 
 class ResearchArticle(Document):

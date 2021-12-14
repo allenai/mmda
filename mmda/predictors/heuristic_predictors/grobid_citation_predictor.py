@@ -23,7 +23,7 @@ NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 
 
 def _post_document(citations: str, url: str = DEFAULT_API) -> str:
-    req = requests.post(url, data={"citations": citations, "includeRawCitations": "1"})
+    req = requests.post(url, data={"citations": citations})
 
     if req.status_code != 200:
         raise RuntimeError(f"Unable to process citations. Received {req.status_code}!")

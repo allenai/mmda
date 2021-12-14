@@ -4,26 +4,29 @@
 
 """
 
+import itertools
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from intervaltree import IntervalTree
 from mmda.types.box import Box
 from mmda.types.image import PILImage
 from mmda.types.nouveau.user_data import UserDataMixin
+from mmda.utils.tools import allocate_overlapping_tokens_for_box, merge_neighbor_spans
 
 
 class Document(UserDataMixin):
     symbols: str
-    indexers: Dict[str, Any]
+    indexers: Dict[str, "IntervalTreeIndexer"]
     images: Optional[Iterable[PILImage]]
 
     def __init__(self, symbols: str):
         super().__init__(after_set_callback=self._set_callback)
 
         self.symbols = symbols
-        self.indexers = defaultdict(IntervalTreeSpanGroupIndexer)
+        self.indexers = defaultdict(IntervalTreeIndexer)
+        self.box_group_indexers = defaultdict(IntervalTreeIndexer)
 
     def attach_images(self, images: Iterable[PILImage]) -> None:
         """Attach page images to this document. Overwrites any that are present.
@@ -33,45 +36,91 @@ class Document(UserDataMixin):
         """
         self.images = images
 
-    def _set_callback(self, name: str, value: Any) -> None:
+    def _set_callback(self, name: str, values: Iterable[Any]) -> None:
         """Overrides method in UserDataMixin to attach document to all span/box groups.
+        This method is also used to index annotations.
 
         Args:
             value (Any): A span or box group (DocAttachable)
         """
-        if isinstance(value, DocAttachable):
-            value.attach_doc(self)
+        for value in values:
+            if isinstance(value, DocAttachable):
+                value.attach_doc(self)
 
-        if isinstance(value, SpanGroup):
-            self._index_span_group(name, value)
+        if all([isinstance(value, SpanGroup) for value in values]):
+            self._index_span_groups(name, values)
 
-    def _index_span_group(self, name: str, span_group: Iterable["SpanGroup"]) -> None:
-        """Annotate the Document using a bunch of span groups.
-        It will associate the annotations with the document symbols.
-        """
+        if all([isinstance(value, BoxGroup) for value in values]):
+            self._index_box_groups(name, values)
+
+    def _index_span_groups(self, name: str, span_groups: Iterable["SpanGroup"]):
         span_group_indexer = self.indexers[name]
+
+        if name == "bibliography":
+            import pdb
+
+            pdb.set_trace()
 
         # for each span in span_group
         #   (a) check if any conflicts (requires disjointedness)
         #   (b) then add span group to index at this span location
-        for span in span_group:
-            # a) Check index if any conflicts (we require disjointness)
-            matched_span_group = span_group_indexer[span.start : span.end]
+        for span_group in span_groups:
+            for span in span_group.spans:
+                matched_span_group = span_group_indexer[span.start : span.end]
 
-            if matched_span_group:
-                raise ValueError(
-                    f"Detected overlap with existing SpanGroup {matched_span_group} when attempting index {span_group}"
+                if matched_span_group:
+                    raise ValueError(
+                        f"Detected overlap with existing SpanGroup {matched_span_group} when attempting index {span_group}"
+                    )
+
+                span_group_indexer[span.start : span.end] = span_group
+
+    def _index_box_groups(self, name: str, box_groups: Iterable["BoxGroup"]):
+        all_page_tokens = dict()
+        derived_span_groups: List[SpanGroup] = []
+
+        for box_group in box_groups:
+            all_token_spans_with_box_group = []
+
+            for box in box_group.boxes:
+
+                # Caching the page tokens to avoid duplicated search
+                if box.page not in all_page_tokens:
+                    all_page_tokens[box.page] = list(
+                        itertools.chain.from_iterable(
+                            span_group.spans
+                            for span_group in self.pages[box.page].tokens
+                        )
+                    )
+
+                # Each page token is assigned just once
+                cur_page_tokens = all_page_tokens[box.page]
+
+                # Find all the tokens within the box
+                tokens_in_box, remaining_tokens = allocate_overlapping_tokens_for_box(
+                    token_spans=cur_page_tokens, box=box
                 )
+                all_page_tokens[box.page] = remaining_tokens
 
-            # b) If no issues, add to index (for each span in span_group)
-            span_group_indexer[span.start : span.end] = span_group
+                all_token_spans_with_box_group.extend(tokens_in_box)
 
-    def _index_box_group(self):
-        # TODO: What we want is the ability to query with a BoxGroup
-        # Receive back all SpanGroups that have spans that overlap this BoxGroup
-        # Consider... Should ALL boxes in SpanGroup overlap? What to do with a SpanGroup
-        # that is a mix of overlapping and non-overlapping boxes with query BoxGroup?
-        pass
+            derived_span_group = SpanGroup(
+                spans=merge_neighbor_spans(
+                    spans=all_token_spans_with_box_group, distance=1
+                ),
+            )
+            derived_span_group.box_group = box_group
+            derived_span_groups.append(derived_span_group)
+
+        derived_span_groups = sorted(
+            derived_span_groups, key=lambda span_group: span_group.start
+        )
+
+        # Set ID for each span group by ordering
+        for idx, derived_span_group in enumerate(derived_span_groups):
+            derived_span_group.id = idx
+
+        self._index_span_groups(name, derived_span_groups)
 
     @property
     def tokens(self) -> Iterable["SpanGroup"]:
@@ -81,7 +130,10 @@ class Document(UserDataMixin):
     def pages(self) -> Iterable["SpanGroup"]:
         return self._.pages
 
-    # FIXME: This may be optional or moved to lower level class
+    @pages.setter
+    def pages(self, value: Iterable["SpanGroup"]):
+        self._.pages = value
+
     @property
     def rows(self) -> Iterable["SpanGroup"]:
         return self._.rows
@@ -94,7 +146,9 @@ class Document(UserDataMixin):
     def images(self, images: Iterable[PILImage]):
         self._.images = images
 
-    # FIXME: This isn't inclusive of BoxGroups like "blocks"
+    def symbols_for(self, span_group: "SpanGroup") -> Iterable[str]:
+        return [self.symbols[s.start : s.end] for s in span_group.spans]
+
     def find_overlapping_span_groups(
         self, field_name: str, query: "SpanGroup"
     ) -> Iterable["SpanGroup"]:
@@ -148,6 +202,14 @@ class BoxGroup(UserDataMixin, DocAttachable):
         super().__init__(after_set_callback=self.attach_doc_callback)
         self.boxes = boxes
 
+    @property
+    def id(self) -> int:
+        return self._.id
+
+    @id.setter
+    def id(self, value: int):
+        self._.id = value
+
 
 @dataclass
 class SpanGroup(UserDataMixin, DocAttachable):
@@ -156,6 +218,14 @@ class SpanGroup(UserDataMixin, DocAttachable):
     def __init__(self, spans: Iterable[Span]):
         super().__init__(after_set_callback=self.attach_doc_callback)
         self.spans = spans
+
+    @property
+    def id(self) -> int:
+        return self._.id
+
+    @id.setter
+    def id(self, value: int):
+        self._.id = value
 
     @property
     def symbols(self) -> Iterable[str]:
@@ -170,8 +240,16 @@ class SpanGroup(UserDataMixin, DocAttachable):
         return self.doc.find_overlapping_span_groups("rows", self)
 
     @property
-    def blocks(self) -> Iterable["BoxGroup"]:
-        return self.doc.find_overlapping_box_groups("blocks", self)
+    def blocks(self) -> Iterable["SpanGroup"]:
+        return self.doc.find_overlapping_span_groups("blocks", self)
+
+    @property
+    def box_group(self) -> "BoxGroup":
+        return self._.box_group
+
+    @box_group.setter
+    def box_group(self, value: "BoxGroup"):
+        self._.box_group = value
 
     def __getitem__(self, key: int):
         return self.spans[key]
@@ -200,7 +278,7 @@ class SpanGroup(UserDataMixin, DocAttachable):
 
 
 @dataclass
-class IntervalTreeSpanGroupIndexer:
+class IntervalTreeIndexer:
 
     _index: IntervalTree
 
@@ -217,9 +295,7 @@ class IntervalTreeSpanGroupIndexer:
 
         for span in query.spans:
             for matched_span_group in self._index[span.start : span.end]:
-                if (
-                    matched_span_group.data not in all_matched_span_groups
-                ):  # Deduplicate
+                if matched_span_group.data not in all_matched_span_groups:
                     all_matched_span_groups.append(matched_span_group.data)
 
         # retrieval can be out of order, so sort

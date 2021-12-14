@@ -17,10 +17,9 @@ class UserData:
             return
 
         if isinstance(value, Iterable):
-            for v in value:
-                self._callback(name, v)
-        else:
             self._callback(name, value)
+        else:
+            self._callback(name, [value])
 
     def __delattr__(self, name: str) -> None:
         self._data.__delitem__(name)

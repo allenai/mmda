@@ -2,13 +2,26 @@ from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.predictors.hf_predictors.nouveau_vila_predictor import NouveauHVilaPredictor
 from mmda.predictors.tesseract_predictors import TesseractBlockPredictor
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
-from mmda.types.nouveau.base import DocAttachable
+from mmda.types.nouveau.base import SpanGroup
 from mmda.types.nouveau.protocol import Parser, Rasterizer
 from mmda.types.nouveau.scientific import (
     ResearchArticle,
     TokenGroupBibliographyExtractor,
     TokenGroupTitleExtractor,
 )
+
+
+def color(color: str, node: SpanGroup):
+    print(f"Coloring {node} with {color}!")
+
+
+def color_red(node: SpanGroup):
+    color("RED", node)
+
+
+def color_blue(node: SpanGroup):
+    color("BLUE", node)
+
 
 PDF = "resources/maml.pdf"
 
@@ -26,7 +39,7 @@ doc.blocks = block_predictor.predict(doc)
 # Which can inform token-level predictions
 token_predictor = NouveauHVilaPredictor.from_pretrained(
     "allenai/hvila-row-layoutlm-finetuned-grotoap2",
-    agg_level="row",
+    agg_level="block",
     added_special_sepration_token="[BLK]",
     group_bbox_agg="first",
 )
@@ -50,5 +63,5 @@ for bib in doc.bibliography:
     for author in bib.authors:
         print(author.text)
 
-        for token in author.tokens:
-            print(token)
+        color_red(author.first_name.tokens)
+        color_blue(author.first_name.tokens)
