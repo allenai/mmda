@@ -69,6 +69,10 @@ class NouveauHVilaPredictor(SpanPredictor):
         )
 
     def predict(self, document: Document) -> Iterable[TokenGroup]:
+        preds = self.model.predict(document)
+        import pdb
+
+        pdb.set_trace()
         return [self._convert_span_group(sg) for sg in self.model.predict(document)]
 
     def _convert_span_group(self, legacy_span_group: legacy.SpanGroup) -> TokenGroup:

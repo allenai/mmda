@@ -157,6 +157,9 @@ class BaseVILAPredictor(BaseHFPredictor):
             # VILA models trained based on absolute page width rather than the
             # size (1000, 1000) in vanilla LayoutLM models
 
+            if page_id == 8:
+                print(pdf_dict)
+
             model_inputs = self.preprocess(pdf_dict)
             model_outputs = self.model(**self.model_input_collator(model_inputs))
             model_predictions = self.get_category_prediction(model_outputs)

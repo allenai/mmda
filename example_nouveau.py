@@ -30,11 +30,14 @@ rasterizer: Rasterizer = PDF2ImageRasterizer()
 
 # First we'll parse the document and attach images
 doc = ResearchArticle.from_document(parser.parse(PDF))
-doc.attach_images(rasterizer.convert(PDF, dpi=72))
+doc.attach_images(rasterizer.convert(PDF, dpi=150))
 
 # Now we need model-specific details like text blocks
 block_predictor = TesseractBlockPredictor()
 doc.blocks = block_predictor.predict(doc)
+
+# Overwrite images b/c of what HVILA expects
+doc.attach_images(rasterizer.convert(PDF, dpi=72))
 
 # Which can inform token-level predictions
 token_predictor = NouveauHVilaPredictor.from_pretrained(
