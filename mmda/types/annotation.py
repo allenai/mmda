@@ -7,8 +7,9 @@ Collections of Annotations are how one constructs a new Iterable of Group-type o
 """
 
 from abc import abstractmethod
+from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Type
+from typing import Dict, Iterable, List, Optional
 
 from mmda.types.box import Box
 from mmda.types.names import Symbols
@@ -45,13 +46,13 @@ class Annotation:
 
     # TODO[kylel] - comment explaining
     def __getattr__(self, field: str) -> List["Annotation"]:
+        if self.key_prefix + field in self.doc.fields:
+            return self.doc.find_overlapping(self, self.key_prefix + field)
+
         if field in self.doc.fields:
             return self.doc.find_overlapping(self, field)
-        # TODO - Check how to implement this
-        # elif field == Symbols:
-        #     return self.get_symbols()
-        else:
-            return self.__getattribute__(field)     # TODO[kylel] - alternatively, have it fail
+
+        return self.__getattribute__(field)
 
 
 @dataclass
@@ -90,6 +91,23 @@ class SpanGroup(Annotation):
     def symbols(self) -> List[str]:
         return [self.doc.symbols[span.start : span.end] for span in self.spans]
 
+    @property
+    def key_prefix(self) -> str:
+        if not self.id:
+            raise ValueError("Annotation must have an ID to accept nested annotations!")
+
+        return f"{self.__class__.__name__}|{self.id}|"
+
+    def annotate(
+        self, is_overwrite: bool = False, **kwargs: Iterable["Annotation"]
+    ) -> None:
+        if self.doc is None:
+            raise ValueError("SpanGroup has no attached document!")
+
+        key_remaps = {self.key_prefix + k: v for k, v in kwargs.items()}
+
+        self.doc.annotate(is_overwrite=is_overwrite, **key_remaps)
+
     def to_json(self) -> Dict:
         span_group_dict = dict(
             spans=[span.to_json() for span in self.spans],
@@ -107,11 +125,16 @@ class SpanGroup(Annotation):
             box_group = BoxGroup.from_json(box_group_dict=box_group_dict)
         else:
             box_group = None
-        return SpanGroup(spans=[Span.from_json(span_dict=span_dict) for span_dict in span_group_dict['spans']],
-                         id=span_group_dict.get('id'),
-                         text=span_group_dict.get('text'),
-                         type=span_group_dict.get('type'),
-                         box_group=box_group)
+        return SpanGroup(
+            spans=[
+                Span.from_json(span_dict=span_dict)
+                for span_dict in span_group_dict["spans"]
+            ],
+            id=span_group_dict.get("id"),
+            text=span_group_dict.get("text"),
+            type=span_group_dict.get("type"),
+            box_group=box_group,
+        )
 
     def __getitem__(self, key: int):
         return self.spans[key]
@@ -129,3 +152,17 @@ class SpanGroup(Annotation):
             return self.id < other.id
         else:
             return self.start < other.start
+
+    def __deepcopy__(self, memo):
+        span_group = SpanGroup(
+            spans=deepcopy(self.spans, memo),
+            id=self.id,
+            text=self.text,
+            type=self.type,
+            box_group=deepcopy(self.box_group, memo),
+        )
+
+        # Don't copy an attached document
+        span_group.doc = self.doc
+
+        return span_group
