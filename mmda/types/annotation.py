@@ -10,6 +10,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional
+from uuid import uuid4
 
 from mmda.types.box import Box
 from mmda.types.names import Symbols
@@ -20,6 +21,7 @@ from mmda.types.span import Span
 class Annotation:
     """Annotation is intended for storing model predictions for a document."""
 
+    uuid: str = field(default_factory=uuid4)
     doc: Optional["Document"] = field(default=False, init=False)
     # Specify an attribute with default value in the parent class
     # Ref: https://stackoverflow.com/a/58525728
@@ -40,10 +42,7 @@ class Annotation:
 
     @property
     def key_prefix(self) -> str:
-        if self.id is None:
-            raise ValueError("Annotation must have an ID to accept nested annotations!")
-
-        return f"{self.__class__.__name__}|{self.id}|"
+        return f"{self.__class__.__name__}|{self.uuid}|"
 
     def attach_doc(self, doc: "Document") -> None:
         if not self.doc:
@@ -53,7 +52,7 @@ class Annotation:
 
     # TODO[kylel] - comment explaining
     def __getattr__(self, field: str) -> List["Annotation"]:
-        if self.id is not None and self.key_prefix + field in self.doc.fields:
+        if self.key_prefix + field in self.doc.fields:
             return self.doc.find_overlapping(self, self.key_prefix + field)
 
         if field in self.doc.fields:
@@ -70,7 +69,10 @@ class BoxGroup(Annotation):
 
     def to_json(self) -> Dict:
         box_group_dict = dict(
-            boxes=[box.to_json() for box in self.boxes], id=self.id, type=self.type
+            boxes=[box.to_json() for box in self.boxes],
+            id=self.id,
+            type=self.type,
+            uuid=self.uuid,
         )
         return {
             key: value for key, value in box_group_dict.items() if value
@@ -85,6 +87,7 @@ class BoxGroup(Annotation):
             ],
             id=box_group_dict.get("id"),
             type=box_group_dict.get("type"),
+            uuid=box_group_dict.get("uuid", uuid4()),
         )
 
     def __getitem__(self, key: int):
@@ -92,7 +95,7 @@ class BoxGroup(Annotation):
 
     def __deepcopy__(self, memo):
         box_group = BoxGroup(
-            id=self.id, boxes=deepcopy(self.boxes, memo), type=self.type
+            id=self.id, boxes=deepcopy(self.boxes, memo), type=self.type, uuid=self.uuid
         )
 
         # Don't copy an attached document
@@ -130,6 +133,7 @@ class SpanGroup(Annotation):
             text=self.text,
             type=self.type,
             box_group=self.box_group.to_json() if self.box_group else None,
+            uuid=self.uuid,
         )
         return {
             key: value for key, value in span_group_dict.items() if value is not None
@@ -151,6 +155,7 @@ class SpanGroup(Annotation):
             text=span_group_dict.get("text"),
             type=span_group_dict.get("type"),
             box_group=box_group,
+            uuid=span_group_dict.get("uuid", uuid4()),
         )
 
     def __getitem__(self, key: int):
@@ -185,6 +190,7 @@ class SpanGroup(Annotation):
             text=self.text,
             type=self.type,
             box_group=deepcopy(self.box_group, memo),
+            uuid=self.uuid,
         )
 
         # Don't copy an attached document
