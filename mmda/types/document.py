@@ -125,7 +125,6 @@ class Document:
 
         new_span_group_indexer = SpanGroupIndexer()
         for span_group in span_groups:
-
             # 1) add Document to each SpanGroup
             span_group.attach_doc(doc=self)
 
@@ -166,7 +165,6 @@ class Document:
             for box in box_group.boxes:
 
                 # Caching the page tokens to avoid duplicated search
-
                 if box.page not in all_page_tokens:
                     cur_page_tokens = all_page_tokens[box.page] = list(
                         itertools.chain.from_iterable(
@@ -271,4 +269,3 @@ class Document:
         doc.annotate(**field_name_to_span_groups)
 
         return doc
-

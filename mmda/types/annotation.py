@@ -38,15 +38,22 @@ class Annotation:
     def from_json(cls, annotation_dict: Dict) -> "Annotation":
         pass
 
+    @property
+    def key_prefix(self) -> str:
+        if self.id is None:
+            raise ValueError("Annotation must have an ID to accept nested annotations!")
+
+        return f"{self.__class__.__name__}|{self.id}|"
+
     def attach_doc(self, doc: "Document") -> None:
         if not self.doc:
             self.doc = doc
         else:
-            raise AttributeError(f'This annotation already has an attached document')
+            raise AttributeError(f"This annotation already has an attached document")
 
     # TODO[kylel] - comment explaining
     def __getattr__(self, field: str) -> List["Annotation"]:
-        if self.key_prefix + field in self.doc.fields:
+        if self.id is not None and self.key_prefix + field in self.doc.fields:
             return self.doc.find_overlapping(self, self.key_prefix + field)
 
         if field in self.doc.fields:
@@ -63,20 +70,35 @@ class BoxGroup(Annotation):
 
     def to_json(self) -> Dict:
         box_group_dict = dict(
-            boxes=[box.to_json() for box in self.boxes],
-            id=self.id,
-            type=self.type
+            boxes=[box.to_json() for box in self.boxes], id=self.id, type=self.type
         )
-        return {key: value for key, value in box_group_dict.items() if value}  # only serialize non-null values
+        return {
+            key: value for key, value in box_group_dict.items() if value
+        }  # only serialize non-null values
 
     @classmethod
     def from_json(cls, box_group_dict: Dict) -> "BoxGroup":
-        return BoxGroup(boxes=[Box.from_json(box_coords=box_dict) for box_dict in box_group_dict['boxes']],
-                        id=box_group_dict.get('id'),
-                        type=box_group_dict.get('type'))
+        return BoxGroup(
+            boxes=[
+                Box.from_json(box_coords=box_dict)
+                for box_dict in box_group_dict["boxes"]
+            ],
+            id=box_group_dict.get("id"),
+            type=box_group_dict.get("type"),
+        )
 
     def __getitem__(self, key: int):
         return self.boxes[key]
+
+    def __deepcopy__(self, memo):
+        box_group = BoxGroup(
+            id=self.id, boxes=deepcopy(self.boxes, memo), type=self.type
+        )
+
+        # Don't copy an attached document
+        box_group.doc = self.doc
+
+        return box_group
 
 
 @dataclass
@@ -90,13 +112,6 @@ class SpanGroup(Annotation):
     @property
     def symbols(self) -> List[str]:
         return [self.doc.symbols[span.start : span.end] for span in self.spans]
-
-    @property
-    def key_prefix(self) -> str:
-        if not self.id:
-            raise ValueError("Annotation must have an ID to accept nested annotations!")
-
-        return f"{self.__class__.__name__}|{self.id}|"
 
     def annotate(
         self, is_overwrite: bool = False, **kwargs: Iterable["Annotation"]
@@ -116,11 +131,13 @@ class SpanGroup(Annotation):
             type=self.type,
             box_group=self.box_group.to_json() if self.box_group else None,
         )
-        return {key: value for key, value in span_group_dict.items() if value is not None}  # only serialize non-null values
+        return {
+            key: value for key, value in span_group_dict.items() if value is not None
+        }  # only serialize non-null values
 
     @classmethod
     def from_json(cls, span_group_dict: Dict) -> "SpanGroup":
-        box_group_dict = span_group_dict.get('box_group')
+        box_group_dict = span_group_dict.get("box_group")
         if box_group_dict:
             box_group = BoxGroup.from_json(box_group_dict=box_group_dict)
         else:
@@ -141,13 +158,21 @@ class SpanGroup(Annotation):
 
     @property
     def start(self) -> int:
-        return min([span.start for span in self.spans]) if len(self.spans) > 0 else float("-inf")
+        return (
+            min([span.start for span in self.spans])
+            if len(self.spans) > 0
+            else float("-inf")
+        )
 
     @property
     def end(self) -> int:
-        return max([span.end for span in self.spans]) if len(self.spans) > 0 else float("inf")
+        return (
+            max([span.end for span in self.spans])
+            if len(self.spans) > 0
+            else float("inf")
+        )
 
-    def __lt__(self, other: 'SpanGroup'):
+    def __lt__(self, other: "SpanGroup"):
         if self.id and other.id:
             return self.id < other.id
         else:
