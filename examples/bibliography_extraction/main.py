@@ -121,6 +121,10 @@ page_num = _find_page_num(bib, _index_document_pages(document))
 page_blocks = [b for b in blocks if b.boxes[0].page == page_num]
 block_tokens = defaultdict(list)
 
+import pdb
+
+pdb.set_trace()
+
 # Group bib tokes into a block
 for token in bib.tokens:
     highest_overlap_block = _highest_overlap_block(token, page_blocks)

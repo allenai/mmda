@@ -6,9 +6,7 @@ Tests for DictionaryWordPredictor
 
 import tempfile
 import unittest
-
-from typing import Optional, Set, List
-
+from typing import List, Optional, Set
 
 from mmda.predictors.heuristic_predictors.dictionary_word_predictor import (
     DictionaryWordPredictor,
@@ -20,7 +18,9 @@ from mmda.types.span import Span
 def mock_document(symbols: str, spans: List[Span], rows: List[SpanGroup]) -> Document:
     doc = Document(symbols=symbols)
     doc.annotate(rows=rows)
-    doc.annotate(tokens=[SpanGroup(spans=[span]) for span in spans])
+    doc.annotate(
+        tokens=[SpanGroup(id=i + 1, spans=[span]) for i, span in enumerate(spans)]
+    )
     return doc
 
 
@@ -51,7 +51,7 @@ class TestDictionaryWordPredictor(unittest.TestCase):
             Span(start=72, end=77),  # tasks
         ]
 
-        rows = [SpanGroup(spans=spans[0:12]), SpanGroup(spans=spans[12:])]
+        rows = [SpanGroup(id=1, spans=spans[0:12]), SpanGroup(id=2, spans=spans[12:])]
         document = mock_document(symbols=text, spans=spans, rows=rows)
 
         with tempfile.NamedTemporaryFile() as f:
@@ -93,7 +93,7 @@ class TestDictionaryWordPredictor(unittest.TestCase):
             Span(start=72, end=77),  # tasks
         ]
 
-        rows = [SpanGroup(spans=spans[0:12]), SpanGroup(spans=spans[12:])]
+        rows = [SpanGroup(id=1, spans=spans[0:12]), SpanGroup(id=2, spans=spans[12:])]
         document = mock_document(symbols=text, spans=spans, rows=rows)
 
         with tempfile.NamedTemporaryFile() as f:
@@ -131,7 +131,7 @@ class TestDictionaryWordPredictor(unittest.TestCase):
             Span(start=59, end=65),  # manner
         ]
 
-        rows = [SpanGroup(spans=spans[0:11]), SpanGroup(spans=spans[11:])]
+        rows = [SpanGroup(id=1, spans=spans[0:11]), SpanGroup(id=2, spans=spans[11:])]
         document = mock_document(symbols=text, spans=spans, rows=rows)
 
         with tempfile.NamedTemporaryFile() as f:
@@ -169,9 +169,9 @@ class TestDictionaryWordPredictor(unittest.TestCase):
         ]
 
         rows = [
-            SpanGroup(spans=spans[0:5]),
-            SpanGroup(spans=spans[5:10]),
-            SpanGroup(spans=spans[10:]),
+            SpanGroup(id=1, spans=spans[0:5]),
+            SpanGroup(id=2, spans=spans[5:10]),
+            SpanGroup(id=3, spans=spans[10:]),
         ]
         document = mock_document(symbols=text, spans=spans, rows=rows)
 
@@ -201,8 +201,8 @@ class TestDictionaryWordPredictor(unittest.TestCase):
         ]
 
         rows = [
-            SpanGroup(spans=spans[0:2]),
-            SpanGroup(spans=spans[2:3]),
+            SpanGroup(id=1, spans=spans[0:2]),
+            SpanGroup(id=2, spans=spans[2:3]),
         ]
         document = mock_document(symbols=text, spans=spans, rows=rows)
 

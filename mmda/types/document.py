@@ -5,15 +5,12 @@
 """
 
 import itertools
-import json
-import os
 import warnings
 from copy import deepcopy
-from glob import glob
 from typing import Dict, Iterable, List, Optional
 
 from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
-from mmda.types.image import PILImage, pilimage
+from mmda.types.image import PILImage
 from mmda.types.indexers import Indexer, SpanGroupIndexer
 from mmda.types.names import Images, Symbols
 from mmda.utils.tools import allocate_overlapping_tokens_for_box, merge_neighbor_spans
@@ -128,7 +125,6 @@ class Document:
 
         new_span_group_indexer = SpanGroupIndexer()
         for span_group in span_groups:
-
             # 1) add Document to each SpanGroup
             span_group.attach_doc(doc=self)
 
@@ -169,7 +165,6 @@ class Document:
             for box in box_group.boxes:
 
                 # Caching the page tokens to avoid duplicated search
-
                 if box.page not in all_page_tokens:
                     cur_page_tokens = all_page_tokens[box.page] = list(
                         itertools.chain.from_iterable(
@@ -274,4 +269,3 @@ class Document:
         doc.annotate(**field_name_to_span_groups)
 
         return doc
-
