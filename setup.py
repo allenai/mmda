@@ -5,7 +5,7 @@ setuptools.setup(
     version="0.0.2",
     python_requires=">= 3.7",
     packages=setuptools.find_packages(include=["mmda.*"]),
-    install_requires=["intervaltree", "tqdm", "pdf2image", "pdfplumber", "requests"],
+    install_requires=["intervaltree", "tqdm", "pdf2image", "pdfplumber", "requests", "pandas"],
     extras_require={
         "dev": ["pytest"],
         "api": ["Flask", "gevent"],

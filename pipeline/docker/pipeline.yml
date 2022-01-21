@@ -1,11 +1,11 @@
 version: '3.7'
 services:
-  symbolscraper:
-    container_name: mmda-sscraper
+  pdfplumber:
+    container_name: mmda-pdfplumber
     ports: ["8081:80"]
     build:
       context: ../..
-      dockerfile: pipeline/docker/parsers/symbolscraper/Dockerfile
+      dockerfile: pipeline/docker/parsers/pdfplumber/Dockerfile
 
   layoutparser:
     container_name: mmda-layoutparser
