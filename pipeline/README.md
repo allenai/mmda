@@ -1,4 +1,6 @@
-```shell script
+Note: current working directory must be repo root.
+
+```bash
 # install python deps
 pip install -e '.[pipeline]'
 
