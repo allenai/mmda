@@ -48,7 +48,6 @@ def run_model():
     annotations = _predictor.predict(doc)
     for a in annotations:
         a.type = _label_names.get(a.type, f"label{a.type}")
-    print(json.dumps([sg.to_json() for sg in annotations]))
     return jsonify(annotations)
 
 
