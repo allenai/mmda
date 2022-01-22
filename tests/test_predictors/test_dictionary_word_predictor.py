@@ -4,7 +4,6 @@ Tests for DictionaryWordPredictor
 @rauthur
 """
 
-import json
 import tempfile
 import unittest
 from typing import List, Optional, Set
