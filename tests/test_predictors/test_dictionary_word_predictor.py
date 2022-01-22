@@ -218,28 +218,3 @@ class TestDictionaryWordPredictor(unittest.TestCase):
             "Many lin-es",
             " ".join([w.text for w in words]),
         )
-
-
-def main():
-    with open("/Users/yogic/doc.json") as f:
-        doc = Document.from_json(json.load(f))
-
-    with open("/Users/yogic/vilaSpans.json") as f:
-        vila_spans = [
-            SpanGroup.from_json(sg)
-            for sg in json.load(f)
-        ]
-    doc.annotate(vila=vila_spans)  # spans from vila
-
-    predictor = DictionaryWordPredictor(dictionary_file_path="/Users/yogic/dict.txt")
-    words = predictor.predict(doc)
-    doc.annotate(words=words)  # spans from word-predictor
-
-    cleaned = " ".join(sg.text for sg in doc.vila if sg.type == "Abstract")
-    print(cleaned)
-
-    breakpoint()
-
-
-if __name__ == '__main__':
-    main()
