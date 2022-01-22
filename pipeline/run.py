@@ -42,7 +42,7 @@ with open(document_file, "w") as f:
     json.dump(doc.to_json(), f)  # add with_images=True if you want.
 
 title = ' '.join([' '.join(sg.symbols) for sg in doc.vila_spans if sg.type == "Title"])
-abstract = '\n'.join([' '.join(sg.symbols) for sg in doc.vila_spans if sg.type == "Abstract"])
+abstract = ' '.join([' '.join(sg.symbols) for sg in doc.vila_spans if sg.type == "Abstract"])
 abstract_cleaned = " ".join(
     " ".join(w.text for w in sg.words)
     for sg in doc.vila_spans if sg.type == "Abstract"
