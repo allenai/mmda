@@ -2,21 +2,12 @@ import os
 import json
 import re
 import sys
-from uuid import UUID
 
 import requests
 
 from mmda.types.annotation import SpanGroup, BoxGroup
 from mmda.types.document import Document
 from mmda.predictors.heuristic_predictors.dictionary_word_predictor import DictionaryWordPredictor
-
-
-class UUIDEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, UUID):
-            # if the obj is uuid, we simply return the value of uuid
-            return obj.hex
-        return json.JSONEncoder.default(self, obj)
 
 
 assert re.match(".+\\.pdf$", sys.argv[1].lstrip())
@@ -39,11 +30,7 @@ resp = requests.post("http://localhost:8082", json=doc.to_json(with_images=True)
 box_groups = [BoxGroup.from_json(p) for p in resp.json()]
 doc.annotate(blocks=box_groups)
 
-resp = requests.post(
-    "http://localhost:8083",
-    data=json.dumps(doc.to_json(with_images=True), cls=UUIDEncoder),
-    headers={"Content-Type": "application/json"}
-)
+resp = requests.post("http://localhost:8083", json=doc.to_json(with_images=True))
 span_groups = [SpanGroup.from_json(p) for p in resp.json()]
 doc.annotate(vila_spans=span_groups)
 
@@ -52,7 +39,7 @@ words = dictionary_word_predictor.predict(doc)
 doc.annotate(words=words)
 
 with open(document_file, "w") as f:
-    json.dump(doc.to_json(), f, cls=UUIDEncoder)  # add with_images=True if you want.
+    json.dump(doc.to_json(), f)  # add with_images=True if you want.
 
 title = ' '.join([' '.join(sg.symbols) for sg in doc.vila_spans if sg.type == "Title"])
 abstract = '\n'.join([' '.join(sg.symbols) for sg in doc.vila_spans if sg.type == "Abstract"])
