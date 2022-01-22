@@ -10,7 +10,7 @@ aws s3 cp --recursive \
   pipeline/vila-model
 
 # start models
-docker-compose -f pipeline/pipeline.yml -d
+docker-compose -f pipeline/pipeline.yml up -d
 
 # run script
 python pipeline/run.py path/to/pdf
