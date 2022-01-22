@@ -1,4 +1,5 @@
-/pipeline/vila-model-weights/
+/temp/
+/pipeline/vila-model/
 
 # Mac Finder Configurations
 .DS_Store

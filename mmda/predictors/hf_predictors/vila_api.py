@@ -1,11 +1,12 @@
+import json
 import os
+from typing import Optional
+
 from flask import Flask, request, jsonify
 from gevent.pywsgi import WSGIServer
 
 from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor
 from mmda.types.document import Document
-
-from typing import Optional
 
 app = Flask(__name__)
 
@@ -30,7 +31,7 @@ _label_names = {
 }
 
 
-def init_predictors():
+def init_predictor():
     global _predictor
     if not _predictor:
         _predictor = IVILAPredictor.from_pretrained(
@@ -42,11 +43,12 @@ def init_predictors():
 
 @app.post("/")
 def run_model():
-    init_predictors()
+    init_predictor()
     doc = Document.from_json(request.json)
     annotations = _predictor.predict(doc)
     for a in annotations:
         a.type = _label_names.get(a.type, f"label{a.type}")
+    print(json.dumps([sg.to_json() for sg in annotations]))
     return jsonify(annotations)
 
 
