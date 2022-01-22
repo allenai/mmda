@@ -1,0 +1,26 @@
+version: '3.7'
+services:
+  pdfplumber:
+    container_name: mmda-pdfplumber
+    ports: ["8081:80"]
+    build:
+      context: ..
+      dockerfile: pipeline/docker/Dockerfile.pdfplumber
+
+  layoutparser:
+    container_name: mmda-layoutparser
+    ports: ["8082:80"]
+    environment:
+      MODEL_CONFIG: lp://efficientdet/PubLayNet,lp://efficientdet/MFD
+    build:
+      context: ..
+      dockerfile: pipeline/docker/Dockerfile.layoutparser
+
+  vila:
+    container_name: mmda-vila
+    ports: ["8083:80"]
+    build:
+      context: ..
+      dockerfile: pipeline/docker/Dockerfile.vila
+      args:
+        MODEL_CONFIG: pipeline/vila-model

@@ -139,7 +139,8 @@ class BaseVILAPredictor(BaseHFPredictor):
 
             start = min([ele.start for ele in cur_spans])
             end = max([ele.end for ele in cur_spans])
-            prediction_spans.append(SpanGroup([Span(start, end)], type=label))
+            prediction_spans.append(SpanGroup(spans=[Span(start, end)], type=label))
+
         return prediction_spans
 
     def predict(self, document: Document) -> List[Annotation]:

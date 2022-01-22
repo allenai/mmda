@@ -1,13 +1,16 @@
+import json
 import os
+from typing import Optional
+
 from flask import Flask, request, jsonify
 from gevent.pywsgi import WSGIServer
 
-from mmda.predictors.hf_predictors.vila_predictor import HVILAPredictor
+from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor
 from mmda.types.document import Document
 
 app = Flask(__name__)
 
-_predictor = None
+_predictor: Optional[IVILAPredictor] = None
 _label_names = {
     0: "Title",
     1: "Author",
@@ -28,17 +31,19 @@ _label_names = {
 }
 
 
-def init_predictors():
+def init_predictor():
     global _predictor
     if not _predictor:
-        _predictor = HVILAPredictor.from_pretrained(
-            "/pipeline/vila-model", agg_level="block", group_bbox_agg="first"
+        _predictor = IVILAPredictor.from_pretrained(
+            "/pipeline/vila-model",
+            added_special_sepration_token="[BLK]",
+            agg_level="row",
         )
 
 
 @app.post("/")
 def run_model():
-    init_predictors()
+    init_predictor()
     doc = Document.from_json(request.json)
     annotations = _predictor.predict(doc)
     for a in annotations:

@@ -5,7 +5,6 @@ Annotations are objects that are 'aware' of the Document
 Collections of Annotations are how one constructs a new Iterable of Group-type objects within the Document
 
 """
-
 from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -13,15 +12,18 @@ from typing import Dict, Iterable, List, Optional
 from uuid import uuid4
 
 from mmda.types.box import Box
-from mmda.types.names import Symbols
 from mmda.types.span import Span
+
+
+def default_factory():
+    return str(uuid4())
 
 
 @dataclass
 class Annotation:
     """Annotation is intended for storing model predictions for a document."""
 
-    uuid: str = field(default_factory=uuid4)
+    uuid: str = field(default_factory=default_factory)
     doc: Optional["Document"] = field(default=False, init=False)
     # Specify an attribute with default value in the parent class
     # Ref: https://stackoverflow.com/a/58525728
@@ -87,7 +89,7 @@ class BoxGroup(Annotation):
             ],
             id=box_group_dict.get("id"),
             type=box_group_dict.get("type"),
-            uuid=box_group_dict.get("uuid", uuid4()),
+            uuid=box_group_dict.get("uuid", str(uuid4())),
         )
 
     def __getitem__(self, key: int):
@@ -155,7 +157,7 @@ class SpanGroup(Annotation):
             text=span_group_dict.get("text"),
             type=span_group_dict.get("type"),
             box_group=box_group,
-            uuid=span_group_dict.get("uuid", uuid4()),
+            uuid=span_group_dict.get("uuid", str(uuid4())),
         )
 
     def __getitem__(self, key: int):

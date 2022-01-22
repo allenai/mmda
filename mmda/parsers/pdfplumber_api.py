@@ -3,12 +3,12 @@ import tempfile
 from flask import Flask, request
 from gevent.pywsgi import WSGIServer
 
-from mmda.parsers.symbol_scraper_parser import SymbolScraperParser
+from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 
 
 app = Flask(__name__)
-sscraper = SymbolScraperParser("sscraper")
+pdfplumber = PDFPlumberParser()
 rasterizer = PDF2ImageRasterizer()
 
 
@@ -18,7 +18,7 @@ def parse_pdf():
         pdf_path = f"{tempdir}/input.pdf"
         with open(pdf_path, "wb") as f:
             f.write(request.get_data())
-        doc = sscraper.parse(pdf_path)
+        doc = pdfplumber.parse(pdf_path)
         doc.annotate_images(rasterizer.rasterize(input_pdf_path=pdf_path, dpi=72))
         return doc.to_json(with_images=True)
 
