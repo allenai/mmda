@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import sys
 from uuid import UUID
 
@@ -18,11 +19,18 @@ class UUIDEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-pdf_file = os.path.abspath(sys.argv[1])
-json_file = f"{pdf_file}.json"
-json2_file = f"{pdf_file}.json2"
+assert re.match(".+\\.pdf$", sys.argv[1].lstrip())
+pdf_file_prefix = '.'.join(os.path.abspath(sys.argv[1]).split(".")[:-1])
 
-with open(pdf_file, "rb") as f:
+pdf_file = f"{pdf_file_prefix}.pdf"
+document_file = f"{pdf_file_prefix}-document.json"
+elements_file = f"{pdf_file_prefix}-elements.json"
+
+print(f"reading pdf from from {pdf_file}")
+print(f"writing document to   {document_file}")
+print(f"writing elements to   {elements_file}")
+
+with open(f"{pdf_file_prefix}.pdf", "rb") as f:
     pdf_bytes = f.read()
 
 doc = Document.from_json(requests.post("http://localhost:8081", data=pdf_bytes).json())
@@ -43,7 +51,7 @@ dictionary_word_predictor = DictionaryWordPredictor("/dev/null")
 words = dictionary_word_predictor.predict(doc)
 doc.annotate(words=words)
 
-with open(json_file, "w") as f:
+with open(document_file, "w") as f:
     json.dump(doc.to_json(), f, cls=UUIDEncoder)  # add with_images=True if you want.
 
 title = ' '.join([' '.join(sg.symbols) for sg in doc.vila_spans if sg.type == "Title"])
@@ -53,5 +61,5 @@ abstract_cleaned = " ".join(
     for sg in doc.vila_spans if sg.type == "Abstract"
 )
 
-with open(json2_file, 'w') as f:
+with open(elements_file, 'w') as f:
     json.dump({'title': title, 'abstract': abstract, 'abstract_cleaned': abstract_cleaned}, f, indent=2)
