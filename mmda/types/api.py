@@ -55,7 +55,7 @@ class BoxGroup(BaseModel):
     @classmethod
     def from_mmda(cls, box_group: mmda_ann.BoxGroup) -> BoxGroup:
         boxes = [Box.from_mmda(box) for box in box_group.boxes]
-        return cls(boxes=boxes, id=box_group.id, type=box_group.id)
+        return cls(boxes=boxes, id=box_group.id, type=box_group.type)
 
     def to_mmda(self) -> mmda_ann.BoxGroup:
         boxes = [box.to_mmda() for box in self.boxes]
