@@ -6,6 +6,9 @@ from pydantic import BaseModel, validator
 import mmda.types.annotation as mmda_ann
 
 
+__all__ = ["Span", "BoxGroup", "SpanGroup"]
+
+
 def _validate_box(box: List[float]) -> None:
     assert len(box) == 5, "Box must have format [x, y, w, h, page]"
     assert int(box[4]) == box[4], "Page must be an integer value"
