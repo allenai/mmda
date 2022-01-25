@@ -1,63 +1,65 @@
 from __future__ import annotations
 
 from typing import List, Optional
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 import mmda.types.annotation as mmda_ann
 
 
-__all__ = ["Span", "BoxGroup", "SpanGroup"]
+__all__ = ["BoxGroup", "SpanGroup"]
 
 
-def _validate_box(box: List[float]) -> None:
-    assert len(box) == 5, "Box must have format [x, y, w, h, page]"
-    assert int(box[4]) == box[4], "Page must be an integer value"
+class Box(BaseModel):
+    left: float
+    top: float
+    width: float
+    height: float
+    page: int
+
+    @classmethod
+    def from_mmda(cls, box: mmda_ann.Box) -> Box:
+        return cls(
+            left=box.l, top=box.t, width=box.w, height=box.h, page=box.page
+        )
+
+    def to_mmda(self) -> mmda_ann.Box:
+        return mmda_ann.Box(
+            l=self.left, t=self.top, w=self.width, h=self.height, page=self.page
+        )
 
 
 class Span(BaseModel):
     start: int
     end: int
-    box: Optional[List[float]]
+    box: Optional[Box]
 
     @classmethod
     def from_mmda(cls, span: mmda_ann.Span) -> Span:
         ret = cls(start=span.start, end=span.end)
         if span.box is not None:
-            ret.box = span.box.to_json()
+            ret.box = Box.from_mmda(span.box)
         return ret
 
     def to_mmda(self) -> mmda_ann.Span:
         ret = mmda_ann.Span(start=self.start, end=self.end)
         if self.box is not None:
-            ret.box = mmda_ann.Box.from_json(self.box)
+            ret.box = self.box.to_mmda()
         return ret
-
-    @validator('box')
-    def validate_box(cls, maybe_box):
-        if maybe_box is not None:
-            _validate_box(maybe_box)
-        return maybe_box
 
 
 class BoxGroup(BaseModel):
-    boxes: List[List[float]]
+    boxes: List[Box]
     id: Optional[int]
     type: Optional[str]
 
     @classmethod
     def from_mmda(cls, box_group: mmda_ann.BoxGroup) -> BoxGroup:
-        boxes = [box.to_json() for box in box_group.boxes]
+        boxes = [Box.from_mmda(box) for box in box_group.boxes]
         return cls(boxes=boxes, id=box_group.id, type=box_group.id)
 
     def to_mmda(self) -> mmda_ann.BoxGroup:
-        boxes = [mmda_ann.Box.from_json(box) for box in self.boxes]
+        boxes = [box.to_mmda() for box in self.boxes]
         return mmda_ann.BoxGroup(boxes=boxes, id=self.id, type=self.type)
-
-    @validator('boxes')
-    def validate_boxes(cls, boxes):
-        for box in boxes:
-            _validate_box(box)
-        return boxes
 
 
 class SpanGroup(BaseModel):
