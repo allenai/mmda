@@ -2,7 +2,7 @@ Note: current working directory must be repo root.
 
 ```bash
 # install python deps
-pip install -e '.[pipeline]'
+pip install -r requirements.txt
 
 # Copy VILA model weights into pipeline directory
 aws s3 cp --recursive \

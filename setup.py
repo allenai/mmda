@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="mmda",
-    version="0.0.2",
+    version="0.0.4",
     python_requires=">= 3.7",
     packages=setuptools.find_packages(include=["mmda*"]),
     install_requires=[
@@ -12,6 +12,7 @@ setuptools.setup(
         "pdfplumber",
         "requests",
         "pandas",
+        "pydantic"
     ],
     extras_require={
         "dev": ["pytest"],
