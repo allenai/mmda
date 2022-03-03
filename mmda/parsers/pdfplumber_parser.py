@@ -265,17 +265,20 @@ class PDFPlumberParser(Parser):
                 page_rows.append(row)
                 row_annos.append(row)
             # make page
-            page = SpanGroup(
-                spans=[
-                    Span(
-                        start=page_rows[0][0].start,
-                        end=page_rows[-1][0].end,
-                        box=Box.small_boxes_to_big_box(
-                            boxes=[span.box for r in page_rows for span in r]
-                        ),
-                    )
-                ]
-            )
+            if page_rows:
+                page = SpanGroup(
+                    spans=[
+                        Span(
+                            start=page_rows[0][0].start,
+                            end=page_rows[-1][0].end,
+                            box=Box.small_boxes_to_big_box(
+                                boxes=[span.box for r in page_rows for span in r]
+                            ),
+                        )
+                    ]
+                )
+            else:
+                page = SpanGroup(spans=[])
             page_annos.append(page)
         # add IDs
         for i, page in enumerate(page_annos):
