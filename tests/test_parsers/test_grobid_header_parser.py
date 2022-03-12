@@ -4,9 +4,9 @@ import unittest.mock as um
 import pytest
 from mmda.parsers.grobid_parser import GrobidHeaderParser
 
-XML_OK = open("tests/fixtures/grobid-tei-maml-header.xml").read()
-XML_NO_TITLE = open("tests/fixtures/grobid-tei-no-title.xml").read()
-XML_NO_ABS = open("tests/fixtures/grobid-tei-no-abstract.xml").read()
+XML_OK = open("../fixtures/grobid-tei-maml-header.xml").read()
+XML_NO_TITLE = open("../fixtures/grobid-tei-no-title.xml").read()
+XML_NO_ABS = open("../fixtures/grobid-tei-no-abstract.xml").read()
 
 
 def mock_post(*args, **kwargs):
