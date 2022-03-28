@@ -7,6 +7,7 @@ from tqdm import tqdm
 import layoutparser as lp
 
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from mmda.types.annotation import SpanGroup
 from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor, HVILAPredictor
@@ -99,6 +100,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pdf-path", type=str, nargs="+")
     parser.add_argument("--vila-type", type=str, default="ivila")
+    parser.add_argument("--rasterizer-dpi", type=int, default=72)
     parser.add_argument(
         "--vila-model-path",
         type=str,
@@ -131,12 +133,15 @@ if __name__ == "__main__":
     )
 
     pdfplumber_parser = PDFPlumberParser()
+    rasterizer = PDF2ImageRasterizer()
 
     pbar = tqdm(args.pdf_path)
     for pdf_path in pbar:
         pbar.set_description(f"Working on {pdf_path}")
 
-        doc = pdfplumber_parser.parse(input_pdf_path=pdf_path, load_images=True)
+        doc = pdfplumber_parser.parse(input_pdf_path=pdf_path)
+        images = rasterizer.rasterize(input_pdf_path=pdf_path, dpi=args.rasterizer_dpi)
+        doc.annotate_images(images)
 
         # Obtaining Layout Predictions
         layout_regions = layout_predictor.predict(
