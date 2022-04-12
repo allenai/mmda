@@ -9,6 +9,7 @@ from typing import List, Optional, Dict, Tuple, Type
 from abc import abstractmethod
 from dataclasses import dataclass, field
 import warnings
+import numpy as np
 
 
 def is_overlap_1d(start1: float, end1: float, start2: float, end2: float) -> bool:
@@ -58,35 +59,20 @@ class Box:
         will perform extra checks to ensure the coordinates are valid, i.e.,
         0<= x1 <= x2 <= page_width and 0<= y1 <= y2 <= page_height.
         """
-        error_msg = []
-        if x1 > x2:
-            error_msg.append(f"Box Coordinates x1 > x2: {x1} > {x2}, enforcing x2=x1")
-            x2 = x1
-        if y1 > y2:
-            error_msg.append(f"Box Coordinates y1 > y2: {y1} > {y2}, enforcing y2=y1")
-            y2 = y1
 
-        if x1 < 0:
-            error_msg.append(f"Box Coordinates x1 < 0: {x1}, enforcing x1=0")
-            x1 = 0
-        if y1 < 0:
-            error_msg.append(f"Box Coordinates y1 < 0: {y1}, enforcing y1=0")
-            y1 = 0
-        if x2 > page_width:
-            error_msg.append(
-                f"Box Coordinates x2 > page_width: {x2} > {page_width}, enforcing x2=page_width"
+        _x1, _x2 = np.clip([x1, x2], 0, page_width)
+        _y1, _y2 = np.clip([y1, y2], 0, page_height)
+
+        if _x2 > _x1:
+            _x2 = _x1
+        if _y2 > _y1:
+            _y2 = _y1
+        if (_x1, _y1, _x2, _y2) != (x1, y1, x2, y2):
+            warnings.warn(
+                f"The coordinates ({x1}, {y1}, {x2}, {y2}) are not valid and converted to ({_x1}, {_y1}, {_x2}, {_y2})."
             )
-            x2 = page_width
-        if y2 > page_height:
-            error_msg.append(
-                f"Box Coordinates y2 > page_height: {y2} > {page_height}, enforcing y2=page_height"
-            )
-            y2 = page_height
 
-        if len(error_msg) > 0:
-            warnings.warn("\n".join(["Issues for initializing Box:"]+error_msg))
-
-        return cls(x1, y1, x2 - x1, y2 - y1, page)
+        return cls(_x1, _y1, _x2 - _x1, _y2 - _y1, page)
 
     @classmethod
     def small_boxes_to_big_box(cls, boxes: List["Box"]) -> "Box":
