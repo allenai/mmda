@@ -8,6 +8,7 @@
 from typing import List, Optional, Dict, Tuple, Type
 from abc import abstractmethod
 from dataclasses import dataclass, field
+import warnings
 
 
 def is_overlap_1d(start1: float, end1: float, start2: float, end2: float) -> bool:
@@ -41,6 +42,53 @@ class Box:
         return cls(x1, y1, x2 - x1, y2 - y1, page)
 
     @classmethod
+    def from_pdf_coordinates(
+        cls,
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+        page_width: float,
+        page_height: float,
+        page: int,
+    ):
+        """
+        Convert PDF coordinates to absolute coordinates.
+        The difference between from_pdf_coordinates and from_coordinates is that this function
+        will perform extra checks to ensure the coordinates are valid, i.e.,
+        0<= x1 <= x2 <= page_width and 0<= y1 <= y2 <= page_height.
+        """
+        error_msg = []
+        if x1 > x2:
+            error_msg.append(f"Box Coordinates x1 > x2: {x1} > {x2}, enforcing x2=x1")
+            x2 = x1
+        if y1 > y2:
+            error_msg.append(f"Box Coordinates y1 > y2: {y1} > {y2}, enforcing y2=y1")
+            y2 = y1
+
+        if x1 < 0:
+            error_msg.append(f"Box Coordinates x1 < 0: {x1}, enforcing x1=0")
+            x1 = 0
+        if y1 < 0:
+            error_msg.append(f"Box Coordinates y1 < 0: {y1}, enforcing y1=0")
+            y1 = 0
+        if x2 > page_width:
+            error_msg.append(
+                f"Box Coordinates x2 > page_width: {x2} > {page_width}, enforcing x2=page_width"
+            )
+            x2 = page_width
+        if y2 > page_height:
+            error_msg.append(
+                f"Box Coordinates y2 > page_height: {y2} > {page_height}, enforcing y2=page_height"
+            )
+            y2 = page_height
+
+        if len(error_msg) > 0:
+            warnings.warn("\n".join(["Issues for initializing Box:"]+error_msg))
+
+        return cls(x1, y1, x2 - x1, y2 - y1, page)
+
+    @classmethod
     def small_boxes_to_big_box(cls, boxes: List["Box"]) -> "Box":
         """Computes one big box that tightly encapsulates all smaller input boxes"""
         if len({box.page for box in boxes}) != 1:
@@ -58,20 +106,20 @@ class Box:
 
     @property
     def center(self) -> Tuple[float, float]:
-        return self.l + self.w/2, self.t + self.h/2
+        return self.l + self.w / 2, self.t + self.h / 2
 
     @property
     def xywh(self) -> Tuple[float, float, float, float]:
         """Return a tuple of the (left, top, width, height) format."""
         return self.l, self.t, self.w, self.h
 
-    def get_relative(self, page_width: int, page_height: int) -> "Box":
+    def get_relative(self, page_width: float, page_height: float) -> "Box":
         """Get the relative coordinates of self based on page_width, page_height."""
         return self.__class__(
-            l=self.l / page_width,
-            t=self.t / page_height,
-            w=self.w / page_width,
-            h=self.h / page_height,
+            l=float(self.l) / page_width,
+            t=float(self.t) / page_height,
+            w=float(self.w) / page_width,
+            h=float(self.h) / page_height,
             page=self.page,
         )
 

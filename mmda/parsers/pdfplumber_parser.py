@@ -183,14 +183,16 @@ class PDFPlumberParser(Parser):
         page_tokens = [
             {
                 "text": token["text"],
-                "bbox": Box.from_coordinates(
+                "bbox": Box.from_pdf_coordinates(
                     x1=float(token["x0"]),
                     y1=float(token["top"]),
                     x2=float(token["x1"]),
                     y2=float(token["bottom"]),
+                    page_width=page.width, 
+                    page_height=page.height,
                     page=page_index,
                 ).get_relative(
-                    page_width=float(page.width), page_height=float(page.height)
+                    page_width=page.width, page_height=page.height
                 ),
             }
             for token in token_data
