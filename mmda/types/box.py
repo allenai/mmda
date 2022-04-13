@@ -63,9 +63,9 @@ class Box:
         _x1, _x2 = np.clip([x1, x2], 0, page_width)
         _y1, _y2 = np.clip([y1, y2], 0, page_height)
 
-        if _x2 > _x1:
+        if _x2 < _x1:
             _x2 = _x1
-        if _y2 > _y1:
+        if _y2 < _y1:
             _y2 = _y1
         if (_x1, _y1, _x2, _y2) != (x1, y1, x2, y2):
             warnings.warn(
