@@ -1,8 +1,12 @@
+import os
+import pathlib
 import unittest
 import unittest.mock as um
 
 import pytest
 from mmda.parsers.grobid_parser import GrobidHeaderParser
+
+os.chdir(pathlib.Path(__file__).parent)
 
 XML_OK = open("../fixtures/grobid-tei-maml-header.xml").read()
 XML_NO_TITLE = open("../fixtures/grobid-tei-no-title.xml").read()
