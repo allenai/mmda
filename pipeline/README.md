@@ -15,3 +15,9 @@ docker-compose -f pipeline/pipeline.yml up -d
 # run script
 python pipeline/run.py path/to/pdf
 ```  
+
+If you have managed to install everything outside docker, then update
+`pdf_file` in `pipeline/run_local.py` and run that instead:
+```
+python pipeline/run_local.py
+```
