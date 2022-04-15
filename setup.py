@@ -2,9 +2,9 @@ import setuptools
 
 setuptools.setup(
     name="mmda",
-    version="0.0.4",
+    version="0.0.5",
     python_requires=">= 3.7",
-    packages=setuptools.find_packages(include=["mmda*"]),
+    packages=setuptools.find_packages(include=["mmda*", "ai2_internal*"]),
     install_requires=[
         "intervaltree",
         "tqdm",
@@ -21,4 +21,5 @@ setuptools.setup(
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
         "vila_predictors": ["vila", "transformers"],
     },
+    include_package_data=True,
 )
