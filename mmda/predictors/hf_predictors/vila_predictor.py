@@ -127,7 +127,7 @@ class BaseVILAPredictor(BaseHFPredictor):
                 )
                 for bbox in batch
             ]
-            for batch in pdf_dict["bbox"]
+            for batch in model_inputs["bbox"]
         ]
         pdf_dict["labels"] = _labels
         return model_inputs

@@ -1,10 +1,13 @@
+import pathlib
+import sys
+
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.predictors.heuristic_predictors.dictionary_word_predictor import DictionaryWordPredictor
 from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 
-pdf_file = "/home/ubuntu/git/VILA/2306c568f2d3dfec6762ccb9fb16e63e173a.pdf"
+pdf_file = pathlib.Path(sys.argv[1]).resolve()
 print(f"reading pdf from from {pdf_file}")
 
 pdf_plumber = PDFPlumberParser()
@@ -12,7 +15,7 @@ rasterizer = PDF2ImageRasterizer()
 
 doc = pdf_plumber.parse(pdf_file)
 doc.annotate_images(rasterizer.rasterize(pdf_file, dpi=72))
-    
+ 
 lp_predictor1 = LayoutParserPredictor.from_pretrained("lp://efficientdet/PubLayNet")
 lp_predictor2 = LayoutParserPredictor.from_pretrained("lp://efficientdet/MFD")
 blocks = lp_predictor1.predict(doc) + lp_predictor2.predict(doc)
