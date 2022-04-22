@@ -32,12 +32,12 @@ dictionary_word_predictor = DictionaryWordPredictor("/dev/null")
 words = dictionary_word_predictor.predict(doc)
 doc.annotate(words=words)
 
-title = "".join(
-    "".join(w.text for w in sg.words)
+title = " ".join(
+    " ".join(w.text for w in sg.words)
     for sg in doc.vila_spans if sg.type == 0
 )
-abstract = "".join(
-    "".join(w.text for w in sg.words)
+abstract = " ".join(
+    " ".join(w.text for w in sg.words)
     for sg in doc.vila_spans if sg.type == 2
 )
 
