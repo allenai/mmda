@@ -62,6 +62,9 @@ def convert_document_page_to_pdf_dict(
         ).coordinates
         for token in document.tokens
     ]
+    # bounding boxes can be float, but VILA wants ints, so
+    # we round to int after getting the absolute coordinates.
+    bbox = [tuple(map(round, coord)) for coord in bbox]
 
     line_ids = [get_visual_group_id(token, Rows, -1) for token in document.tokens]
     # TODO: Right now we assume the token could span for one row of the document.
