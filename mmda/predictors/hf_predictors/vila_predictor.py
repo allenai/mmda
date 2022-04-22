@@ -23,8 +23,15 @@ from mmda.types.document import Document
 from mmda.predictors.hf_predictors.utils import (
     convert_document_page_to_pdf_dict,
     convert_sequence_tagging_to_spans,
+    normalize_bbox,
 )
 from mmda.predictors.hf_predictors.base_hf_predictor import BaseHFPredictor
+
+# Two constants for the constraining the size of the page for
+# inputs to the model.
+# TODO: Move this to somewhere else.
+MAX_PAGE_WIDTH = 1000
+MAX_PAGE_HEIGHT = 1000
 
 
 def columns_used_in_model_inputs(model):
@@ -98,7 +105,9 @@ class BaseVILAPredictor(BaseHFPredictor):
         # vila module.
         pass
 
-    def preprocess(self, pdf_dict: Dict[str, List[Any]]):
+    def preprocess(
+        self, pdf_dict: Dict[str, List[Any]], page_width: int, page_height: int
+    ) -> Dict[str, List[Any]]:
         _labels = pdf_dict.get("labels")
         pdf_dict["labels"] = [0] * len(pdf_dict["words"])
         # because the preprocess_sample requires the labels to be
@@ -107,6 +116,19 @@ class BaseVILAPredictor(BaseHFPredictor):
         # and we will change them back to the original labels later.
 
         model_inputs = self.preprocessor.preprocess_sample(pdf_dict)
+        model_inputs["bbox"] = [
+            [
+                normalize_bbox(
+                    bbox,
+                    page_width,
+                    page_height,
+                    target_width=MAX_PAGE_WIDTH,
+                    target_height=MAX_PAGE_HEIGHT,
+                )
+                for bbox in batch
+            ]
+            for batch in model_inputs["bbox"]
+        ]
         pdf_dict["labels"] = _labels
         return model_inputs
 
@@ -152,12 +174,12 @@ class BaseVILAPredictor(BaseHFPredictor):
                 page_width, page_height = document.images[page_id].size
 
                 pdf_dict = convert_document_page_to_pdf_dict(
-                    page, page_width=page_width,page_height=page_height
+                    page, page_width=page_width, page_height=page_height
                 )
                 # VILA models trained based on absolute page width rather than the
                 # size (1000, 1000) in vanilla LayoutLM models
 
-                model_inputs = self.preprocess(pdf_dict)
+                model_inputs = self.preprocess(pdf_dict, page_width, page_height)
                 model_outputs = self.model(**self.model_input_collator(model_inputs))
                 model_predictions = self.get_category_prediction(model_outputs)
                 page_prediction_results.extend(

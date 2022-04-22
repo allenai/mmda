@@ -19,7 +19,7 @@ setuptools.setup(
         "api": ["Flask", "gevent"],
         "pipeline": ["requests"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
-        "vila_predictors": ["vila", "transformers"],
+        "vila_predictors": ["vila >= 0.3.0", "transformers"],
     },
     include_package_data=True,
 )

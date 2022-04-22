@@ -6,6 +6,31 @@ from mmda.types.document import Document
 from mmda.types.names import *
 
 
+def normalize_bbox(
+    bbox,
+    page_width,
+    page_height,
+    target_width,
+    target_height,
+):
+    """
+    Normalize bounding box to the target size.
+    """
+
+    x1, y1, x2, y2 = bbox
+
+    # Right now only execute this for only "large" PDFs
+    # TODO: Change it for all PDFs
+    if page_width > target_width or page_height > target_height:
+
+        x1 = float(x1) / page_width * target_width
+        x2 = float(x2) / page_width * target_width
+        y1 = float(y1) / page_height * target_height
+        y2 = float(y2) / page_height * target_height
+
+    return (x1, y1, x2, y2)
+
+
 def shift_index_sequence_to_zero_start(sequence):
     """
     Shift a sequence to start at 0.
@@ -57,9 +82,9 @@ def convert_document_page_to_pdf_dict(
     # TODO: Right now we assume the token could only have a single span.
 
     bbox = [
-        token.spans[0].box.get_absolute(
-            page_width=page_width, page_height=page_height
-        ).coordinates
+        token.spans[0]
+        .box.get_absolute(page_width=page_width, page_height=page_height)
+        .coordinates
         for token in document.tokens
     ]
 
@@ -81,7 +106,6 @@ def convert_document_page_to_pdf_dict(
         "line_ids": line_ids,
         "labels": labels,
     }
-
 
 
 def convert_sequence_tagging_to_spans(
