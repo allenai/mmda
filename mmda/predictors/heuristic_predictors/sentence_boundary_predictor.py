@@ -143,6 +143,6 @@ class PysbdSentenceBoundaryPredictor(BaseHeuristicPredictor):
                 itertools.chain.from_iterable([ele.spans for ele in cur_spans])
             )
 
-            sentence_spans.append(SpanGroup(merge_neighbor_spans(all_token_spans)))
+            sentence_spans.append(SpanGroup(spans=merge_neighbor_spans(all_token_spans)))
 
         return sentence_spans
