@@ -2,16 +2,18 @@ config_version: 0.0.1
 model_variants:
   vila:
     # Class path to pydantic Instance implementation in <model_package_name>==<model_package_version>
-    instance: ai2_internal.timo.vila.interface.Instance
+    instance: ai2_internal.vila.interface.Instance
 
     # Class path to pydantic Prediction implementation in <model_package_name>==<model_package_version>
-    prediction: ai2_internal.timo.vila.interface.Prediction
+    prediction: ai2_internal.vila.interface.Prediction
 
     # Class path to Predictor implementation in <model_package_name>==<model_package_version>
-    predictor: ai2_internal.timo.vila.interface.Predictor
+    predictor: ai2_internal.vila.interface.Predictor
 
     # Class path to pydantic PredictorConfig implementation in <model_package_name>==<model_package_version>
-    predictor_config: ai2_internal.timo.vila.interface.PredictorConfig
+    predictor_config: ai2_internal.vila.interface.PredictorConfig
+
+    integration_test: ai2_internal.vila.integration_test.TestInterfaceIntegration
 
     # Any additional sets of dependencies required by the model.
     # These are the 'extras_require' keys in your setup.py.
@@ -24,8 +26,6 @@ model_variants:
     python_version: 3.8
 
     cuda: False
-
-    integration_test: ai2_internal.timo.vila.integration_test.TestInterfaceIntegration
 
     # One or more bash commands to execute as part of a RUN step in a Dockerfile.
     # Leave this unset unless your model has special system requirements beyond
