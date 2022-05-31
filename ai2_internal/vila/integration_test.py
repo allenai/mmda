@@ -33,6 +33,7 @@ import sys
 import unittest
 
 from PIL import Image
+from pathlib import Path
 
 from mmda.types import api
 from mmda.types.document import Document
@@ -57,6 +58,8 @@ except ImportError as e:
 def resolve(file: str) -> str:
     return os.path.join(os.path.dirname(__file__), "test_fixtures", file)
 
+def resolve_image(file: str) -> str:
+    return os.path.join(Path(os.path.dirname(__file__)).parent, "shared_test_fixtures", file)
 
 def get_test_instance() -> Instance:
     doc_file = resolve("test_doc.json")
@@ -70,7 +73,7 @@ def get_test_instance() -> Instance:
     with open(resolve("test_blocks.json")) as f:
         blocks = [api.BoxGroup(**bg) for bg in json.load(f)["groups"]]
 
-    images = [tobase64(Image.open(resolve("page0.png")))]
+    images = [tobase64(Image.open(resolve_image("page0.png")))]
 
     return Instance(
         symbols=doc.symbols,
