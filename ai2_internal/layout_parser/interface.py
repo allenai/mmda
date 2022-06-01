@@ -20,11 +20,7 @@ class Instance(BaseModel):
     """
     Describes one Instance over which the model performs inference.
 
-    To learn more about declaring pydantic model fields, please see:
-    https://pydantic-docs.helpmanual.io/
-    """
-
-    """Input is a list of page images, base64-encoded"""
+    Input is a list of page images, base64-encoded"""
 
     page_images: List[str] = Field(description="List of base64-encoded page images")
 
@@ -64,9 +60,12 @@ class Predictor:
 
     def _load_model(self) -> None:
         """
-        Perform whatever start-up operations are required to get your
-        model ready for inference. This operation is performed only once
-        during the application life-cycle.
+        Performs the start-up operations required to
+        ready the model for inference.
+
+        LayoutPraser uses pre-trained PubLayNet and MFD models managed
+        by the underlying layoutparser tool:
+        https://layout-parser.readthedocs.io/en/latest/api_doc/models.html
         """
         self._lp_predictors = [
             LayoutParserPredictor.from_pretrained(weights_path)
