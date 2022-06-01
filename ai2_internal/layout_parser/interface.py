@@ -20,20 +20,13 @@ class Instance(BaseModel):
     """
     Describes one Instance over which the model performs inference.
 
-    The fields below are examples only; please replace them with
-    appropriate fields for your model.
-
     To learn more about declaring pydantic model fields, please see:
     https://pydantic-docs.helpmanual.io/
     """
+
     """Input is a list of page images, base64-encoded"""
 
     page_images: List[str] = Field(description="List of base64-encoded page images")
-
-
-    # field1: str = Field(description="Some field of consequence")
-    # field2: float = Field(description="Some other field of consequence")
-
 
 class Prediction(BaseModel):
     """Output is a set of bounding boxes with metadata"""
@@ -45,10 +38,6 @@ class PredictorConfig(BaseSettings):
     """
     Configuration required by the model to do its work.
     Uninitialized fields will be set via Environment variables.
-
-    The fields below are examples only; please replace them with ones
-    appropriate for your model. These serve as a record of the ENV
-    vars the consuming application needs to set.
     """
     weights_paths = ["lp://efficientdet/PubLayNet", "lp://efficientdet/MFD"]
 

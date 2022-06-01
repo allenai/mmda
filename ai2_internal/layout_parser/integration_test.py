@@ -11,19 +11,6 @@ predict_batch(instances: List[Instance]) -> List[Prediction]
 
 To test your code, create `Instance`s and make normal `TestCase`
 assertions against the returned `Prediction`s.
-
-e.g.
-
-```
-def test_prediction(self, container):
-    instances = [Instance(), Instance()]
-    predictions = container.predict_batch(instances)
-
-    self.assertEqual(len(instances), len(predictions)
-
-    self.assertEqual(predictions[0].field1, "asdf")
-    self.assertGreatEqual(predictions[1].field2, 2.0)
-```
 """
 
 

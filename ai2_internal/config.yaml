@@ -49,7 +49,7 @@ model_variants:
     extras_require: ["dev", "lp_predictors"]
 
     # Full S3 path to tar.gz'ed artifacts archive, nullable
-    artifacts_s3_path: null #<TODO>.tar.gz
+    artifacts_s3_path: null #using pre-trained PubLayNet and MFD models managed by underlying layoutparser tool: https://layout-parser.readthedocs.io/en/latest/api_doc/models.html
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
     python_version: 3.8
