@@ -1,3 +1,11 @@
+"""
+
+AI2 Internal redefinition of MMDA types in terms of Pydantic.
+
+TODO: Migrate into `ai2_internal/`.  Check with @yogic
+
+"""
+
 from __future__ import annotations
 
 from typing import List, Optional
