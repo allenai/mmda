@@ -64,7 +64,7 @@ model_variants:
     # Leave this unset unless your model has special system requirements beyond
     # those in your setup.py.
     docker_run_commands: ["apt-get update", "apt-get install python3-opencv -y"]
-  bibentry_parser:
+  bibentry_predictor:
     # Class path to pydantic Instance implementation in <model_package_name>==<model_package_version>
     instance: ai2_internal.bibentry_predictor.interface.Instance
 
