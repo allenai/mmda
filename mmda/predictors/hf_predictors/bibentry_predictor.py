@@ -7,7 +7,7 @@ from transformers import AutoConfig, AutoTokenizer, AutoModelForTokenClassificat
 from unidecode import unidecode
 
 
-class Label(Enum):
+class BibEntryLabel(Enum):
     MISC = 0
 
     CITATION_NUMBER = 1
@@ -38,7 +38,7 @@ class StringWithSpan(BaseModel):
     end: int  # exclusive
 
 
-class PredictionWithSpan(BaseModel):
+class BibEntryPredictionWithSpan(BaseModel):
     citation_number: Optional[StringWithSpan]
     authors: Optional[List[StringWithSpan]]
     title: Optional[StringWithSpan]
@@ -54,7 +54,7 @@ class BibEntryPredictor:
         self.config = AutoConfig.from_pretrained(model_name_or_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)    
     
-    def predict(self, bib_entries: List[str]) -> List[PredictionWithSpan]:
+    def predict(self, bib_entries: List[str]) -> List[BibEntryPredictionWithSpan]:
         # TODO: eventually, this input will be a Document
         # and this function should have argstring: def predict(self, document: Document) -> List[Annotation]:
         # and some processing that looks like:
@@ -65,7 +65,7 @@ class BibEntryPredictor:
         tokenized_inputs = self.tokenizer(bib_entries, padding=True, truncation=True, return_tensors="pt")
         predictions = self.model(**tokenized_inputs)
 
-        pred_ids = predictions.logits.argmax(2).tolist()  # check GPU vs CPU; might need to .detach()
+        pred_ids = predictions.logits.argmax(2).tolist()
 
         num_items = len(bib_entries)
 
@@ -81,7 +81,7 @@ class BibEntryPredictor:
         return res
 
     @staticmethod
-    def postprocess(pred: PredictionWithSpan) -> Dict:
+    def postprocess(pred: BibEntryPredictionWithSpan) -> Dict:
         citation_number = pred.citation_number.content if pred.citation_number else None
         title = BibEntryPredictor._clean_str(pred.title.content) if pred.title else None
         doi = BibEntryPredictor._clean_doi(pred.doi.content) if pred.doi else None
@@ -108,31 +108,31 @@ class BibEntryPredictor:
                 # predictions: [0, 9, 9, 0, 8, 9, 8, 8, 9, 0, 13, 13, 13, 13, 13, 4]
                 if prev_word_id is not None:
                     for i in range(word_id - (prev_word_id + 1)):
-                        res.append(Label.MISC.value)
+                        res.append(BibEntryLabel.MISC.value)
 
                 res.append(pred)
             prev_word_id = word_id
         return res
 
     @staticmethod
-    def _aggregate_token_level_prediction(input: str, spans, label_ids: List[int]) -> PredictionWithSpan:
+    def _aggregate_token_level_prediction(input: str, spans, label_ids: List[int]) -> BibEntryPredictionWithSpan:
         citation_number = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids,
-                                                                                              Label.CITATION_NUMBER)
+                                                                                              BibEntryLabel.CITATION_NUMBER)
 
         authors = BibEntryPredictor._extract_author_token(input, spans, label_ids)
-        title = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, Label.TITLE)
+        title = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, BibEntryLabel.TITLE)
 
         journal = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids,
-                                                                                      Label.JOURNAL)
-        event = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, Label.EVENT)
+                                                                                      BibEntryLabel.JOURNAL)
+        event = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, BibEntryLabel.EVENT)
         journal_venue_or_event = journal if journal else event
 
         year = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids,
-                                                                                   Label.ISSUED_YEAR)
-        doi = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, Label.DOI)
-        url = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, Label.URL)
+                                                                                   BibEntryLabel.ISSUED_YEAR)
+        doi = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, BibEntryLabel.DOI)
+        url = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, BibEntryLabel.URL)
 
-        return PredictionWithSpan(
+        return BibEntryPredictionWithSpan(
             citation_number=citation_number,
             authors=authors,
             title=title,
@@ -149,16 +149,16 @@ class BibEntryPredictor:
 
         for word_index, label_id in enumerate(label_ids):
             # Beginning of new author
-            if label_id == Label.AUTHOR_START.value and not author_span:
+            if label_id == BibEntryLabel.AUTHOR_START.value and not author_span:
                 author_span = spans[word_index]
             # Middle of current author
             elif (
-                    label_id == Label.AUTHOR_START.value or label_id == Label.AUTHOR_MIDDLE.value or label_id == Label.AUTHOR_END.value) and author_span:
+                    label_id == BibEntryLabel.AUTHOR_START.value or label_id == BibEntryLabel.AUTHOR_MIDDLE.value or label_id == BibEntryLabel.AUTHOR_END.value) and author_span:
                 current_span = spans[word_index]
                 author_span = author_span._replace(end=current_span.end)
             # End of current author. Close current author span and reset.
             elif (
-                    label_id != Label.AUTHOR_START.value and label_id != Label.AUTHOR_MIDDLE.value and label_id != Label.AUTHOR_END.value) and author_span:
+                    label_id != BibEntryLabel.AUTHOR_START.value and label_id != BibEntryLabel.AUTHOR_MIDDLE.value and label_id != BibEntryLabel.AUTHOR_END.value) and author_span:
                 res.append(StringWithSpan(
                     content=input[author_span.start:author_span.end],
                     start=author_span.start,
@@ -173,7 +173,7 @@ class BibEntryPredictor:
             input: str,
             spans,
             label_ids: List[int],
-            target_label: Label
+            target_label: BibEntryLabel
     ) -> Optional[StringWithSpan]:
         res = None
         existing_span = None
