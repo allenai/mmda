@@ -5,19 +5,11 @@
 """
 
 
-from typing import List, Optional, Dict, Tuple, Type
-from abc import abstractmethod
-from dataclasses import dataclass, field
-import warnings
+from typing import List, Optional, Dict, Tuple
+from dataclasses import dataclass
+import logging
 import numpy as np
 
-
-def is_overlap_1d(start1: float, end1: float, start2: float, end2: float) -> bool:
-    """Return whether two 1D intervals overlaps"""
-    assert start1 <= end1
-    assert start2 <= end2
-
-    return not (start1 > end2 or end1 < start2)  # ll  # rr
 
 
 @dataclass
@@ -30,16 +22,16 @@ class Box:
 
     def to_json(self) -> List:
         return [self.l, self.t, self.w, self.h, self.page]
-        # return dict(l=self.l, t=self.t, w=self.w, h=self.h, page=self.page)
 
     @classmethod
     def from_json(cls, box_coords: List) -> "Box":
         l, t, w, h, page = box_coords
         return Box(l=l, t=t, w=w, h=h, page=page)
-        # return Box(l=box_coords['l'], t=box_coords['t'], w=box_coords['w'], h=box_coords['h'], page=box_coords['page'])
 
     @classmethod
     def from_coordinates(cls, x1: float, y1: float, x2: float, y2: float, page: int):
+        assert x2 > x1, f"x2={x2} should be bigger than x1={x1}"
+        assert y2 > y1, f"y2={y2} should be bigger than y1={y1}"
         return cls(x1, y1, x2 - x1, y2 - y1, page)
 
     @classmethod
@@ -60,15 +52,15 @@ class Box:
         0<= x1 <= x2 <= page_width and 0<= y1 <= y2 <= page_height.
         """
 
-        _x1, _x2 = np.clip([x1, x2], 0, page_width)
-        _y1, _y2 = np.clip([y1, y2], 0, page_height)
+        _x1, _x2 = np.clip(a=[x1, x2], a_min=0, a_max=page_width)
+        _y1, _y2 = np.clip(a=[y1, y2], a_min=0, a_max=page_height)
 
         if _x2 < _x1:
             _x2 = _x1
         if _y2 < _y1:
             _y2 = _y1
         if (_x1, _y1, _x2, _y2) != (x1, y1, x2, y2):
-            warnings.warn(
+            logging.warning(
                 f"The coordinates ({x1}, {y1}, {x2}, {y2}) are not valid and converted to ({_x1}, {_y1}, {_x2}, {_y2})."
             )
 
@@ -124,4 +116,10 @@ class Box:
         x11, y11, x12, y12 = self.coordinates
         x21, y21, x22, y22 = other.coordinates
 
-        return is_overlap_1d(x11, x12, x21, x22) and is_overlap_1d(y11, y12, y21, y22)
+        def _is_overlap_1d(start1: float, end1: float, start2: float, end2: float) -> bool:
+            """Return whether two 1D intervals overlaps"""
+            assert start1 <= end1
+            assert start2 <= end2
+            return not (start1 > end2 or end1 < start2)  # ll  # rr
+
+        return _is_overlap_1d(x11, x12, x21, x22) and _is_overlap_1d(y11, y12, y21, y22)
