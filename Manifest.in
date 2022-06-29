@@ -1,2 +1,2 @@
-recursive-include ai2_internal/timo/vila/test_fixtures/ *
+recursive-include ai2_internal/vila/test_fixtures/ *
 recursive-include ai2_internal/shared_test_fixtures/ *
