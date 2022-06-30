@@ -78,22 +78,19 @@ def convert_document_page_to_pdf_dict(
         Dict[str, List]: The pdf_dict object
     """
 
-    words = [token.symbols[0] for token in document.tokens]
-    # TODO: Right now we assume the token could only have a single span.
-
-    bbox = [
-        token.spans[0]
-        .box.get_absolute(page_width=page_width, page_height=page_height)
-        .coordinates
-        for token in document.tokens
+    token_data = [
+        (
+            token.symbols[0],  # words
+            token.spans[0]
+                .box.get_absolute(page_width=page_width, page_height=page_height)
+                .coordinates,  # bbox
+            get_visual_group_id(token, Rows, -1),  # line_ids
+            get_visual_group_id(token, Blocks, -1)  # block_ids
+        ) for token in document.tokens
     ]
 
-    line_ids = [get_visual_group_id(token, Rows, -1) for token in document.tokens]
-    # TODO: Right now we assume the token could span for one row of the document.
+    words, bbox, line_ids, block_ids = (list(l) for l in zip(*token_data))
     line_ids = shift_index_sequence_to_zero_start(line_ids)
-
-    block_ids = [get_visual_group_id(token, Blocks, -1) for token in document.tokens]
-    # TODO: Right now we assume the token could span for one block of the document.
     block_ids = shift_index_sequence_to_zero_start(block_ids)
 
     labels = [None] * len(words)
