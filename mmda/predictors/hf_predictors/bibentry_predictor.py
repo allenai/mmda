@@ -63,6 +63,9 @@ class BibEntryPredictor:
         res = []
 
         tokenized_inputs = self.tokenizer(bib_entries, padding=True, truncation=True, return_tensors="pt")
+        # put the data on the same device of the model.
+        tokenized_inputs = tokenized_inputs.to(self.model.device)
+
         predictions = self.model(**tokenized_inputs)
 
         pred_ids = predictions.logits.argmax(2).tolist()
