@@ -35,7 +35,9 @@ jobs:
         with:
           python-version: '3.8'
           architecture: x64
-      - run: apt-get update && apt-get -y install poppler-utils 
+      - run: |
+          sudo apt-get update 
+          sudo apt-get -y install poppler-utils 
       - run: | 
           pip install -e .[dev]
           pip install -e .[vila_predictors]
