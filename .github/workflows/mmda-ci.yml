@@ -24,7 +24,7 @@ jobs:
       - name: Test with Python ${{ matrix.python-version }}
         run: | 
           pip install -e .[dev]
-          pytest tests -k 'not vila_predictors'
+          pytest tests --ignore=tests/test_predictors/test_vila_predictors.py
 
       - name: Test VILA Predictors
         run: | 
