@@ -22,6 +22,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
 
     REQUIRED_BACKENDS = ["transformers", "torch", "vila"]
     REQUIRED_DOCUMENT_FIELDS = [Pages, Tokens]
+    DEFAULT_SUBPAGE_PER_RUN = 2
 
     @property
     @abstractmethod
@@ -36,14 +37,14 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
         self.id2label = self.predictor.model.config.id2label
         self.label2id = self.predictor.model.config.label2id
 
-        self.subpage_per_run = subpage_per_run
+        self.subpage_per_run = subpage_per_run or self.DEFAULT_SUBPAGE_PER_RUN
 
     @classmethod
     def from_pretrained(
         cls,
         model_name_or_path: str,
         preprocessor=None,
-        device: str = None,
+        device: Optional[str] = None,
         subpage_per_run: Optional[int] = None,
         **preprocessor_config
     ):
@@ -56,7 +57,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
         
         return cls(predictor, subpage_per_run)
 
-    def predict(self, document: Document, subpage_per_run) -> List[Annotation]:
+    def predict(self, document: Document, subpage_per_run: Optional[int]=None) -> List[Annotation]:
 
         page_prediction_results = []
         for page_id, page in enumerate(tqdm(document.pages)):
@@ -71,7 +72,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
                 model_predictions = self.predictor.predict(
                     page_data=pdf_dict,
                     page_size=(page_width, page_height),
-                    batch_size=subpage_per_run,
+                    batch_size=subpage_per_run or self.subpage_per_run,
                     return_type="list",
                 )
 
@@ -114,6 +115,23 @@ class SinglePageTokenClassificationPredictor(BaseSinglePageTokenClassificationPr
 class IVILATokenClassificationPredictor(BaseSinglePageTokenClassificationPredictor):
     VILA_MODEL_CLASS = LayoutIndicatorPDFPredictor
 
+    @property
+    def REQUIRED_DOCUMENT_FIELDS(self):
+        base_reqs = [Pages, Tokens]
+        if self.predictor.preprocessor.config.agg_level == "row":
+            base_reqs.append(Rows)
+        elif self.predictor.preprocessor.config.agg_level == "block":
+            base_reqs.append(Blocks)
+        return base_reqs
 
 class HVILATokenClassificationPredictor(BaseSinglePageTokenClassificationPredictor):
     VILA_MODEL_CLASS = HierarchicalPDFPredictor
+
+    @property
+    def REQUIRED_DOCUMENT_FIELDS(self):
+        base_reqs = [Pages, Tokens]
+        if self.predictor.preprocessor.config.agg_level == "row":
+            base_reqs.append(Rows)
+        elif self.predictor.preprocessor.config.agg_level == "block":
+            base_reqs.append(Blocks)
+        return base_reqs
