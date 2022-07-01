@@ -26,7 +26,17 @@ jobs:
           pip install -e .[dev]
           pytest tests --ignore=tests/test_predictors/test_vila_predictors.py
 
-      - name: Test VILA Predictors
-        run: | 
+  test_vila_predictors:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: x64
+      - run: apt-get update && apt-get -y install poppler-utils 
+      - run: | 
+          pip install -e .[dev]
           pip install -e .[vila_predictors]
           pytest tests/test_predictors/test_vila_predictors.py
