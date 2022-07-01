@@ -10,7 +10,9 @@ from typing import List
 
 from pydantic import BaseModel, BaseSettings, Field
 
-from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor
+from mmda.predictors.hf_predictors.token_classification_predictor import (
+    IVILATokenClassificationPredictor,
+)
 from mmda.types import api
 from mmda.types.document import Document, SpanGroup
 from mmda.types.image import frombase64
@@ -48,7 +50,7 @@ class Prediction(BaseModel):
     groups: List[api.SpanGroup]
 
     @classmethod
-    def from_mmda(cls, groups: List[SpanGroup]) -> 'Prediction':
+    def from_mmda(cls, groups: List[SpanGroup]) -> "Prediction":
         return cls(groups=[api.SpanGroup.from_mmda(grp) for grp in groups])
 
 
@@ -58,28 +60,11 @@ class PredictorConfig(BaseSettings):
     Uninitialized fields will be set via Environment variables.
     """
 
-    DOCBANK_LABEL_MAP = {
-        "0": "Title",
-        "1": "Author",
-        "2": "Abstract",
-        "3": "Keywords",
-        "4": "Section",
-        "5": "Paragraph",
-        "6": "List",
-        "7": "Bibliography",
-        "8": "Equation",
-        "9": "Algorithm",
-        "10": "Figure",
-        "11": "Table",
-        "12": "Caption",
-        "13": "Header",
-        "14": "Footer",
-        "15": "Footnote",
-    }
-
-    @property
-    def label_names(self):
-        return {int(key): val for key, val in self.DOCBANK_LABEL_MAP.items()}
+    subpage_per_run: int = Field(
+        default=2,
+        description="The maximum number of subpages we can send to the models at one time. "
+                    "Used for capping the maximum memory usage during the vila dep."
+    )
 
 
 class Predictor:
@@ -96,10 +81,8 @@ class Predictor:
         self._load_model()
 
     def _load_model(self) -> None:
-        self._predictor = IVILAPredictor.from_pretrained(
+        self._predictor = IVILATokenClassificationPredictor.from_pretrained(
             self._artifacts_dir,
-            added_special_sepration_token="[BLK]",
-            agg_level="row",
         )
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
@@ -111,11 +94,9 @@ class Predictor:
         predictions = []
 
         for inst in instances:
-            span_groups = self._predictor.predict(inst.to_mmda())
-            for span_group in span_groups:
-                span_group.type = self._config.label_names.get(
-                    span_group.type, f"label{span_group.type}"
-                )
+            span_groups = self._predictor.predict(
+                inst.to_mmda(), subpage_per_run=self._config.subpage_per_run
+            )
             predictions.append(
                 Prediction(groups=[api.SpanGroup.from_mmda(sg) for sg in span_groups])
             )
