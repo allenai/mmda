@@ -93,7 +93,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
             page, page_width=page_width, page_height=page_height
         )
 
-    def postprocess(self, document, model_predictions) -> List[SpanGroup]:
+    def postprocess(self, document: Document, model_predictions) -> List[SpanGroup]:
 
         token_prediction_spans = convert_sequence_tagging_to_spans(model_predictions)
 
@@ -116,7 +116,7 @@ class IVILATokenClassificationPredictor(BaseSinglePageTokenClassificationPredict
     VILA_MODEL_CLASS = LayoutIndicatorPDFPredictor
 
     @property
-    def REQUIRED_DOCUMENT_FIELDS(self):
+    def REQUIRED_DOCUMENT_FIELDS(self) -> List:
         base_reqs = [Pages, Tokens]
         if self.predictor.preprocessor.config.agg_level == "row":
             base_reqs.append(Rows)
@@ -128,7 +128,7 @@ class HVILATokenClassificationPredictor(BaseSinglePageTokenClassificationPredict
     VILA_MODEL_CLASS = HierarchicalPDFPredictor
 
     @property
-    def REQUIRED_DOCUMENT_FIELDS(self):
+    def REQUIRED_DOCUMENT_FIELDS(self) -> List:
         base_reqs = [Pages, Tokens]
         if self.predictor.preprocessor.config.agg_level == "row":
             base_reqs.append(Rows)
