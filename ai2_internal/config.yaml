@@ -64,4 +64,39 @@ model_variants:
     # Leave this unset unless your model has special system requirements beyond
     # those in your setup.py.
     docker_run_commands: ["apt-get update", "apt-get install python3-opencv -y"]
+  bibentry_predictor:
+    # Class path to pydantic Instance implementation in <model_package_name>==<model_package_version>
+    instance: ai2_internal.bibentry_predictor.interface.Instance
 
+    # Class path to pydantic Prediction implementation in <model_package_name>==<model_package_version>
+    prediction: ai2_internal.bibentry_predictor.interface.Prediction
+
+    # Class path to Predictor implementation in <model_package_name>==<model_package_version>
+    predictor: ai2_internal.bibentry_predictor.interface.Predictor
+
+    # Class path to pydantic PredictorConfig implementation in <model_package_name>==<model_package_version>
+    predictor_config: ai2_internal.bibentry_predictor.interface.PredictorConfig
+
+    # Any additional sets of dependencies required by the model.
+    # These are the 'extras_require' keys in your setup.py.
+    extras_require: ["dev", "bibentry_predictor"]
+
+    # Full S3 path to tar.gz'ed artifacts archive, nullable
+    artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/bibentryparser/v0.tar.gz
+
+    # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
+    python_version: 3.7
+
+    # Whether this model supports CUDA GPU acceleration
+    cuda: False
+
+    # Python path to a fn in <model_package_name>==<model_package_version> that
+    # returns a unittest.TestCase. Builder function receives a model container
+    # as its sole argument.
+    # Used by the TIMO toolchain to validate your model implementation and configuration.
+    integration_test: ai2_internal.bibentry_predictor.integration_test.TestInterfaceIntegration
+
+    # One or more bash commands to execute as part of a RUN step in a Dockerfile.
+    # Leave this unset unless your model has special system requirements beyond
+    # those in your setup.py.
+    docker_run_commands: []
