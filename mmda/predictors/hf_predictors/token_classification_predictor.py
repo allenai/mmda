@@ -54,10 +54,12 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
             device=device,
             **preprocessor_config
         )
-        
+
         return cls(predictor, subpage_per_run)
 
-    def predict(self, document: Document, subpage_per_run: Optional[int]=None) -> List[Annotation]:
+    def predict(
+        self, document: Document, subpage_per_run: Optional[int] = None
+    ) -> List[Annotation]:
 
         page_prediction_results = []
         for page_id, page in enumerate(tqdm(document.pages)):
@@ -86,7 +88,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
 
     def preprocess(self, page: Document, page_width: float, page_height: float) -> Dict:
 
-        # In the latest vila implementations (after 0.4.0), the predictor will 
+        # In the latest vila implementations (after 0.4.0), the predictor will
         # handle all other preprocessing steps given the pdf_dict input format.
 
         return convert_document_page_to_pdf_dict(
@@ -108,7 +110,9 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
         return prediction_spans
 
 
-class SinglePageTokenClassificationPredictor(BaseSinglePageTokenClassificationPredictor):
+class SinglePageTokenClassificationPredictor(
+    BaseSinglePageTokenClassificationPredictor
+):
     VILA_MODEL_CLASS = SimplePDFPredictor
 
 
@@ -123,6 +127,7 @@ class IVILATokenClassificationPredictor(BaseSinglePageTokenClassificationPredict
         elif self.predictor.preprocessor.config.agg_level == "block":
             base_reqs.append(Blocks)
         return base_reqs
+
 
 class HVILATokenClassificationPredictor(BaseSinglePageTokenClassificationPredictor):
     VILA_MODEL_CLASS = HierarchicalPDFPredictor
