@@ -22,7 +22,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
 
     REQUIRED_BACKENDS = ["transformers", "torch", "vila"]
     REQUIRED_DOCUMENT_FIELDS = [Pages, Tokens]
-    DEFAULT_SUBPAGE_PER_RUN = 2
+    DEFAULT_SUBPAGE_PER_RUN = 2 #TODO: Might remove this in the future for longformer-like models 
 
     @property
     @abstractmethod
@@ -78,7 +78,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
                     return_type="list",
                 )
 
-                assert len(model_predictions) == len(page.tokens)
+                assert len(model_predictions) == len(page.tokens), f"Model predictions and tokens are not the same length ({len(model_predictions)} != {len(page.tokens)}) for page {page_id}"
 
                 page_prediction_results.extend(
                     self.postprocess(page, model_predictions)
