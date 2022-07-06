@@ -8,8 +8,10 @@
 from typing import List, Optional, Dict, Tuple, Type
 from abc import abstractmethod
 from dataclasses import dataclass, field
-import warnings
+import logging
 import numpy as np
+
+_logger = logging.getLogger(__file__)
 
 
 def is_overlap_1d(start1: float, end1: float, start2: float, end2: float) -> bool:
@@ -68,7 +70,7 @@ class Box:
         if _y2 < _y1:
             _y2 = _y1
         if (_x1, _y1, _x2, _y2) != (x1, y1, x2, y2):
-            warnings.warn(
+            _logger.info(
                 f"The coordinates ({x1}, {y1}, {x2}, {y2}) are not valid and converted to ({_x1}, {_y1}, {_x2}, {_y2})."
             )
 
