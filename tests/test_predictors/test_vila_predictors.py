@@ -1,14 +1,10 @@
-from typing import List
-import argparse
-from copy import copy
-import os
+import json 
 
-from tqdm import tqdm
-import layoutparser as lp
+from PIL import Image
 
+from mmda.types.document import Document
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
-from mmda.types.annotation import SpanGroup
 from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor, HVILAPredictor
 from mmda.predictors.hf_predictors.token_classification_predictor import (
@@ -125,3 +121,19 @@ def test_vila_predictors():
 
     assert [ele.spans for ele in resA] == [ele.spans for ele in resB]
     assert [ele.type for ele in resA] == [S2VL_LABEL_MAP[ele.type] for ele in resB]
+
+def test_vila_predictors_with_special_unicode_inputs():
+    
+    test_doc_path = "tests/fixtures/unicode-test.json"
+    
+    with open(test_doc_path, 'r') as fp:
+        res = json.load(fp)
+
+    doc = Document.from_json(res)
+    doc.annotate_images([Image.new("RGB", (596, 842))])
+
+    ivilaA = IVILATokenClassificationPredictor.from_pretrained(
+        "allenai/ivila-row-layoutlm-finetuned-s2vl-v2"
+    )
+
+    ivilaA.predict(doc, subpage_per_run=2)
