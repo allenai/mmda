@@ -35,6 +35,28 @@ DOCBANK_LABEL_MAP = {
 DOCBANK_LABEL_MAP = {int(key): val for key, val in DOCBANK_LABEL_MAP.items()}
 
 
+S2VL_LABEL_MAP = {
+    "0": "Title",
+    "1": "Author",
+    "2": "Abstract",
+    "3": "Keywords",
+    "4": "Section",
+    "5": "Paragraph",
+    "6": "List",
+    "7": "Bibliography",
+    "8": "Equation",
+    "9": "Algorithm",
+    "10": "Figure",
+    "11": "Table",
+    "12": "Caption",
+    "13": "Header",
+    "14": "Footer",
+    "15": "Footnote",
+}
+
+S2VL_LABEL_MAP = {int(key): val for key, val in S2VL_LABEL_MAP.items()}
+
+
 def test_vila_predictors():
     layout_predictor = LayoutParserPredictor.from_pretrained(
         "lp://efficientdet/PubLayNet"
@@ -84,3 +106,22 @@ def test_vila_predictors():
 
     assert [ele.spans for ele in resA] == [ele.spans for ele in resB]
     assert [ele.type for ele in resA] == [DOCBANK_LABEL_MAP[ele.type] for ele in resB]
+
+
+    ivilaA = IVILATokenClassificationPredictor.from_pretrained(
+        "allenai/ivila-row-layoutlm-finetuned-s2vl-v2"
+    )
+    resA = ivilaA.predict(doc, subpage_per_run=2)
+    del ivilaA
+
+    ivilaB = IVILAPredictor.from_pretrained(
+        "allenai/ivila-row-layoutlm-finetuned-s2vl-v2",
+        agg_level="row",
+        added_special_sepration_token="[BLK]",
+    )
+
+    resB = ivilaB.predict(doc)
+    del ivilaB
+
+    assert [ele.spans for ele in resA] == [ele.spans for ele in resB]
+    assert [ele.type for ele in resA] == [S2VL_LABEL_MAP[ele.type] for ele in resB]
