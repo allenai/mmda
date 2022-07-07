@@ -78,8 +78,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
                     return_type="list",
                 )
 
-                # assert len(model_predictions) == len(page.tokens), f"Model predictions and tokens are not the same length ({len(model_predictions)} != {len(page.tokens)}) for page {page_id}"
-                # The assertion is now in the vila implementation since v0.4.1
+                assert len(model_predictions) == len(page.tokens), f"Model predictions and tokens are not the same length ({len(model_predictions)} != {len(page.tokens)}) for page {page_id}"
 
                 page_prediction_results.extend(
                     self.postprocess(page, model_predictions)
