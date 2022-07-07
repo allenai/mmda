@@ -18,6 +18,7 @@ setuptools.setup(
         "dev": ["pytest"],
         "api": ["Flask", "gevent"],
         "pipeline": ["requests"],
+        "spacy_predictors": ["spacy"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
         "vila_predictors": ["vila==0.3.0", "transformers"],
         "bibentry_predictor": ["transformers", "unidecode", "torch"],
