@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.9", "3.8"]
-    name: Test with Python ${{ matrix.python-version }}
+    
     steps:
       - uses: actions/checkout@v2
       - name: Setup python
@@ -20,5 +20,25 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
-      - run: pip install -e .[dev]
-      - run: pytest tests
+
+      - name: Test with Python ${{ matrix.python-version }}
+        run: | 
+          pip install -e .[dev]
+          pytest tests --ignore=tests/test_predictors/test_vila_predictors.py
+
+  test_vila_predictors:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: x64
+      - run: |
+          sudo apt-get update 
+          sudo apt-get -y install poppler-utils 
+      - run: | 
+          pip install -e .[dev]
+          pip install -e .[vila_predictors]
+          pytest tests/test_predictors/test_vila_predictors.py

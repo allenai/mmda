@@ -1,6 +1,6 @@
 config_version: 0.0.1
 model_variants:
-  vila:
+  ivila-row-layoutlm-finetuned-s2vl-v2:
     # Class path to pydantic Instance implementation in <model_package_name>==<model_package_version>
     instance: ai2_internal.vila.interface.Instance
 
@@ -20,7 +20,8 @@ model_variants:
     extras_require: ["dev", "vila_predictors"]
 
     # Full S3 path to tar.gz'ed artifacts archive, nullable
-    artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/vila/v0.tar.gz
+    # https://huggingface.co/allenai/ivila-row-layoutlm-finetuned-s2vl-v2
+    artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/vila/ivila-row-layoutlm-finetuned-s2vl-v2.tar.gz
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
     python_version: 3.8
