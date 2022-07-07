@@ -179,7 +179,6 @@ class PDFPlumberParser(Parser):
             vertical_ttb=vertical_ttb,
             extra_attrs=extra_attrs,
         )
-
         page_tokens = [
             {
                 "text": token["text"],
@@ -188,9 +187,9 @@ class PDFPlumberParser(Parser):
                     y1=float(token["top"]),
                     x2=float(token["x1"]),
                     y2=float(token["bottom"]),
-                    page_width=float(page.width),
+                    page_width=float(page.width), 
                     page_height=float(page.height),
-                    page=page_index,
+                    page=int(page_index)
                 ).get_relative(
                     page_width=float(page.width), page_height=float(page.height)
                 ),
@@ -202,7 +201,6 @@ class PDFPlumberParser(Parser):
 
     def _load_pdf_tokens(self, input_pdf_path: str) -> Dict:
         plumber_pdf_object = pdfplumber.open(input_pdf_path)
-
         page_to_line_to_tokens = {}
         for page_id in range(len(plumber_pdf_object.pages)):
             cur_page = plumber_pdf_object.pages[page_id]
@@ -223,7 +221,6 @@ class PDFPlumberParser(Parser):
                 y_tolerance=self.line_y_tolerance/cur_page.height,
             )
             page_to_line_to_tokens[page_id] = line_to_tokens
-
         return page_to_line_to_tokens
 
     def _convert_nested_text_to_doc_json(self, page_to_row_to_tokens: Dict) -> Dict:
@@ -297,7 +294,6 @@ class PDFPlumberParser(Parser):
         }
 
     def _load_pdf_as_doc(self, input_pdf_path: str) -> Document:
-
         page_to_line_to_tokens = self._load_pdf_tokens(input_pdf_path)
         doc_json = self._convert_nested_text_to_doc_json(page_to_line_to_tokens)
         doc = Document.from_json(doc_json)
