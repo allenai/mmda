@@ -20,7 +20,7 @@ setuptools.setup(
         "pipeline": ["requests"],
         "spacy_predictors": ["spacy"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
-        "vila_predictors": ["vila==0.3.0", "transformers"],
+        "vila_predictors": ["vila>=0.4.1,<0.5", "transformers"],
         "bibentry_predictor": ["transformers", "unidecode", "torch"],
     },
     include_package_data=True,

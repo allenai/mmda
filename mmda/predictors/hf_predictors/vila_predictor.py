@@ -47,6 +47,12 @@ class VILAPreprocessorConfig:
     group_bbox_agg: str = "first"
     added_special_sepration_token: str = "[SEP]"
 
+    # This is introduced to support the updates in the 
+    # vila 0.4.0 which fixes the typo. 
+    @property
+    def added_special_separation_token(self):
+        return self.added_special_sepration_token
+
 
 class BaseVILAPredictor(BaseHFPredictor):
 
