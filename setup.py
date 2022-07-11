@@ -9,7 +9,7 @@ setuptools.setup(
         "intervaltree",
         "tqdm",
         "pdf2image",
-        "pdfplumber",
+        "pdfplumber@git+https://github.com/allenai/pdfplumber@63db31f8452c93d72baaca1e843f2ab68bc6ca85",
         "requests",
         "pandas",
         "pydantic"
@@ -19,10 +19,7 @@ setuptools.setup(
         "spacy_predictors": ["spacy"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
         "vila_predictors": ["vila>=0.4.2,<0.5", "transformers"],
-        "mentions": [
-            "transformers[torch]==4.16.1",
-            "pdfplumber@git+https://github.com/allenai/pdfplumber@63db31f8452c93d72baaca1e843f2ab68bc6ca85"
-        ],
+        "mentions": ["transformers[torch]"],
         "bibentry_predictor": ["transformers", "unidecode", "torch"],
     },
     include_package_data=True,
