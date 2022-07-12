@@ -2,7 +2,9 @@ import setuptools
 
 setuptools.setup(
     name="mmda",
-    version="0.0.14",
+    description="mmda",
+    url="https://github.com/allenai/mmda",
+    version="0.0.15",
     python_requires=">= 3.7",
     packages=setuptools.find_packages(include=["mmda*", "ai2_internal*"]),
     install_requires=[
