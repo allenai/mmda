@@ -32,7 +32,6 @@ class MentionPredictor:
             word_spans: List[List[Span]] = [token.spans for token in page.tokens]
 
             if self.onnx_session:
-                logger.info("yes it's an onnx session alright")
                 inputs = self.tokenizer(
                     [words],
                     is_split_into_words=True,
@@ -42,8 +41,6 @@ class MentionPredictor:
                     return_overflowing_tokens=True,
                     return_tensors="np"
                 )
-                del inputs["overflow_to_sample_mapping"]
-                logger.info("gonna get logits")
                 logits = torch.FloatTensor(self.onnx_session.run(
                     output_names=["logits"],
                     input_feed=dict(inputs)
@@ -58,15 +55,14 @@ class MentionPredictor:
                     return_overflowing_tokens=True,
                     return_tensors="pt"
                 )
-                del inputs["overflow_to_sample_mapping"]
                 logits = self.model(**inputs).logits
 
-            logger.info(f"logits are size={logits.size()}")
+            del inputs["overflow_to_sample_mapping"]
+
             prediction_label_ids = torch.argmax(logits, dim=-1)
 
             for idx1 in range(len(inputs['input_ids'])):
                 label_ids = prediction_label_ids[idx1]
-                logger.info(f"Label ids are: {label_ids}")
                 input = inputs[idx1]
 
                 word_ids: List[int] = [input.word_ids[0]] if input.word_ids[0] is not None else []
