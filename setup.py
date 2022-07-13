@@ -21,7 +21,7 @@ setuptools.setup(
         "spacy_predictors": ["spacy"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
         "vila_predictors": ["vila>=0.4.2,<0.5", "transformers"],
-        "mentions": ["transformers[torch]"],
+        "mentions": ["transformers[torch]", "onnxruntime"],
         "bibentry_predictor": ["transformers", "unidecode", "torch"],
     },
     include_package_data=True,

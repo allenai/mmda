@@ -102,7 +102,7 @@ model_variants:
     # those in your setup.py.
     docker_run_commands: []
 
-  citation_mentions:
+  citation_mentions: &citation_mentions_base_config
     # Class path to pydantic Instance implementation
     instance: ai2_internal.citation_mentions.interface.Instance
 
@@ -132,3 +132,9 @@ model_variants:
 
     # One or more bash commands to execute as part of a RUN step in a Dockerfile.
     docker_run_commands: ["apt-get update && apt-get install -y poppler-utils"]
+
+  citation_mentions__onnx:
+    << : *citation_mentions_base_config
+
+    # Full S3 path to tar.gz'ed artifacts archive
+    artifacts_s3_path: s3://ai2-timo-registry/artifacts/mention-predictor__onnx/artifacts.tar.gz
