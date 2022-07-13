@@ -101,3 +101,34 @@ model_variants:
     # Leave this unset unless your model has special system requirements beyond
     # those in your setup.py.
     docker_run_commands: []
+
+  citation_mentions:
+    # Class path to pydantic Instance implementation
+    instance: ai2_internal.citation_mentions.interface.Instance
+
+    # Class path to pydantic Prediction implementation
+    prediction: ai2_internal.citation_mentions.interface.Prediction
+
+    # Class path to Predictor implementation
+    predictor: ai2_internal.citation_mentions.interface.Predictor
+
+    # Class path to pydantic PredictorConfig implementation
+    predictor_config: ai2_internal.citation_mentions.interface.PredictorConfig
+
+    # Any additional sets of dependencies required by the model.
+    extras_require: ["dev", "mentions"]
+
+    # Full S3 path to tar.gz'ed artifacts archive
+    artifacts_s3_path: s3://ai2-s2-mmda/models/citation-mentions/22-07-11/model/artifacts.tar.gz
+
+    # Version of python required for model runtime
+    python_version: "3.8"
+
+    # Whether this model supports CUDA GPU acceleration
+    cuda: False
+
+    # Used by the TIMO toolchain to validate your model implementation and configuration.
+    integration_test: ai2_internal.citation_mentions.integration_test.TestInterfaceIntegration
+
+    # One or more bash commands to execute as part of a RUN step in a Dockerfile.
+    docker_run_commands: ["apt-get update && apt-get install -y poppler-utils"]
