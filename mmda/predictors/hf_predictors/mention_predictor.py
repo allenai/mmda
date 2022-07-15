@@ -1,5 +1,8 @@
+import os
+
+from optimum.onnxruntime import ORTModelForTokenClassification
 import torch
-from transformers import AutoModelForTokenClassification, AutoTokenizer
+from transformers import AutoModelForTokenClassification, AutoTokenizer, PretrainedConfig
 from typing import List
 
 from mmda.types.annotation import SpanGroup
@@ -10,7 +13,13 @@ from mmda.types.span import Span
 class MentionPredictor:
     def __init__(self, artifacts_dir: str):
         self.tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
-        self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
+
+        onnx_model_path = os.path.join(artifacts_dir, "model.onnx")
+
+        if os.path.exists(onnx_model_path):
+            self.model = ORTModelForTokenClassification.from_pretrained(artifacts_dir, file_name="model.onnx")
+        else:
+            self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
 
     def predict(self, doc: Document) -> List[SpanGroup]:
         ret = []
@@ -29,8 +38,9 @@ class MentionPredictor:
                 return_tensors="pt"
             )
             del inputs["overflow_to_sample_mapping"]
-            outputs = self.model(**inputs)
-            prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
+            logits = self.model(**inputs).logits
+
+            prediction_label_ids = torch.argmax(logits, dim=-1)
 
             for idx1 in range(len(inputs['input_ids'])):
                 label_ids = prediction_label_ids[idx1]
