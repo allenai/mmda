@@ -34,13 +34,14 @@ class SpanGroupIndexer(Indexer):
         if not isinstance(query, SpanGroup):
             raise ValueError(f'SpanGroupIndexer only works with `query` that is SpanGroup type')
 
-        all_matched_span_groups = []
+        all_matched_span_groups = dict()
+
         for span in query.spans:
             for matched_span_group in self._index[span.start : span.end]:
-                if matched_span_group.data not in all_matched_span_groups: # Deduplicate
-                    all_matched_span_groups.append(matched_span_group.data)
-        # retrieval can be out of order, so sort
-        return sorted(all_matched_span_groups)
+                object_id = id(matched_span_group.data)
+                all_matched_span_groups[object_id] = matched_span_group.data
+
+        return sorted(list(all_matched_span_groups.values()))
 
     def __getitem__(self, key):
         return self._index[key]
