@@ -2,17 +2,19 @@ import setuptools
 
 setuptools.setup(
     name="mmda",
-    version="0.0.16",
+    description="mmda",
+    version="0.0.17-dev0",
+    url="https://www.github.com/allenai/mmda",
     python_requires=">= 3.7",
     packages=setuptools.find_packages(include=["mmda*", "ai2_internal*"]),
     install_requires=[
-        "intervaltree",
         "tqdm",
         "pdf2image",
         "pdfplumber",
         "requests",
         "pandas",
-        "pydantic"
+        "pydantic",
+        "ncls",
     ],
     extras_require={
         "dev": ["pytest"],
