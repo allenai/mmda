@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 from mmda.types.annotation import SpanGroup, Annotation
 from ncls import NCLS
+import numpy as np
 import pandas as pd
 
 
@@ -53,9 +54,9 @@ class SpanGroupIndexer(Indexer):
 
         self._sgs = span_groups
         self._index = NCLS(
-            pd.Series(starts),
-            pd.Series(ends),
-            pd.Series(ids)
+            pd.Series(starts, dtype=np.int64),
+            pd.Series(ends, dtype=np.int64),
+            pd.Series(ids, dtype=np.int64)
         )
 
         self._ensure_disjoint()
