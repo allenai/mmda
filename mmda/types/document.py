@@ -123,27 +123,12 @@ class Document:
         """
         assert all([isinstance(group, SpanGroup) for group in span_groups])
 
-        new_span_group_indexer = SpanGroupIndexer()
+        # 1) add Document to each SpanGroup
         for span_group in span_groups:
-            # 1) add Document to each SpanGroup
             span_group.attach_doc(doc=self)
 
-            # 2) for each span in span_group, (a) check if any conflicts (requires disjointedness).
-            #    then (b) add span group to index at this span location
-            #  TODO: can be cleaned up; encapsulate the checker somewhere else
-            for span in span_group:
-                # a) Check index if any conflicts (we require disjointness)
-                matched_span_group = new_span_group_indexer[span.start : span.end]
-                if matched_span_group:
-                    raise ValueError(
-                        f"Detected overlap with existing SpanGroup {matched_span_group} when attempting index {span_group}"
-                    )
-
-                # b) If no issues, add to index (for each span in span_group)
-                new_span_group_indexer[span.start : span.end] = span_group
-
-        # add new index to Doc
-        self.__indexers[field_name] = new_span_group_indexer
+        # 2) Build fast overlap lookup index
+        self.__indexers[field_name] = SpanGroupIndexer(span_groups)
 
         return span_groups
 
