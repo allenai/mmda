@@ -41,6 +41,7 @@ class SpanGroupIndexer(Indexer):
                 object_id = id(matched_span_group.data)
                 all_matched_span_groups[object_id] = matched_span_group.data
 
+        # Sort these because matching logic above doesn't preserve order
         return sorted(list(all_matched_span_groups.values()))
 
     def __getitem__(self, key):
