@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="mmda",
-    version="0.0.15",
+    version="0.0.16",
     python_requires=">= 3.7",
     packages=setuptools.find_packages(include=["mmda*", "ai2_internal*"]),
     install_requires=[
