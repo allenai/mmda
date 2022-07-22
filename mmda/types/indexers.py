@@ -90,6 +90,8 @@ class SpanGroupIndexer(Indexer):
         matched_span_groups = [self._sgs[matched_id] for matched_id in matched_ids]
 
         # Retrieval above doesn't preserve document order; sort here
+        # TODO: provide option to return matched span groups in same order as self._sgs
+        #   (the span groups the index was built with originally)
         return sorted(list(matched_span_groups))
 
 
