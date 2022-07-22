@@ -60,14 +60,15 @@ class Document:
                     f"This field name {field_name} already exists. To override, set `is_overwrite=True`"
                 )
 
+        # Kyle's preserved comment:
+        # Is it worth deepcopying the annotations? Safer, but adds ~10%
+        # overhead on large documents.
+
         # 2) register fields into Document
         for field_name, annotations in kwargs.items():
             if len(annotations) == 0:
                 warnings.warn(f"The annotations is empty for the field {field_name}")
                 continue
-
-            # TODO: why is this good idea?
-            annotations = deepcopy(annotations)
 
             annotation_types = {type(a) for a in annotations}
             assert (
