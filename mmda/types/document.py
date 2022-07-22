@@ -66,9 +66,6 @@ class Document:
                 warnings.warn(f"The annotations is empty for the field {field_name}")
                 continue
 
-            # TODO: why is this good idea?
-            annotations = deepcopy(annotations)
-
             annotation_types = {type(a) for a in annotations}
             assert (
                 len(annotation_types) == 1
