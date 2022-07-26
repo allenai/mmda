@@ -26,12 +26,13 @@ model_variants:
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
     python_version: 3.8
 
-    cuda: False
+    cuda: True
 
     # One or more bash commands to execute as part of a RUN step in a Dockerfile.
     # Leave this unset unless your model has special system requirements beyond
     # those in your setup.py.
     docker_run_commands: ["apt-get update", "apt-get install python3-opencv -y"]
+
   layout_parser:
     # Class path to pydantic Instance implementation in <model_package_name>==<model_package_version>
     instance: ai2_internal.layout_parser.interface.Instance
