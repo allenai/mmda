@@ -67,6 +67,8 @@ def simple_line_detection(
 
 
 class PDFPlumberParser(Parser):
+    DEFAULT_PUNCTUATION_CHARS = r'!–"&\'()*+:;<=>?@[]^`{|}~'
+
     def __init__(
         self,
         token_x_tolerance: int = 1.5,
@@ -78,7 +80,7 @@ class PDFPlumberParser(Parser):
         horizontal_ltr: bool = True,
         vertical_ttb: bool = True,
         extra_attrs: Optional[List[str]] = None,
-        dpi=None,
+        split_at_punctuation: Union[str, bool] = False
     ):
         """The PDFPlumber PDF Detector
         Args:
@@ -134,12 +136,6 @@ class PDFPlumberParser(Parser):
                 See details in `pdf2plumber's documentation
                 <https://github.com/jsvine/pdfplumber#the-pdfplumberpage-class>`_.
                 Defaults to `["fontname", "size"]`.
-            dpi (int, optional):
-                Used for specify the resolution (or `DPI, dots per inch
-                <https://en.wikipedia.org/wiki/Dots_per_inch>`_) when loading images of
-                the pdf. Higher DPI values mean clearer images (also larger file sizes).
-
-                Defaults to `self.DEFAULT_PDF_RENDERING_DPI=72`.
         """
         self.token_x_tolerance = token_x_tolerance
         self.token_y_tolerance = token_y_tolerance
@@ -152,7 +148,9 @@ class PDFPlumberParser(Parser):
         self.extra_attrs = (
             extra_attrs if extra_attrs is not None else ["fontname", "size"]
         )
-        self.dpi = dpi
+        if split_at_punctuation is True:
+            split_at_punctuation = type(self).DEFAULT_PUNCTUATION_CHARS
+        self.split_at_punctuation = split_at_punctuation
 
     def parse(self, input_pdf_path: str) -> Document:
         doc = self._load_pdf_as_doc(input_pdf_path)
@@ -178,6 +176,7 @@ class PDFPlumberParser(Parser):
             horizontal_ltr=horizontal_ltr,
             vertical_ttb=vertical_ttb,
             extra_attrs=extra_attrs,
+            split_at_punctuation=self.split_at_punctuation
         )
         page_tokens = [
             {

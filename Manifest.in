@@ -1,2 +1,3 @@
-recursive-include ai2_internal/vila/test_fixtures/ *
 recursive-include ai2_internal/shared_test_fixtures/ *
+recursive-include ai2_internal/vila/test_fixtures/ *
+recursive-include ai2_internal/citation_mentions/data/ *
