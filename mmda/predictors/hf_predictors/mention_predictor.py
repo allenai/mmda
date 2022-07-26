@@ -13,6 +13,8 @@ class MentionPredictor:
     def __init__(self, artifacts_dir: str):
         self.tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
         self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
+        # this is a side-effect(y) function
+        self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
     def predict(self, doc: Document) -> List[SpanGroup]:
         ret = []
@@ -30,7 +32,7 @@ class MentionPredictor:
                 padding='max_length',
                 return_overflowing_tokens=True,
                 return_tensors="pt"
-            )
+            ).to(self.model.device)
             del inputs["overflow_to_sample_mapping"]
             outputs = self.model(**inputs)
             prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
