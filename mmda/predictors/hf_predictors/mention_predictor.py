@@ -1,6 +1,8 @@
+import itertools
+from typing import List
+
 import torch
 from transformers import AutoModelForTokenClassification, AutoTokenizer
-from typing import List
 
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
@@ -14,6 +16,7 @@ class MentionPredictor:
 
     def predict(self, doc: Document) -> List[SpanGroup]:
         ret = []
+        id_counter = itertools.count()
 
         for page in doc.pages:
             words: List[str] = ["".join(token.symbols) for token in page.tokens]
@@ -64,13 +67,14 @@ class MentionPredictor:
                         acc.extend(spans)
                     elif has_begin:
                         if acc:
-                            ret.append(SpanGroup(spans=acc))
+                            ret.append(SpanGroup(spans=acc, id=next(id_counter)))
+                            anno_id += 1
                         acc = spans
                     elif acc:
-                        ret.append(SpanGroup(spans=acc))
+                        ret.append(SpanGroup(spans=acc, id=next(id_counter)))
                         acc = []
 
                 if acc:
-                    ret.append(SpanGroup(spans=acc))
+                    ret.append(SpanGroup(spans=acc, id=next(id_counter)))
         return ret
 
