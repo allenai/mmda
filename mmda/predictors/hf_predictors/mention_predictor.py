@@ -68,7 +68,6 @@ class MentionPredictor:
                     elif has_begin:
                         if acc:
                             ret.append(SpanGroup(spans=acc, id=next(id_counter)))
-                            anno_id += 1
                         acc = spans
                     elif acc:
                         ret.append(SpanGroup(spans=acc, id=next(id_counter)))
