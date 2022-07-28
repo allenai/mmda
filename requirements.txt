@@ -1,1 +1,1 @@
--e .[dev,pipeline]
+-e .[dev]
