@@ -66,6 +66,7 @@ model_variants:
     # Leave this unset unless your model has special system requirements beyond
     # those in your setup.py.
     docker_run_commands: ["apt-get update", "apt-get install python3-opencv -y"]
+
   bibentry_predictor:
     # Class path to pydantic Instance implementation in <model_package_name>==<model_package_version>
     instance: ai2_internal.bibentry_predictor.interface.Instance
@@ -103,7 +104,7 @@ model_variants:
     # those in your setup.py.
     docker_run_commands: []
 
-  citation_mentions:
+  citation_mentions: &citation_mentions_base_config
     # Class path to pydantic Instance implementation
     instance: ai2_internal.citation_mentions.interface.Instance
 
@@ -133,3 +134,11 @@ model_variants:
 
     # One or more bash commands to execute as part of a RUN step in a Dockerfile.
     docker_run_commands: ["apt-get update && apt-get install -y poppler-utils"]
+
+  citation_mentions__onnx:
+    << : *citation_mentions_base_config
+
+    # python -m transformers.onnx -m . --feature token-classification --framework pt --preprocessor tokenizer --opset 16 .
+    # ref: https://github.com/pytorch/pytorch/blob/v1.12.0/torch/onnx/__init__.py#L215-L217
+    artifacts_s3_path: s3://ai2-s2-mmda/models/citation-mentions/2022-07-27-minilm-10k/model/artifacts-onnx16.tar.gz
+    cuda: True
