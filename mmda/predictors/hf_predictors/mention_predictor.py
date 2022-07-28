@@ -51,7 +51,7 @@ class MentionPredictor:
             self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
         # this is a side-effect(y) function
         self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
-        self.model.eval()
+        self.model.eval()  # https://stackoverflow.com/a/60018731
 
     def predict(self, doc: Document, print_warnings: bool = False) -> List[SpanGroup]:
         spangroups = []
@@ -76,7 +76,8 @@ class MentionPredictor:
         ).to(self.model.device)
         del inputs["overflow_to_sample_mapping"]
 
-        outputs = self.model(**inputs)
+        with torch.no_grad():
+            outputs = self.model(**inputs)
         prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
 
         def has_label_id(label_ids: List[int], want_label_id: int) -> bool:
