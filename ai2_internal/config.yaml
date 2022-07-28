@@ -138,8 +138,5 @@ model_variants:
   citation_mentions__onnx:
     << : *citation_mentions_base_config
 
-    # Full S3 path to tar.gz'ed artifacts archive
-    # Prepared from `citation_mentions` artifacts using:
     # python -m transformers.onnx --model=/opt/ml/model --feature=token-classification /opt/ml/model
-    # See: https://huggingface.co/docs/transformers/serialization
-    artifacts_s3_path: s3://ai2-timo-registry/artifacts/mention-predictor__onnx/artifacts.tar.gz
+    artifacts_s3_path: s3://ai2-s2-mmda/models/citation-mentions/2022-07-27-minilm-10k/model/artifacts-onnx.tar.gz
