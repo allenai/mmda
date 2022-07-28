@@ -120,7 +120,7 @@ model_variants:
     extras_require: ["dev", "mentions"]
 
     # Full S3 path to tar.gz'ed artifacts archive
-    artifacts_s3_path: s3://ai2-s2-mmda/models/citation-mentions/22-07-11/model/artifacts.tar.gz
+    artifacts_s3_path: s3://ai2-s2-mmda/models/citation-mentions/2022-07-27-minilm-10k/model/artifacts.tar.gz
 
     # Version of python required for model runtime
     python_version: "3.8"
