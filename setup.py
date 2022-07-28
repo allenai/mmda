@@ -21,7 +21,7 @@ setup(
         "spacy_predictors": ["spacy"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
         "vila_predictors": ["vila>=0.4.2,<0.5", "transformers"],
-        "mentions": ["torch==1.12.0", "transformers==4.20.1", "optimum[onnxruntime-gpu]"],
+        "mention_predictor": ["torch==1.12.0", "transformers==4.20.1", "optimum[onnxruntime-gpu]"],
         "bibentry_predictor": ["transformers", "unidecode", "torch"],
     },
     include_package_data=True,

@@ -118,7 +118,7 @@ model_variants:
     predictor_config: ai2_internal.citation_mentions.interface.PredictorConfig
 
     # Any additional sets of dependencies required by the model.
-    extras_require: ["dev", "mentions"]
+    extras_require: ["dev", "mention_predictor"]
 
     # Full S3 path to tar.gz'ed artifacts archive
     artifacts_s3_path: s3://ai2-s2-mmda/models/citation-mentions/2022-07-27-minilm-10k/model/artifacts.tar.gz
