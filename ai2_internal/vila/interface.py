@@ -6,9 +6,11 @@ You must provide a wrapper around your model, as well
 as a definition of the objects it expects, and those it returns.
 """
 
+import logging
 from typing import List
 
 from pydantic import BaseModel, BaseSettings, Field
+import torch
 
 from mmda.predictors.hf_predictors.token_classification_predictor import (
     IVILATokenClassificationPredictor,
@@ -16,6 +18,9 @@ from mmda.predictors.hf_predictors.token_classification_predictor import (
 from mmda.types import api
 from mmda.types.document import Document, SpanGroup
 from mmda.types.image import frombase64
+
+
+logger = logging.getLogger(__name__)
 
 
 class Instance(BaseModel):
@@ -81,8 +86,16 @@ class Predictor:
         self._load_model()
 
     def _load_model(self) -> None:
+        device = "cuda" if torch.cuda.is_available() else None
+
+        if device == "cuda":
+            logger.info("CUDA device detected, running model with GPU acceleration.")
+        else:
+            logger.info("No CUDA device detected, running model on CPU.")
+
         self._predictor = IVILATokenClassificationPredictor.from_pretrained(
             self._artifacts_dir,
+            device=device
         )
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:

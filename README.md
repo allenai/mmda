@@ -1,6 +1,6 @@
 # MMDA - multimodal document analysis
 
-This is work in progress...
+This is work in progress... Click here for [project status](https://github.com/allenai/mmda/projects/1).
 
 ## Setup
 
