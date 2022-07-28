@@ -3,7 +3,7 @@ from setuptools import find_namespace_packages, setup
 setup(
     name="mmda",
     description="mmda",
-    version="0.0.21rc1",
+    version="0.0.21rc2",
     url="https://www.github.com/allenai/mmda",
     python_requires=">= 3.7",
     packages=find_namespace_packages(include=["mmda*", "ai2_internal*"]),
@@ -22,6 +22,7 @@ setup(
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
         "vila_predictors": ["vila>=0.4.2,<0.5", "transformers"],
         "mentions": ["torch", "transformers", "optimum[onnxruntime]"],
+        "mentions_gpu": ["torch", "transformers", "optimum[onnxruntime-gpu]"],
         "bibentry_predictor": ["transformers", "unidecode", "torch"],
     },
     include_package_data=True,
