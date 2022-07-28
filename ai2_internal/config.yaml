@@ -138,7 +138,7 @@ model_variants:
   citation_mentions__onnx:
     << : *citation_mentions_base_config
 
-    # python -m transformers.onnx --model=/opt/ml/model --feature=token-classification /opt/ml/model
+    # python -m transformers.onnx -m . --feature token-classification --framework pt --preprocessor tokenizer --opset 16 .
     artifacts_s3_path: s3://ai2-s2-mmda/models/citation-mentions/2022-07-27-minilm-10k/model/artifacts-onnx.tar.gz
     extras_require: ["dev", "mentions_gpu"]
     cuda: True
