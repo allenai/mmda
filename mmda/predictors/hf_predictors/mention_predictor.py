@@ -1,5 +1,5 @@
-import itertools
-from typing import Dict, List, Optional
+import os.path
+from typing import Dict, Iterator, List, Optional
 
 import torch
 from transformers import AutoModelForTokenClassification, AutoTokenizer
@@ -43,7 +43,10 @@ class Labels:
 class MentionPredictor:
     def __init__(self, artifacts_dir: str):
         self.tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
-        self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
+        if os.path.exists(os.path.join(artifacts_dir, "model.onnx")):
+            self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir, file_name="model.onnx")
+        else:
+            self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
         # this is a side-effect(y) function
         self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
@@ -53,7 +56,7 @@ class MentionPredictor:
             spangroups.extend(self.predict_page(page, print_warnings=print_warnings))
         return spangroups
 
-    def predict_page(self, page: List[Annotation], print_warnings: bool = False) -> List[SpanGroup]:
+    def predict_page(self, page: List[Annotation], counter: Iterator[int], print_warnings: bool = False) -> List[SpanGroup]:
         ret = []
 
         words: List[str] = ["".join(token.symbols) for token in page.tokens]
@@ -98,6 +101,12 @@ class MentionPredictor:
             acc: List[Span] = []
             outside_mention = True
 
+            def append_acc():
+                nonlocal acc
+                if acc:
+                    ret.append(SpanGroup(spans=acc, id=next(counter)))
+                acc = []
+
             for word_id, label_ids in zip(word_ids, word_label_ids):
                 spans = word_spans[word_id]
 
@@ -131,25 +140,19 @@ class MentionPredictor:
                         print(f"  - {warning}")
 
                 if label_id == Labels.MENTION_UNIT_ID:
-                    if acc:
-                        ret.append(SpanGroup(spans=acc))
-                    ret.append(SpanGroup(spans=spans))
-                    acc = []
+                    append_acc()
+                    acc = spans
+                    append_acc()
                     outside_mention = True
                 if label_id == Labels.MENTION_BEGIN_ID:
-                    if acc:
-                        ret.append(SpanGroup(spans=acc))
+                    append_acc()
                     acc = spans
                     outside_mention = False
                 elif label_id == Labels.MENTION_LAST_ID:
                     acc.extend(spans)
-                    if acc:
-                        ret.append(SpanGroup(spans=acc))
-                    acc = []
+                    append_acc()
                     outside_mention = True
                 elif label_id == Labels.MENTION_INSIDE_ID:
                     acc.extend(spans)
-
-            if acc:
-                ret.append(SpanGroup(spans=acc))
+            append_acc()
         return ret
