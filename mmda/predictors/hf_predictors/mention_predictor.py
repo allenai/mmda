@@ -51,6 +51,7 @@ class MentionPredictor:
             self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
         # this is a side-effect(y) function
         self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+        self.model.eval()
 
     def predict(self, doc: Document, print_warnings: bool = False) -> List[SpanGroup]:
         spangroups = []
