@@ -45,13 +45,19 @@ class Labels:
 class MentionPredictor:
     def __init__(self, artifacts_dir: str):
         self.tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
-        if os.path.exists(os.path.join(artifacts_dir, "model.onnx")):
+
+        onnx = os.path.exists(os.path.join(artifacts_dir, "model.onnx"))
+        if onnx:
             self.model = ORTModelForTokenClassification.from_pretrained(artifacts_dir, file_name="model.onnx")
         else:
             self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
+
         # this is a side-effect(y) function
         self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
-        self.model.eval()  # https://stackoverflow.com/a/60018731
+
+        if not onnx:
+            # https://stackoverflow.com/a/60018731
+            self.model.eval() # for some reason the onnx version doesnt have an eval()
 
     def predict(self, doc: Document, print_warnings: bool = False) -> List[SpanGroup]:
         spangroups = []
