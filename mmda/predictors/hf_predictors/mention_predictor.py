@@ -1,6 +1,8 @@
+import itertools
 import os.path
 from typing import Dict, Iterator, List, Optional
 
+from optimum.onnxruntime import ORTModelForTokenClassification
 import torch
 from transformers import AutoModelForTokenClassification, AutoTokenizer
 
@@ -44,7 +46,7 @@ class MentionPredictor:
     def __init__(self, artifacts_dir: str):
         self.tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
         if os.path.exists(os.path.join(artifacts_dir, "model.onnx")):
-            self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir, file_name="model.onnx")
+            self.model = ORTModelForTokenClassification.from_pretrained(artifacts_dir, file_name="model.onnx")
         else:
             self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
         # this is a side-effect(y) function
@@ -53,7 +55,7 @@ class MentionPredictor:
     def predict(self, doc: Document, print_warnings: bool = False) -> List[SpanGroup]:
         spangroups = []
         for page in doc.pages:
-            spangroups.extend(self.predict_page(page, print_warnings=print_warnings))
+            spangroups.extend(self.predict_page(page, counter=itertools.count(), print_warnings=print_warnings))
         return spangroups
 
     def predict_page(self, page: List[Annotation], counter: Iterator[int], print_warnings: bool = False) -> List[SpanGroup]:
