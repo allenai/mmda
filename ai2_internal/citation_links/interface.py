@@ -1,0 +1,81 @@
+"""
+This file contains the classes required by Semantic Scholar's
+TIMO tooling.
+
+You must provide a wrapper around your model, as well
+as a definition of the objects it expects, and those it returns.
+"""
+
+from typing import List, Tuple
+
+from pydantic import BaseModel, BaseSettings
+
+from mmda.predictors.xgb_predictors.citation_link_predictor import CitationLinkPredictor
+from mmda.types import api
+from mmda.types.document import Document
+
+# these should represent the extracted citation mentions and bibliography entries for a paper
+class Instance(BaseModel):
+    """
+    Describes one Instance over which the model performs inference.
+    """
+    mentions: List[api.SpanGroup]
+    bibs: List[api.SpanGroup]
+
+
+class Prediction(BaseModel):
+    """
+    Describes the outcome of inference for one Instance
+    """
+    linked_mentions: List[Tuple[api.SpanGroup, str]]
+
+
+class PredictorConfig(BaseSettings):
+    """
+    Configuration required by the model to do its work.
+    Uninitialized fields will be set via Environment variables.
+    """
+    pass
+
+
+class Predictor:
+    """
+    Interface on to your underlying model.
+
+    This class is instantiated at application startup as a singleton.
+    You should initialize your model inside of it, and implement
+    prediction methods.
+
+    If you specified an artifacts.tar.gz for your model, it will
+    have been extracted to `artifacts_dir`, provided as a constructor
+    arg below.
+    """
+    def __init__(self, config: PredictorConfig, artifacts_dir: str):
+        self._predictor = CitationLinkPredictor(artifacts_dir)
+
+    def predict_one(self, inst: Instance) -> Prediction:
+        """
+        Should produce a single Prediction for the provided Instance.
+        Leverage your underlying model to perform this inference.
+        """
+
+        prediction = self._predictor.predict(inst.mentions, inst.bibs)
+        return Prediction(linked_mentions = prediction)
+
+    def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
+        """
+        Method called by the client application. One or more Instances will
+        be provided, and the caller expects a corresponding Prediction for
+        each one.
+
+        If your model gets performance benefits from batching during inference,
+        implement that here, explicitly.
+
+        Otherwise, you can leave this method as-is and just implement
+        `predict_one()` above. The default implementation here passes
+        each Instance into `predict_one()`, one at a time.
+
+        The size of the batches passed into this method is configurable
+        via environment variable by the calling application.
+        """
+        return [self.predict_one(instance) for instance in instances]
