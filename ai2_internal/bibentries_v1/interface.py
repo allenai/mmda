@@ -10,7 +10,10 @@ from typing import List
 
 from pydantic import BaseModel, BaseSettings, Field
 
-from mmda.pre
+from mmda.predictors.d2_predictors.bibentry_detection_predictor import BibEntryDetectionPredictor
+from mmda.types import api, image
+from mmda.types.document import Document
+
 
 class Instance(BaseModel):
     """
@@ -23,8 +26,11 @@ class Instance(BaseModel):
     https://pydantic-docs.helpmanual.io/
     """
 
-    # field1: str = Field(description="Some field of consequence")
-    # field2: float = Field(description="Some other field of consequence")
+    symbols: str
+    tokens: List[api.SpanGroup]
+    rows: List[api.SpanGroup]
+    pages: List[api.SpanGroup]
+    page_images: List[str] = Field(description="List of base64-encoded page images")
 
 
 class Prediction(BaseModel):
@@ -54,7 +60,7 @@ class PredictorConfig(BaseSettings):
     vars the consuming application needs to set.
     """
 
-    # example_field: str = Field(default="asdf", description="Used to [...]")
+    threshold: float = Field(default=0.90, description="Prediction accuracy score used to determine threshold of returned predictions")
 
 
 class Predictor:
@@ -84,14 +90,22 @@ class Predictor:
         model ready for inference. This operation is performed only once
         during the application life-cycle.
         """
-        raise NotImplementedError
+        self._predictor = BibEntryDetectionPredictor(self._artifacts_dir, self._config.threshold)
 
-    def predict_one(self, instance: Instance) -> Prediction:
+    def predict_one(self, inst: Instance) -> Prediction:
         """
         Should produce a single Prediction for the provided Instance.
         Leverage your underlying model to perform this inference.
         """
-        raise NotImplementedError
+        doc = Document(symbols=inst.symbols) #
+        doc.annotate(tokens=[sg.to_mmda() for sg in inst.tokens])
+        doc.annotate(rows=[sg.to_mmda() for sg in inst.rows])
+        doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
+        images = [image.frombase64(im) for im in inst.page_images]
+        doc.annotate_images(images)
+
+        prediction = self._predictor.predict(doc)
+        return Prediction(mentions=[api.SpanGroup.from_mmda(sg) for sg in prediction])
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """

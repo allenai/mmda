@@ -3,56 +3,44 @@ from typing import Union, List, Dict, Any, Optional
 from tqdm import tqdm
 import layoutparser as lp
 
-from mmda.types.names import *
-from mmda.types.document import Document
+from mmda.types.annotation import SpanGroup
 from mmda.types.box import Box
-from mmda.types.annotation import BoxGroup, Annotation
+from mmda.types.document import Document
+# from mmda.types.names import Pages, Images, Tokens # TODO determine
+from mmda.types.names import Pages, Images
+from mmda.types.span import Span
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
 
-class LayoutParserPredictor(BasePredictor):
-    REQUIRED_BACKENDS = ["layoutparser"]
+class BibEntryDetectionPredictor(BasePredictor):
+    REQUIRED_BACKENDS = ["layoutparser", "detectron2"]
+    # REQUIRED_DOCUMENT_FIELDS = [Pages, Images, Tokens] # TODO determine
     REQUIRED_DOCUMENT_FIELDS = [Pages, Images]
 
-    def __init__(self, model):
-        self.model = model
-
-    @classmethod
-    def from_pretrained(
-            cls,
-            config_path: str = "lp://efficientdet/PubLayNet",
-            model_path: str = None,
-            label_map: Optional[Dict] = None,
-            extra_config: Optional[Dict] = None,
-            device: str = None,
-    ):
-        """Initialize a pre-trained layout detection model from
-        layoutparser. The parameters currently are the same as the
-        default layoutparser Detectron2 models
-        https://layout-parser.readthedocs.io/en/latest/api_doc/models.html ,
-        and will be updated in the future.
-        """
-
-        model = lp.Detectron2LayoutModel(
-            config_path=config_path,
-            model_path=model_path,
+    def __init__(self, artifacts_dir: str, threshold: float = 0.90):
+        label_map = {0: "bibentry"}
+        self.model = lp.Detectron2LayoutModel(
+            config_path=f"{artifacts_dir}/config.yaml",
+            model_path=f"{artifacts_dir}/model_final.pth",
             label_map=label_map,
-            extra_config=extra_config,
-            device=device,
+            extra_config=["MODEL.ROI_HEADS.SCORE_THRESH_TEST", threshold]
         )
-
-        return cls(model)
 
     def postprocess(self,
                     model_outputs: lp.Layout,
+                    # TODO i am confused about tokens...
+                    # tokens: List[SpanGroup],
+                    tokens: List[List[Span]],
                     page_index: int,
-                    image: "PIL.Image") -> List[BoxGroup]:
-        """Convert the model outputs into the mmda format
+                    image: "PIL.Image") -> List[SpanGroup]:
+        """Convert the model outputs for a single page image into the mmda format
 
         Args:
             model_outputs (lp.Layout):
-                The layout detection results from layoutparser for
+                The layout detection results from the layoutparser model for
                 a page image
+            tokens (List[SpanGroup]):
+                The document's tokens for this page
             page_index (int):
                 The index of the current page, used for creating the
                 `Box` object
@@ -70,26 +58,32 @@ class LayoutParserPredictor(BasePredictor):
         page_width, page_height = image.size
 
         return [
-            BoxGroup(
-                boxes=[
-                    Box(
-                        l=block.coordinates[0],
-                        t=block.coordinates[1],
-                        w=block.width,
-                        h=block.height,
-                        page=page_index,
-                    ).get_relative(
-                        page_width=page_width,
-                        page_height=page_height,
+            SpanGroup(
+                spans=[
+                    Span(
+                        # TODO: these start/ends are page token IDs?
+                        start=,
+                        end=,
+                        # TODO: use coords of box tightened around the tokens
+                        box=Box.from_coordinates(
+                            x1=ele.block.x_1,
+                            y1=ele.block.y_1,
+                            x2=ele.block.x_2,
+                            y2=ele.block.y_2,
+                            page=page_index
+                        ).get_relative(
+                            page_width=page_width,
+                            page_height=page_height,
+                        )
                     )
                 ],
-                type=block.type,
+                type=ele.type,
             )
-            for block in model_outputs
+            for ele in model_outputs
         ]
 
-    def predict(self, document: Document) -> List[BoxGroup]:
-        """Returns a list of Boxgroups for the detected layouts for all pages
+    def predict(self, document: Document) -> List[SpanGroup]:
+        """Returns a list of SpanGroups for the detected layouts for all pages
 
         Args:
             document (Document):
@@ -104,7 +98,8 @@ class LayoutParserPredictor(BasePredictor):
         for image_index, image in enumerate(tqdm(document.images)):
             model_outputs = self.model.detect(image)
             document_prediction.extend(
-                self.postprocess(model_outputs, image_index, image)
+                # TODO tokens .. ?
+                self.postprocess(model_outputs, document.tokens[image_index], image_index, image)
             )
 
         return document_prediction
