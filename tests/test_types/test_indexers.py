@@ -63,6 +63,7 @@ class TestSpanGroupIndexer(unittest.TestCase):
         probe = SpanGroup(id=3, spans=[Span(1, 7), Span(9, 20)])
         matches = index.find(probe)
 
+        self.assertEqual(len(matches), 2)
         self.assertEqual(matches, [span_groups_to_index[0], span_groups_to_index[1]])
 
 
