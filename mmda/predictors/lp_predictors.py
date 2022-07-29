@@ -1,18 +1,13 @@
 from typing import Union, List, Dict, Any, Optional
-import logging
 
 from tqdm import tqdm
 import layoutparser as lp
-import torch
 
 from mmda.types.names import *
 from mmda.types.document import Document
 from mmda.types.box import Box
 from mmda.types.annotation import BoxGroup, Annotation
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
-
-
-logger = logging.getLogger(__name__)
 
 
 class LayoutParserPredictor(BasePredictor):
@@ -37,12 +32,6 @@ class LayoutParserPredictor(BasePredictor):
         https://layout-parser.readthedocs.io/en/latest/api_doc/models.html ,
         and will be updated in the future.
         """
-        device = "cuda" if torch.cuda.is_available() else None
-
-        if device == "cuda":
-            logger.info("CUDA device detected, running model with GPU acceleration.")
-        else:
-            logger.info("No CUDA device detected, running model on CPU.")
 
         model = lp.AutoLayoutModel(
             config_path=config_path,
@@ -54,25 +43,25 @@ class LayoutParserPredictor(BasePredictor):
 
         return cls(model)
 
-    def postprocess(self,
-        model_outputs: lp.Layout,
+    def postprocess(self, 
+        model_outputs: lp.Layout, 
         page_index: int,
         image: "PIL.Image") -> List[BoxGroup]:
         """Convert the model outputs into the mmda format
 
         Args:
-            model_outputs (lp.Layout):
-                The layout detection results from layoutparser for
+            model_outputs (lp.Layout): 
+                The layout detection results from layoutparser for 
                 a page image
-            page_index (int):
-                The index of the current page, used for creating the
+            page_index (int): 
+                The index of the current page, used for creating the 
                 `Box` object
-            image (PIL.Image):
+            image (PIL.Image): 
                 The image of the current page, used for converting
                 to relative coordinates for the box objects
 
         Returns:
-            List[BoxGroup]:
+            List[BoxGroup]: 
             The detected layout stored in the BoxGroup format.
         """
 
@@ -103,11 +92,11 @@ class LayoutParserPredictor(BasePredictor):
         """Returns a list of Boxgroups for the detected layouts for all pages
 
         Args:
-            document (Document):
-                The input document object
+            document (Document): 
+                The input document object 
 
         Returns:
-            List[BoxGroup]:
+            List[BoxGroup]: 
                 The returned Boxgroups for the detected layouts for all pages
         """
         document_prediction = []
