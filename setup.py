@@ -23,6 +23,7 @@ setup(
         "vila_predictors": ["vila>=0.4.2,<0.5", "transformers"],
         "mention_predictor": ["torch==1.12.0", "transformers==4.20.1", "optimum[onnxruntime-gpu]"],
         "bibentry_predictor": ["transformers", "unidecode", "torch"],
+        "citation_links": ["numpy", "thefuzz[speedup]", "sklearn", "xgboost"],
     },
     include_package_data=True,
     package_data={
