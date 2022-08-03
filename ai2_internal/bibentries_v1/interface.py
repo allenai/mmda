@@ -28,7 +28,7 @@ class Instance(BaseModel):
 
     symbols: str
     tokens: List[api.SpanGroup]
-    rows: List[api.SpanGroup]
+    rows: List[api.SpanGroup]  # TODO i think this still has to be listed since it's part of the doc that we'll receive
     pages: List[api.SpanGroup]
     page_images: List[str] = Field(description="List of base64-encoded page images")
 
@@ -36,18 +36,9 @@ class Instance(BaseModel):
 class Prediction(BaseModel):
     """
     Describes the outcome of inference for one Instance
-
-    The fields below are examples only; please replace them with
-    appropriate fields for your model.
-
-    To learn more about declaring pydantic model fields, please see:
-    https://pydantic-docs.helpmanual.io/
     """
 
-    # classification: str = Field(
-    #     description="Some classification produced by the classifier"
-    # )
-    # score: float = Field(description="Confidence score for the classification")
+    bibs: List[api.SpanGroup]
 
 
 class PredictorConfig(BaseSettings):
@@ -55,8 +46,7 @@ class PredictorConfig(BaseSettings):
     Configuration required by the model to do its work.
     Uninitialized fields will be set via Environment variables.
 
-    The fields below are examples only; please replace them with ones
-    appropriate for your model. These serve as a record of the ENV
+    These serve as a record of the ENV
     vars the consuming application needs to set.
     """
 
@@ -97,9 +87,9 @@ class Predictor:
         Should produce a single Prediction for the provided Instance.
         Leverage your underlying model to perform this inference.
         """
-        doc = Document(symbols=inst.symbols) #
+        doc = Document(symbols=inst.symbols)
         doc.annotate(tokens=[sg.to_mmda() for sg in inst.tokens])
-        doc.annotate(rows=[sg.to_mmda() for sg in inst.rows])
+        # doc.annotate(rows=[sg.to_mmda() for sg in inst.rows])  # TODO I think don't need here
         doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
         images = [image.frombase64(im) for im in inst.page_images]
         doc.annotate_images(images)
