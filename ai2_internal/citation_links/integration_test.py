@@ -112,6 +112,6 @@ class TestInterfaceIntegration(unittest.TestCase):
 
         predicted_links = predictions[0].linked_mentions        
         self.assertEqual(len(predicted_links), 2)
-        self.assertEqual(predicted_links[0], (mention1, str(bib2.id)))
-        self.assertEqual(predicted_links[1], (mention2, str(bib1.id)))
+        self.assertEqual(predicted_links[0], (str(mention1.id), str(bib2.id)))
+        self.assertEqual(predicted_links[1], (str(mention2.id), str(bib1.id)))
         

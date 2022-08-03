@@ -28,7 +28,8 @@ class Prediction(BaseModel):
     """
     Describes the outcome of inference for one Instance
     """
-    linked_mentions: List[Tuple[api.SpanGroup, str]]
+    # tuple represents mention.id and bib.id for the linked pair
+    linked_mentions: List[Tuple[str, str]]
 
 
 class PredictorConfig(BaseSettings):
@@ -64,10 +65,8 @@ class Predictor:
         doc.annotate(bibs=[sg.to_mmda() for sg in inst.bibs])
 
         prediction = self._predictor.predict(doc) # returns (mention.id, bib.id)
-        mention_lookup = {mention.id: mention for mention in inst.mentions}
-        linked_mentions = [(mention_lookup[mention_id], bib_id) for (mention_id, bib_id) in prediction]
         
-        return Prediction(linked_mentions = linked_mentions)
+        return Prediction(linked_mentions = prediction)
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """
