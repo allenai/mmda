@@ -71,7 +71,7 @@ class TestInterfaceIntegration(unittest.TestCase):
             text = None
         )
 
-        # text for this span is "[16] C. Fisch, Centennial of the string galvanometer and the electro- cardiogram
+        # text for this span is "[16] C. Fisch, Centennial of the string galvanometer and the electro- cardiogram"
         bibspan1 = api.Span(start = 19, end = 98, box = None)
         bib1 = api.SpanGroup(
             spans = [bibspan1],
@@ -103,7 +103,7 @@ class TestInterfaceIntegration(unittest.TestCase):
 
 
         instances = [
-            Instance(symbols = symbols, mentions = [mention1, mention2], bibs = [bib1, bib2])
+            Instance(symbols = symbols, mentions = [mention1, mention2], bibs = [bib1, bib2, bib3])
         ]
 
         
