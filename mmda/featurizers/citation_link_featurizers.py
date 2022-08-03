@@ -4,7 +4,7 @@ import re
 from thefuzz import fuzz
 from typing import List, Tuple, Dict
 
-from mmda.types import api
+from mmda.types.annotation import SpanGroup
 
 
 DIGITS = re.compile(r'[0-9]+')
@@ -23,12 +23,13 @@ MATCH_NUMERIC = "match_numeric"
 JACCARD_ALPHA = "jaccard_alpha"
 MATCH_FIRST_TOKEN = "match_first_token"
 
-class CitationLink(BaseModel):
-    mention: api.SpanGroup
-    bib: api.SpanGroup
+class CitationLink:
+    def __init__(self, mention: SpanGroup, bib: SpanGroup):
+        self.mention = mention
+        self.bib = bib
 
     def to_text_dict(self) -> Dict[str, str]:
-        return {"source_text": self.mention.text, "target_text": self.bib.text}
+        return {"source_text": "".join(self.mention.symbols), "target_text": "".join(self.bib.symbols)}
 
 def featurize(possible_links: List[CitationLink]) -> pd.DataFrame:
     # create dataframe

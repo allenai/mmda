@@ -19,6 +19,7 @@ class Instance(BaseModel):
     """
     Describes one Instance over which the model performs inference.
     """
+    symbols: str
     mentions: List[api.SpanGroup]
     bibs: List[api.SpanGroup]
 
@@ -58,9 +59,16 @@ class Predictor:
         Should produce a single Prediction for the provided Instance.
         Leverage your underlying model to perform this inference.
         """
+        doc = Document(symbols=inst.symbols)
+        doc.annotate(mentions=[sg.to_mmda() for sg in inst.mentions])
+        doc.annotate(bibs=[sg.to_mmda() for sg in inst.bibs])
 
-        prediction = self._predictor.predict(inst.mentions, inst.bibs)
-        return Prediction(linked_mentions = prediction)
+        prediction = self._predictor.predict(doc) # returns (mention.id, bib.id)
+        mention_lookup = {mention.id: mention for mention in inst.mentions}
+        # could do this by index instead
+        linked_mentions = [(mention_lookup[mention_id], bib_id) for (mention_id, bib_id) in prediction]
+        
+        return Prediction(linked_mentions = linked_mentions)
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """

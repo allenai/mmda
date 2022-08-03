@@ -48,51 +48,65 @@ except ImportError as e:
 @with_timo_container
 class TestInterfaceIntegration(unittest.TestCase):
     def test__predictions(self, container):
+        # single text string representing text contents of pdf
+        symbols = "titlexxxx4xxxx16xxx[16] C. Fisch, Centennial of the string galvanometer and the electro- cardiogram4. Wei Zhuo, Qianyi Zhan, Yuan Liu, Zhenping Xie, and Jing Lu. Context attention heterogeneous network embed- ding.37 Urban Taco Collective, Tacos with sauce, 2019"
+        
+        # text for this span is "4"
+        span1 = api.Span(start = 9, end = 10, box = None)
         mention1 = api.SpanGroup(
-            spans = [],
+            spans = [span1],
             box_group = None,
             id = 1,
             type = None,
-            text = "4"
+            text = None
         )
 
+        # text for this span is "16"
+        span2 = api.Span(start = 14, end = 16, box = None)
         mention2 = api.SpanGroup(
-            spans = [],
+            spans = [span2],
             box_group = None,
             id = 2,
             type = None,
-            text = "16"
+            text = None
         )
 
+        # text for this span is "[16] C. Fisch, Centennial of the string galvanometer and the electro- cardiogram
+        bibspan1 = api.Span(start = 19, end = 98, box = None)
         bib1 = api.SpanGroup(
-            spans = [],
+            spans = [bibspan1],
             box_group = None,
             id = 1,
             type = None,
-            text = "[16] C. Fisch, Centennial of the string galvanometer and the electro- cardiogram, Journal of the American College of Cardiology , vol. 36, no. 6, pp. 1737–1745, 2000."
+            text = None
         )
 
+        # text for this span is "4. Wei Zhuo, Qianyi Zhan, Yuan Liu, Zhenping Xie, and Jing Lu. Context attention heterogeneous network embed- ding."
+        bibspan2 = api.Span(start = 99, end = 213, box = None)
         bib2 = api.SpanGroup(
-            spans = [],
+            spans = [bibspan2],
             box_group = None,
             id = 2,
             type = None,
-            text = "4. Wei Zhuo, Qianyi Zhan, Yuan Liu, Zhenping Xie, and Jing Lu. Context attention heterogeneous network embed- ding. Computational Intelligence and Neuroscience , 2019. doi: 10.1155/2019/8106073."
+            text = None
         )
 
+        # text for this span is "37 Urban Taco Collective, Tacos with sauce, 2019"
+        bibspan3 = api.Span(start = 214, end = 261, box = None)
         bib3 = api.SpanGroup(
-            spans = [],
+            spans = [bibspan3],
             box_group = None,
             id = 3,
             type = None,
-            text = "37 Urban Taco Collective, Tacos with sauce, 2019"
+            text = None
         )
 
 
-
         instances = [
-            Instance(mentions = [mention1, mention2], bibs = [bib1, bib2, bib3])
+            Instance(symbols = symbols, mentions = [mention1, mention2], bibs = [bib1, bib2])
         ]
+
+        
         predictions = container.predict_batch(instances)
         self.assertEqual(len(predictions), 1)
 
