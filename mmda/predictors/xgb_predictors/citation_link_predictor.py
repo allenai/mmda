@@ -18,9 +18,6 @@ class CitationLinkPredictor:
     def predict(self, doc: Document) -> List[Tuple[str, str]]:
         predicted_links = []
         
-        # mentions = [api.SpanGroup.from_mmda(sg) for sg in doc.mentions]
-        # bibs = [api.SpanGroup.from_mmda(sg) for sg in doc.bibs]
-        
         # iterate over mentions
         for mention in doc.mentions:
             # create all possible links for this mention 

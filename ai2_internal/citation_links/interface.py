@@ -65,7 +65,6 @@ class Predictor:
 
         prediction = self._predictor.predict(doc) # returns (mention.id, bib.id)
         mention_lookup = {mention.id: mention for mention in inst.mentions}
-        # could do this by index instead
         linked_mentions = [(mention_lookup[mention_id], bib_id) for (mention_id, bib_id) in prediction]
         
         return Prediction(linked_mentions = linked_mentions)
