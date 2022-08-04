@@ -104,7 +104,7 @@ model_variants:
     # those in your setup.py.
     docker_run_commands: []
 
-  citation_mentions: &citation_mentions_base_config
+  citation_mentions:
     # Class path to pydantic Instance implementation
     instance: ai2_internal.citation_mentions.interface.Instance
 
@@ -118,16 +118,18 @@ model_variants:
     predictor_config: ai2_internal.citation_mentions.interface.PredictorConfig
 
     # Any additional sets of dependencies required by the model.
-    extras_require: ["dev", "mention_predictor"]
+    extras_require: ["dev", "mention_predictor_gpu"]
 
     # Full S3 path to tar.gz'ed artifacts archive
-    artifacts_s3_path: s3://ai2-s2-mmda/models/citation-mentions/2022-07-27-minilm-10k/model/artifacts.tar.gz
+    # python -m transformers.onnx -m . --feature token-classification --framework pt --preprocessor tokenizer --opset 16 .
+    # ref: https://github.com/pytorch/pytorch/blob/v1.12.0/torch/onnx/__init__.py#L215-L217
+    artifacts_s3_path: s3://ai2-s2-mmda/models/citation-mentions/2022-07-27-minilm-10k/model/artifacts-onnx16.tar.gz
 
     # Version of python required for model runtime
     python_version: "3.8"
 
     # Whether this model supports CUDA GPU acceleration
-    cuda: False
+    cuda: True
 
     # Used by the TIMO toolchain to validate your model implementation and configuration.
     integration_test: ai2_internal.citation_mentions.integration_test.TestInterfaceIntegration
@@ -135,13 +137,6 @@ model_variants:
     # One or more bash commands to execute as part of a RUN step in a Dockerfile.
     docker_run_commands: ["apt-get update && apt-get install -y poppler-utils"]
 
-  citation_mentions__onnx:
-    << : *citation_mentions_base_config
-
-    # python -m transformers.onnx -m . --feature token-classification --framework pt --preprocessor tokenizer --opset 16 .
-    # ref: https://github.com/pytorch/pytorch/blob/v1.12.0/torch/onnx/__init__.py#L215-L217
-    artifacts_s3_path: s3://ai2-s2-mmda/models/citation-mentions/2022-07-27-minilm-10k/model/artifacts-onnx16.tar.gz
-    cuda: True
   citation_links:
     # Class path to pydantic Instance implementation
     instance: ai2_internal.citation_links.interface.Instance
