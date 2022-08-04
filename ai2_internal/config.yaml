@@ -135,7 +135,7 @@ model_variants:
     integration_test: ai2_internal.citation_mentions.integration_test.TestInterfaceIntegration
 
     # One or more bash commands to execute as part of a RUN step in a Dockerfile.
-    docker_run_commands: ["apt-get update && apt-get install -y poppler-utils"]
+    docker_run_commands: ["apt-get install -y poppler-utils"]
 
   citation_links:
     # Class path to pydantic Instance implementation
