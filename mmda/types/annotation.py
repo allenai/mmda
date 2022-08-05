@@ -137,6 +137,7 @@ def _text_span_group_getter(span_group: 'SpanGroup') -> str:
     else:
         return " ".join(span_group.symbols)
 
+
 # NOTE[LucaS]: by using the store_field_in_metadata decorator, we are
 # able to store id and type in the metadata of BoxGroup, while keeping it
 # accessible via SpanGroup.id and SpanGroup.type respectively. This is
