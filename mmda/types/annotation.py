@@ -104,7 +104,18 @@ class BoxGroup(Annotation):
                 Box.from_json(box_coords=box_dict)
                 for box_dict in box_group_dict["boxes"]
             ],
-            metadata=dict(box_group_dict["metadata"]),
+            metadata=box_group_dict.get(
+                "metadata",
+                # this is necessary to ensure compatibility with
+                # box groups that were create before the metadata
+                # migration and therefore have "id", "type" in the
+                # main representation instead.
+                {
+                    key: box_group_dict[key]
+                    for key in ("id", "type")
+                    if key in box_group_dict
+                }
+            ),
             uuid=box_group_dict.get("uuid", str(uuid4())),
         )
 
@@ -205,7 +216,18 @@ class SpanGroup(Annotation):
                 Span.from_json(span_dict=span_dict)
                 for span_dict in span_group_dict["spans"]
             ],
-            metadata=dict(span_group_dict["metadata"]),
+            metadata=span_group_dict.get(
+                "metadata",
+                # this is necessary to ensure compatibility with
+                # span groups that were create before the metadata
+                # migration and therefore have "id", "type", and "text"
+                # in the main representation instead.
+                {
+                    key: span_group_dict[key]
+                    for key in ("id", "type", "text")
+                    if key in span_group_dict
+                }
+            ),
             box_group=box_group,
             uuid=span_group_dict.get("uuid", str(uuid4())),
         )
