@@ -2,17 +2,22 @@
 
 Annotations are objects that are 'aware' of the Document
 
-Collections of Annotations are how one constructs a new Iterable of Group-type objects within the Document
+Collections of Annotations are how one constructs a new
+Iterable of Group-type objects within the Document
 
 """
 from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Union
 from uuid import uuid4
 
 from mmda.types.box import Box
+from mmda.types.decorators import store_field_in_metadata
 from mmda.types.span import Span
+
+if TYPE_CHECKING:
+    from mmda.types.document import Document
 
 
 def default_factory():
@@ -23,10 +28,11 @@ def default_factory():
 class Annotation:
     """Annotation is intended for storing model predictions for a document."""
 
+    # TODO[kylel] - remove UUID from this class, as you explained to me (luca)
+    # it is about 10% of the wall time in processing a document
     uuid: str = field(default_factory=default_factory)
-    doc: Optional["Document"] = field(default=False, init=False)
-    # Specify an attribute with default value in the parent class
-    # Ref: https://stackoverflow.com/a/58525728
+    doc: Optional["Document"] = field(default=None, init=False)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     @abstractmethod
     def to_json(self) -> Dict:
@@ -34,7 +40,7 @@ class Annotation:
 
     # TODO[shannon] make this as an abstract method after implementing
     # get_symbols for BoxGroup
-    def get_symbols(self) -> str:
+    def get_symbols(self) -> str:  # type: ignore
         pass
 
     @classmethod
@@ -50,10 +56,15 @@ class Annotation:
         if not self.doc:
             self.doc = doc
         else:
-            raise AttributeError(f"This annotation already has an attached document")
+            raise AttributeError(
+                "This annotation already has an attached document"
+            )
 
     # TODO[kylel] - comment explaining
     def __getattr__(self, field: str) -> List["Annotation"]:
+        if self.doc is None:
+            raise ValueError("This annotation is not attached to a document")
+
         if self.key_prefix + field in self.doc.fields:
             return self.doc.find_overlapping(self, self.key_prefix + field)
 
@@ -63,6 +74,13 @@ class Annotation:
         return self.__getattribute__(field)
 
 
+# NOTE[LucaS]: by using the store_field_in_metadata decorator, we are
+# able to store id and type in the metadata of BoxGroup, while keeping it
+# accessible via SpanGroup.id and SpanGroup.type respectively. This is
+# useful because it keeps backward compatibility with the old API, while
+# migrating id and type to metadata.
+@store_field_in_metadata("type")
+@store_field_in_metadata("id")
 @dataclass
 class BoxGroup(Annotation):
     boxes: List[Box] = field(default_factory=list)
@@ -72,8 +90,7 @@ class BoxGroup(Annotation):
     def to_json(self) -> Dict:
         box_group_dict = dict(
             boxes=[box.to_json() for box in self.boxes],
-            id=self.id,
-            type=self.type,
+            metadata=self.metadata,
             uuid=self.uuid,
         )
         return {
@@ -87,8 +104,7 @@ class BoxGroup(Annotation):
                 Box.from_json(box_coords=box_dict)
                 for box_dict in box_group_dict["boxes"]
             ],
-            id=box_group_dict.get("id"),
-            type=box_group_dict.get("type"),
+            metadata=dict(box_group_dict["metadata"]),
             uuid=box_group_dict.get("uuid", str(uuid4())),
         )
 
@@ -97,7 +113,9 @@ class BoxGroup(Annotation):
 
     def __deepcopy__(self, memo):
         box_group = BoxGroup(
-            id=self.id, boxes=deepcopy(self.boxes, memo), type=self.type, uuid=self.uuid
+            boxes=deepcopy(self.boxes, memo),
+            metadata=deepcopy(self.metadata, memo),
+            uuid=self.uuid,
         )
 
         # Don't copy an attached document
@@ -106,17 +124,50 @@ class BoxGroup(Annotation):
         return box_group
 
 
+def _text_span_group_getter(span_group: 'SpanGroup') -> str:
+    """Getter used to obtain a textual representation of a SpanGroup.
+
+    When SpanGroup.text is not set, this function uses the SpanGroup's
+    symbols to generate approximate a text. However, if text is set,
+    this function returns it instead.
+    """
+
+    if text := span_group.metadata.get("text", None):
+        return text
+    else:
+        return " ".join(span_group.symbols)
+
+# NOTE[LucaS]: by using the store_field_in_metadata decorator, we are
+# able to store id and type in the metadata of BoxGroup, while keeping it
+# accessible via SpanGroup.id and SpanGroup.type respectively. This is
+# useful because it keeps backward compatibility with the old API, while
+# migrating id and type to metadata.
+#
+# Futhermore, we also store the text of the SpanGroup in the metadata,
+# and use a custom getter to obtain the text from symbols if the text
+# is not explicitly set.
+@store_field_in_metadata("type")
+@store_field_in_metadata("id")
+@store_field_in_metadata("text", getter_fn=_text_span_group_getter)
 @dataclass
 class SpanGroup(Annotation):
     spans: List[Span] = field(default_factory=list)
+
+    # TODO[kylel] - implement default behavior for box_group
+    box_group: Optional[BoxGroup] = None
+
     id: Optional[int] = None
-    text: Optional[str] = None
     type: Optional[str] = None
-    box_group: Optional[BoxGroup] = None  # TODO[kylel] - implement default behavior
+    text: Optional[str] = None
 
     @property
     def symbols(self) -> List[str]:
-        return [self.doc.symbols[span.start : span.end] for span in self.spans]
+        if self.doc is not None:
+            return [
+                self.doc.symbols[span.start: span.end] for span in self.spans
+            ]
+        else:
+            return []
 
     def annotate(
         self, is_overwrite: bool = False, **kwargs: Iterable["Annotation"]
@@ -131,14 +182,14 @@ class SpanGroup(Annotation):
     def to_json(self) -> Dict:
         span_group_dict = dict(
             spans=[span.to_json() for span in self.spans],
-            id=self.id,
-            text=self.text,
-            type=self.type,
+            metadata=self.metadata,
             box_group=self.box_group.to_json() if self.box_group else None,
             uuid=self.uuid,
         )
         return {
-            key: value for key, value in span_group_dict.items() if value is not None
+            key: value
+            for key, value in span_group_dict.items()
+            if value is not None
         }  # only serialize non-null values
 
     @classmethod
@@ -153,9 +204,7 @@ class SpanGroup(Annotation):
                 Span.from_json(span_dict=span_dict)
                 for span_dict in span_group_dict["spans"]
             ],
-            id=span_group_dict.get("id"),
-            text=span_group_dict.get("text"),
-            type=span_group_dict.get("type"),
+            metadata=dict(span_group_dict["metadata"]),
             box_group=box_group,
             uuid=span_group_dict.get("uuid", str(uuid4())),
         )
@@ -164,7 +213,7 @@ class SpanGroup(Annotation):
         return self.spans[key]
 
     @property
-    def start(self) -> int:
+    def start(self) -> Union[int, float]:
         return (
             min([span.start for span in self.spans])
             if len(self.spans) > 0
@@ -172,7 +221,7 @@ class SpanGroup(Annotation):
         )
 
     @property
-    def end(self) -> int:
+    def end(self) -> Union[int, float]:
         return (
             max([span.end for span in self.spans])
             if len(self.spans) > 0
@@ -188,9 +237,7 @@ class SpanGroup(Annotation):
     def __deepcopy__(self, memo):
         span_group = SpanGroup(
             spans=deepcopy(self.spans, memo),
-            id=self.id,
-            text=self.text,
-            type=self.type,
+            metadata=deepcopy(self.metadata, memo),
             box_group=deepcopy(self.box_group, memo),
             uuid=self.uuid,
         )
