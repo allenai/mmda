@@ -21,7 +21,6 @@ class Instance(BaseModel):
     """
     symbols: str
     tokens: List[api.SpanGroup]
-    rows: List[api.SpanGroup]
     pages: List[api.SpanGroup]
 
 
@@ -62,7 +61,6 @@ class Predictor:
         """
         doc = Document(symbols=inst.symbols)
         doc.annotate(tokens=[sg.to_mmda() for sg in inst.tokens])
-        doc.annotate(rows=[sg.to_mmda() for sg in inst.rows])
         doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
 
         prediction = self._predictor.predict(doc)

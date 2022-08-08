@@ -57,17 +57,22 @@ class MentionPredictor:
 
         if not onnx:
             # https://stackoverflow.com/a/60018731
-            self.model.eval() # for some reason the onnx version doesnt have an eval()
+            self.model.eval()  # for some reason the onnx version doesnt have an eval()
 
     def predict(self, doc: Document, print_warnings: bool = False) -> List[SpanGroup]:
+        if not hasattr(doc, 'pages'):
+            return []
+
         spangroups = []
         for page in doc.pages:
             spangroups.extend(self.predict_page(page, counter=itertools.count(), print_warnings=print_warnings))
         return spangroups
 
-    def predict_page(self, page: List[Annotation], counter: Iterator[int], print_warnings: bool = False) -> List[SpanGroup]:
-        ret = []
+    def predict_page(self, page: Annotation, counter: Iterator[int], print_warnings: bool = False) -> List[SpanGroup]:
+        if not hasattr(page, 'tokens'):
+            return []
 
+        ret = []
         words: List[str] = ["".join(token.symbols) for token in page.tokens]
         word_spans: List[List[Span]] = [token.spans for token in page.tokens]
 
@@ -86,19 +91,19 @@ class MentionPredictor:
             outputs = self.model(**inputs)
         prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
 
-        def has_label_id(label_ids: List[int], want_label_id: int) -> bool:
-            return any(lbl == want_label_id for lbl in label_ids)
+        def has_label_id(lbls: List[int], want_label_id: int) -> bool:
+            return any(lbl == want_label_id for lbl in lbls)
 
         for idx1 in range(len(inputs['input_ids'])):
             batch_label_ids = prediction_label_ids[idx1]
-            input = inputs[idx1]
+            input_ = inputs[idx1]
 
-            word_ids: List[int] = [input.word_ids[0]] if input.word_ids[0] is not None else []
-            word_label_ids: List[List[int]] = [[batch_label_ids[0]]] if input.word_ids[0] is not None else []
+            word_ids: List[int] = [input_.word_ids[0]] if input_.word_ids[0] is not None else []
+            word_label_ids: List[List[int]] = [[batch_label_ids[0]]] if input_.word_ids[0] is not None else []
 
-            for idx2 in range(1, len(input.word_ids)):
-                word_id: int = input.word_ids[idx2]
-                previous_word_id: int = input.word_ids[idx2 - 1]
+            for idx2 in range(1, len(input_.word_ids)):
+                word_id: int = input_.word_ids[idx2]
+                previous_word_id: int = input_.word_ids[idx2 - 1]
 
                 if word_id is not None:
                     label_id: int = batch_label_ids[idx2]
@@ -128,7 +133,10 @@ class MentionPredictor:
                 label_id: Optional[int] = None
 
                 if sum(1 for cond in [has_begin, has_last, has_unit] if cond) > 1:
-                    warnings.append(f"found multiple labels for the same word: has_begin={has_begin} has_last={has_last} has_unit={has_unit}")
+                    warnings.append(
+                        "found multiple labels for the same word: "
+                        f"has_begin={has_begin} has_last={has_last} has_unit={has_unit}"
+                    )
                     for cur_label_id in label_ids:
                         # prioritize begin, last, unit over the rest
                         if cur_label_id not in (Labels.MENTION_INSIDE_ID, Labels.MENTION_OUTSIDE_ID):
@@ -136,8 +144,9 @@ class MentionPredictor:
                             break
 
                 if label_id is None:
-                    # prioritze inside over outside
-                    label_id = Labels.MENTION_INSIDE_ID if any(lbl == Labels.MENTION_INSIDE_ID for lbl in label_ids) else label_ids[0]
+                    # prioritize inside over outside
+                    label_id = Labels.MENTION_INSIDE_ID \
+                        if any(lbl == Labels.MENTION_INSIDE_ID for lbl in label_ids) else label_ids[0]
 
                 if outside_mention and has_last:
                     warnings.append('found an "L" while outside mention')
