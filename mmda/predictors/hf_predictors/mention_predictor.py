@@ -5,11 +5,15 @@ from typing import Dict, Iterator, List, Optional
 from optimum.onnxruntime import ORTModelForTokenClassification
 import torch
 from transformers import AutoModelForTokenClassification, AutoTokenizer
+import torch.neuron
 
 from mmda.types.annotation import Annotation, SpanGroup
 from mmda.types.document import Document
 from mmda.types.span import Span
 
+# set this to true to procdude the neuron traced classifer 
+NEURON_KICKOFF = True
+NEURON = True
 
 class Labels:
     # BILOU https://stackoverflow.com/q/17116446
@@ -50,14 +54,22 @@ class MentionPredictor:
         if onnx:
             self.model = ORTModelForTokenClassification.from_pretrained(artifacts_dir, file_name="model.onnx")
         else:
-            self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
-
+            if NEURON or NEURON_KICKOFF:
+                #Encountering a dict at the output of the tracer might cause the trace to be incorrect
+                self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir, return_dict=False)
+            else:
+                self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
+        
         # this is a side-effect(y) function
         self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
         if not onnx:
             # https://stackoverflow.com/a/60018731
             self.model.eval()  # for some reason the onnx version doesnt have an eval()
+
+        if NEURON and not NEURON_KICKOFF:
+            # location to the neuron classifer
+            self.model = torch.jit.load(os.path.join("/home/ubuntu/fangzhou/model/", 'hack_neuron_model.pt'))
 
     def predict(self, doc: Document, print_warnings: bool = False) -> List[SpanGroup]:
         if not hasattr(doc, 'pages'):
@@ -75,6 +87,7 @@ class MentionPredictor:
         ret = []
         words: List[str] = ["".join(token.symbols) for token in page.tokens]
         word_spans: List[List[Span]] = [token.spans for token in page.tokens]
+        
 
         inputs = self.tokenizer(
             [words],
@@ -84,12 +97,38 @@ class MentionPredictor:
             padding='max_length',
             return_overflowing_tokens=True,
             return_tensors="pt"
-        ).to(self.model.device)
+        )
+
+        if not NEURON:
+            inputs = inputs.to(self.model.device)
+
         del inputs["overflow_to_sample_mapping"]
 
+        # convert to tuple for neuron model
+        neuron_inputs = (inputs['input_ids'], inputs['attention_mask'], inputs['token_type_ids'])
+
+        if NEURON_KICKOFF:            
+            # save Neuron model here 
+            model_neuron = torch.neuron.trace(self.model, neuron_inputs)
+            self.model.config.update({"traced_sequence_length": 512})
+            save_dir = "/home/ubuntu/fangzhou/model/"
+            model_neuron.save(os.path.join(save_dir,"hack_neuron_model.pt"))
+            # replace the original ones:
+            self.model = model_neuron
+
         with torch.no_grad():
-            outputs = self.model(**inputs)
-        prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
+            if not NEURON: 
+                outputs = self.model(**inputs)
+                print(outputs)
+                
+                prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
+            else:
+                # call the model differently 
+                outputs = self.model(*neuron_inputs)
+                print(*neuron_inputs)
+                print(outputs)
+                prediction_label_ids = torch.argmax(outputs[0], dim=-1)
+
 
         def has_label_id(lbls: List[int], want_label_id: int) -> bool:
             return any(lbl == want_label_id for lbl in lbls)

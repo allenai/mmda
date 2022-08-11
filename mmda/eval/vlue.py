@@ -2,7 +2,7 @@ import json
 import random
 import string
 from dataclasses import dataclass
-from typing import Protocol
+from typing_extensions import Protocol
 
 from mmda.eval import s2
 from mmda.eval.metrics import levenshtein

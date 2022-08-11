@@ -1,6 +1,7 @@
-from typing import Iterable, Protocol
-
+from typing import Iterable
+from typing_extensions import Protocol
 from mmda.types.image import PILImage
+
 
 try:
     import pdf2image
