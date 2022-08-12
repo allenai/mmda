@@ -4,7 +4,6 @@ import os
 import pathlib
 import json
 import random
-import shutil
 import sys
 from timeit import default_timer as timer
 
@@ -20,7 +19,7 @@ from mmda.types.api import SpanGroup
 input_dir = pathlib.Path("/home/yogic/data")
 output_file = "/home/yogic/weights/trace.pt"
 artifacts_dir = "/home/yogic/weights"
-output_dir = "/home/yogic/output"
+output_file = "/home/yogic/output.json"
 
 def mk_inputs(input_file):
     with open(input_file) as f:
@@ -60,9 +59,6 @@ def gen():
 
 
 def predict():
-    shutil.rmtree(output_dir, ignore_errors=True)
-    os.makedirs(output_dir)
-
     files = [f for f in os.listdir(input_dir) if f.endswith("-request.json")]
     random.seed(1337)
     files_sample = random.sample(files, 1000)
@@ -98,8 +94,9 @@ def predict():
         ts3.append(e3 - s3)
 
         print(f"finished {file}. t1={e1 - s1}, t2={e2 - s2}, t3={e3 - s3}.")
-        with open(output_dir) as f:
-            json.dump({"ts1": ts1, "ts2": ts2, "ts3": ts3}, f)
+    
+    with open(output_file, "w") as f:
+        json.dump({"ts1": ts1, "ts2": ts2, "ts3": ts3}, f)
 
     percentiles = [50, 75, 90, 95]
 
