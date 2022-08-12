@@ -11,9 +11,8 @@ from mmda.types.annotation import Annotation, SpanGroup
 from mmda.types.document import Document
 from mmda.types.span import Span
 
-# set this to true to procdude the neuron traced classifer 
+# set this to true to produce the traced torchscript classifier 
 NEURON_KICKOFF = False
-NEURON = True
 
 class Labels:
     # BILOU https://stackoverflow.com/q/17116446
@@ -47,14 +46,15 @@ class Labels:
 
 
 class MentionPredictor:
-    def __init__(self, artifacts_dir: str):
+    def __init__(self, artifacts_dir: str, torchscript: bool = False):
         self.tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
+        self.torchscript = torchscript
 
         onnx = os.path.exists(os.path.join(artifacts_dir, "model.onnx"))
         if onnx:
             self.model = ORTModelForTokenClassification.from_pretrained(artifacts_dir, file_name="model.onnx")
         else:
-            if NEURON or NEURON_KICKOFF:
+            if self.torchscript or NEURON_KICKOFF:
                 #Encountering a dict at the output of the tracer might cause the trace to be incorrect
                 self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir, return_dict=False)
             else:
@@ -63,7 +63,7 @@ class MentionPredictor:
         # this is a side-effect(y) function
         self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
-        if NEURON and not NEURON_KICKOFF:
+        if torchscript and not NEURON_KICKOFF:
             # location to the neuron classifer
             print("loading torchscript model")
             #self.model = torch.jit.load(os.path.join("/home/ubuntu/fangzhou/model/", 'hack_neuron_model.pt'), map_location=torch.device('cpu'))
@@ -101,7 +101,7 @@ class MentionPredictor:
             return_tensors="pt"
         )
 
-        if not NEURON and not NEURON_KICKOFF:
+        if not self.torchscript and not NEURON_KICKOFF:
             inputs = inputs.to(self.model.device)
 
         del inputs["overflow_to_sample_mapping"]

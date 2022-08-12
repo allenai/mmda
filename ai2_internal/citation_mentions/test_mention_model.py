@@ -16,20 +16,20 @@ from mmda.types.document import Document
 
 from interface import Instance
 
-num_cores = 16 # This value should be 4 on inf1.xlarge and inf1.2xlarge
-nc_env = ','.join(['1'] * num_cores)
-os.environ['NEURONCORE_GROUP_SIZES'] = nc_env
+# Guess this is not needed as we are not using neuron trace
+# num_cores = 16 # This value should be 4 on inf1.xlarge and inf1.2xlarge
+# nc_env = ','.join(['1'] * num_cores)
+# os.environ['NEURONCORE_GROUP_SIZES'] = nc_env
 
 
-# download your pdfs here
+# test location
 test_dir = pathlib.Path.home() / "test_data_requests" 
-# download from s3://ai2-s2-mmda/models/citation-mentions/2022-07-27-minilm-10k/model/artifacts.tar.gz
+# model location
 artifacts_dir = pathlib.Path.home() / "fangzhou" / "weights"
+# number of test cases you want to run
+num_req = 1000
 
-# Loop through pdf
-#file = pdfs_dir / "382098006be8d6e8541bf74956d80eb9781f738e-294-request.json"
 
-# Loop through instances
 def add_mentions_to_doc(file_path, predictor:callable, verbose:bool=False):
     instance_dict = json.load(open(file_path))
     for instance in instance_dict['instances']:
@@ -44,20 +44,20 @@ def add_mentions_to_doc(file_path, predictor:callable, verbose:bool=False):
 
         return mentions
  
-def test_bench(file_list):
+def test_with_jit_traced_torchscript(file_list):
     predictor = MentionPredictor(artifacts_dir).predict
-    # save the mention list?
+    # save the mention list somewhere?
     [add_mentions_to_doc(file_path, predictor) for file_path in file_list]
 
 
-file_list = list(test_dir.glob('**/*.json'))[:1000]
+file_list = list(test_dir.glob('**/*.json'))[:num_req]
 len_requests = len(file_list)
 print(f"There are {len_requests} requests")
 
 # time cost calc, there must be a beter way
 start = datetime.datetime.now()
 
-test_bench(file_list)
+test_with_jit_traced_torchscript(file_list)
 
 end = datetime.datetime.now()
 total_time = (end - start).seconds
