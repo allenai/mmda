@@ -20,7 +20,6 @@ input_dir = pathlib.Path("/home/yogic/data")
 output_file = "/home/yogic/weights/trace.pt"
 artifacts_dir = "/home/yogic/weights"
 
-
 def mk_inputs(input_file):
     with open(input_file) as f:
         inst = json.load(f)['instances'][0]
@@ -60,6 +59,7 @@ def gen():
 
 def predict():
     files = [f for f in os.listdir(input_dir) if f.endswith("-request.json")]
+    random.seed(1337)
     files_sample = random.sample(files, 1000)
 
     ts1 = []
