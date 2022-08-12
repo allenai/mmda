@@ -7,7 +7,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Auto
 import transformers
 import os
 import warnings
-
+from pathlib import Path
 
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser, _SPLIT_AT_PUNCTUATION
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
@@ -22,15 +22,16 @@ os.environ['NEURONCORE_GROUP_SIZES'] = nc_env
 
 
 # download your pdfs here
-pdfs_dir = pathlib.Path.home() / "test_data_requests" 
+test_dir = pathlib.Path.home() / "test_data_requests" 
 # download from s3://ai2-s2-mmda/models/citation-mentions/2022-07-27-minilm-10k/model/artifacts.tar.gz
 artifacts_dir = pathlib.Path.home() / "fangzhou" / "weights"
 
 # Loop through pdf
-file = pdfs_dir / "382098006be8d6e8541bf74956d80eb9781f738e-294-request.json"
+#file = pdfs_dir / "382098006be8d6e8541bf74956d80eb9781f738e-294-request.json"
 
 # Loop through instances
-def add_mentions_to_doc(instance_dict:dict, predictor:callable):
+def add_mentions_to_doc(file_path:str, predictor:callable, check:bool=False):
+    instance_dict = json.load(open(file))
     for instance in instance_dict['instances']:
         instance = Instance(**instance)
         doc = Document(symbols=instance.symbols)
@@ -38,17 +39,16 @@ def add_mentions_to_doc(instance_dict:dict, predictor:callable):
         doc.annotate(pages=[p.to_mmda() for p in instance.pages])
 
         mentions = predictor(doc)
-        print(mentions)
         doc.annotate(mentions=mentions)    
 
-        print(f"mentions from request {file}")
-        for mention in doc.mentions:
-            print(mention.symbols)
+        symbol_list = [mention.symbols for mention in doc.mentions]
+        print(f"mentions from request {file_path}, get symbols: {symbol_list}")
 
-instance_dict = json.load(open(file))
-model = MentionPredictor(artifacts_dir)
-predictor = MentionPredictor(artifacts_dir).predict
+        return symbol_list
+ 
+def test_bench(test_data_dir:Path):
+    file_list = list(test_data_dir.glob('**/*.json'))
+    predictor = MentionPredictor(artifacts_dir).predict
+    [add_mentions_to_doc(file_path, predictor) for file_path in file_list]
 
-#Example from AWS Neuron: https://awsdocs-neuron.readthedocs-hosted.com/en/latest/src/examples/pytorch/bert_tutorial/tutorial_pretrained_bert.html
-# Setting up NeuronCore groups for inf1.6xlarge with 16 cores
-add_mentions_to_doc(instance_dict, predictor)
+test_bench(test_dir)
