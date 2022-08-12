@@ -12,7 +12,7 @@ from mmda.types.document import Document
 from mmda.types.span import Span
 
 # set this to true to procdude the neuron traced classifer 
-NEURON_KICKOFF = True
+NEURON_KICKOFF = False
 NEURON = True
 
 class Labels:
@@ -63,13 +63,15 @@ class MentionPredictor:
         # this is a side-effect(y) function
         self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
+        if NEURON and not NEURON_KICKOFF:
+            # location to the neuron classifer
+            print("loading torchscript model")
+            #self.model = torch.jit.load(os.path.join("/home/ubuntu/fangzhou/model/", 'hack_neuron_model.pt'), map_location=torch.device('cpu'))
+            self.model = torch.jit.load(os.path.join("/home/ubuntu/fangzhou/model/", 'hack_neuron_model.pt'))
+
         if not onnx:
             # https://stackoverflow.com/a/60018731
             self.model.eval()  # for some reason the onnx version doesnt have an eval()
-
-        if NEURON and not NEURON_KICKOFF:
-            # location to the neuron classifer
-            self.model = torch.jit.load(os.path.join("/home/ubuntu/fangzhou/model/", 'hack_neuron_model.pt'))
 
     def predict(self, doc: Document, print_warnings: bool = False) -> List[SpanGroup]:
         if not hasattr(doc, 'pages'):
@@ -99,7 +101,7 @@ class MentionPredictor:
             return_tensors="pt"
         )
 
-        if not NEURON:
+        if not NEURON and not NEURON_KICKOFF:
             inputs = inputs.to(self.model.device)
 
         del inputs["overflow_to_sample_mapping"]
@@ -109,8 +111,7 @@ class MentionPredictor:
 
         if NEURON_KICKOFF:            
             # save Neuron model here 
-            model_neuron = torch.neuron.trace(self.model, neuron_inputs)
-            self.model.config.update({"traced_sequence_length": 512})
+            model_neuron = torch.jit.trace(self.model, neuron_inputs)
             save_dir = "/home/ubuntu/fangzhou/model/"
             model_neuron.save(os.path.join(save_dir,"hack_neuron_model.pt"))
             # replace the original ones:
@@ -125,7 +126,7 @@ class MentionPredictor:
             else:
                 # call the model differently 
                 outputs = self.model(*neuron_inputs)
-                print(*neuron_inputs)
+                print(neuron_inputs)
                 print(outputs)
                 prediction_label_ids = torch.argmax(outputs[0], dim=-1)
 

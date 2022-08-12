@@ -25,7 +25,7 @@ setup(
         "mention_predictor_gpu": ["transformers[torch]", "optimum[onnxruntime-gpu]"],
         "bibentry_predictor": ["transformers", "unidecode", "torch"],
         "citation_links": ["numpy", "thefuzz[speedup]", "sklearn", "xgboost"],
-        "neuron": ["torch-neuron", "neuron-cc[tensorflow]", "protobuf<4", "torchvision", "transformers"],
+        "neuron": ["torch-neuron==1.10.2.*", "neuron-cc[tensorflow]", "protobuf<4", "torchvision", "transformers"],
     },
     include_package_data=True,
     package_data={
