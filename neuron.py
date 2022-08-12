@@ -21,13 +21,17 @@ output_file = "/home/yogic/weights/trace.pt"
 artifacts_dir = "/home/yogic/weights"
 output_file = "/home/yogic/output.json"
 
-def mk_inputs(input_file):
+
+def mk_doc(input_file):
     with open(input_file) as f:
         inst = json.load(f)['instances'][0]
     doc = Document(inst['symbols'])
     doc.annotate(tokens=[SpanGroup(**t).to_mmda() for t in inst['tokens']])
     doc.annotate(pages=[SpanGroup(**p).to_mmda() for p in inst['pages']])
+    return doc
 
+def mk_inputs(input_file):
+    doc = mk_doc(input_file)
     tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
 
     page = doc.pages[0]
@@ -42,14 +46,13 @@ def mk_inputs(input_file):
         return_tensors="pt"
     )
     del inputs['overflow_to_sample_mapping']
-    
-    return doc, inputs
+    return inputs
 
 
 def gen():
     input_file = input_dir / "0193f03c92707c675163ab0939ec931b16278502-34-request.json"
     model = AutoModelForTokenClassification.from_pretrained(artifacts_dir, return_dict=False)
-    _, inputs = mk_inputs(input_file)
+    inputs = mk_inputs(input_file)
 
     # convert to tuple for neuron model
     neuron_inputs = (inputs['input_ids'], inputs['attention_mask'], inputs['token_type_ids'])
@@ -73,7 +76,7 @@ def predict():
 
     for file in files_sample:
         try:
-            doc, _ = mk_inputs(input_dir / file)
+            doc = mk_doc(input_dir / file)
         except Exception:
             print(f"failed {file}.")
             continue
