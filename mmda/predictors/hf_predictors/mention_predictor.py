@@ -5,14 +5,11 @@ from typing import Dict, Iterator, List, Optional
 from optimum.onnxruntime import ORTModelForTokenClassification
 import torch
 from transformers import AutoModelForTokenClassification, AutoTokenizer
-import torch.neuron
 
 from mmda.types.annotation import Annotation, SpanGroup
 from mmda.types.document import Document
 from mmda.types.span import Span
 
-# set this to true to produce the traced torchscript classifier 
-NEURON_KICKOFF = False
 
 class Labels:
     # BILOU https://stackoverflow.com/q/17116446
@@ -46,31 +43,18 @@ class Labels:
 
 
 class MentionPredictor:
-    def __init__(self, artifacts_dir: str, torchscript: bool = False):
-        self.tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
+    def __init__(self, artifacts_dir: str, onnx: bool = False, torchscript: bool = False):
         self.torchscript = torchscript
+        self.onnx = onnx
 
-        onnx = os.path.exists(os.path.join(artifacts_dir, "model.onnx"))
-        if onnx:
+        self.tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
+        if self.onnx:
             self.model = ORTModelForTokenClassification.from_pretrained(artifacts_dir, file_name="model.onnx")
         else:
-            if self.torchscript or NEURON_KICKOFF:
-                #Encountering a dict at the output of the tracer might cause the trace to be incorrect
-                self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir, return_dict=False)
-            else:
-                self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
-        
-        # this is a side-effect(y) function
-        self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+            self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir, torchscript=self.torchscript)
 
-        if torchscript and not NEURON_KICKOFF:
-            # location to the neuron classifer
-            print("loading torchscript model")
-            #self.model = torch.jit.load(os.path.join("/home/ubuntu/fangzhou/model/", 'hack_neuron_model.pt'), map_location=torch.device('cpu'))
-            self.model = torch.jit.load(os.path.join("/home/ubuntu/fangzhou/model/", 'hack_neuron_model.pt'))
-
-        if not onnx:
-            # https://stackoverflow.com/a/60018731
+        self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))  # side-effect
+        if not self.onnx:
             self.model.eval()  # for some reason the onnx version doesnt have an eval()
 
     def predict(self, doc: Document, print_warnings: bool = False) -> List[SpanGroup]:
@@ -89,7 +73,6 @@ class MentionPredictor:
         ret = []
         words: List[str] = ["".join(token.symbols) for token in page.tokens]
         word_spans: List[List[Span]] = [token.spans for token in page.tokens]
-        
 
         inputs = self.tokenizer(
             [words],
@@ -99,34 +82,17 @@ class MentionPredictor:
             padding='max_length',
             return_overflowing_tokens=True,
             return_tensors="pt"
-        )
-
-        if not self.torchscript and not NEURON_KICKOFF:
-            inputs = inputs.to(self.model.device)
-
+        ).to(self.model.device)
         del inputs["overflow_to_sample_mapping"]
 
-        # convert to tuple for neuron model
-        neuron_inputs = (inputs['input_ids'], inputs['attention_mask'], inputs['token_type_ids'])
-
-        if NEURON_KICKOFF:            
-            # save Neuron model here 
-            model_neuron = torch.jit.trace(self.model, neuron_inputs)
-            save_dir = "/home/ubuntu/fangzhou/model/"
-            model_neuron.save(os.path.join(save_dir,"hack_neuron_model.pt"))
-            # replace the original ones:
-            self.model = model_neuron
-
         with torch.no_grad():
-            if not self.torchscript: 
-                outputs = self.model(**inputs)
-                
-                prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
-            else:
-                # call the model differently 
-                outputs = self.model(*neuron_inputs)
+            if self.torchscript:
+                inputs_t = (inputs['input_ids'], inputs['attention_mask'], inputs['token_type_ids'])
+                outputs = self.model(*inputs_t)
                 prediction_label_ids = torch.argmax(outputs[0], dim=-1)
-
+            else:
+                outputs = self.model(**inputs)
+                prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
 
         def has_label_id(lbls: List[int], want_label_id: int) -> bool:
             return any(lbl == want_label_id for lbl in lbls)

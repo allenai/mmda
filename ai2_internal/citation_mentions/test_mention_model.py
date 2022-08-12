@@ -1,6 +1,5 @@
 import pathlib
 import datetime, json
-import tensorflow  # to workaround a protobuf version conflict issue
 import torch
 import torch.neuron
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
@@ -8,6 +7,7 @@ import transformers
 import os
 import warnings
 from pathlib import Path
+from timeit import default_timer as timer
 
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser, _SPLIT_AT_PUNCTUATION
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
@@ -27,8 +27,11 @@ test_dir = pathlib.Path.home() / "test_data_requests"
 # model location
 artifacts_dir = pathlib.Path.home() / "fangzhou" / "weights"
 # number of test cases you want to run
-num_req = 1000
+num_req = 100
 
+
+predictor_org = MentionPredictor(artifacts_dir)
+predictor_torchscript = MentionPredictor(artifacts_dir, torchscript=True)
 
 def add_mentions_to_doc(file_path, predictor:callable, verbose:bool=False):
     instance_dict = json.load(open(file_path))
@@ -46,20 +49,17 @@ def add_mentions_to_doc(file_path, predictor:callable, verbose:bool=False):
  
 def test_with_jit_traced_torchscript(file_list):
     print("=====Testing model with jit compilation torchscript")
-    predictor = MentionPredictor(artifacts_dir, torchscript=True).predict
     # save the mention list somewhere?
-    [add_mentions_to_doc(file_path, predictor) for file_path in file_list]
+    [add_mentions_to_doc(file_path, predictor_org.predict) for file_path in file_list]
 
 def test_with_original_model(file_list):
     print("=====Testing original model")
-    predictor = MentionPredictor(artifacts_dir).predict
     # save the mention list somewhere?
-    [add_mentions_to_doc(file_path, predictor) for file_path in file_list]
+    [add_mentions_to_doc(file_path, predictor_torchscript.predict) for file_path in file_list]
 
 def test_with_onnx_runtime_accelerator(file_list):
     # filling the model piece with correct artifact path
     pass
-
 
 def test_main(test_func: callable):
     file_list = list(test_dir.glob('**/*.json'))[:num_req]
@@ -67,13 +67,13 @@ def test_main(test_func: callable):
     print(f"There are {len_requests} requests")
 
     # time cost calc, there must be a beter way
-    start = datetime.datetime.now()
+    start = timer()
 
     test_func(file_list)
 
-    end = datetime.datetime.now()
-    total_time = (end - start).seconds
-    average = "{:.2f}".format(total_time / len_requests)
+    end = timer()
+    total_time = (end - start)
+    average = "{:.4f}".format(total_time / len_requests)
     # p50
     print("\n"+ average + " s per each request")
 
