@@ -45,22 +45,38 @@ def add_mentions_to_doc(file_path, predictor:callable, verbose:bool=False):
         return mentions
  
 def test_with_jit_traced_torchscript(file_list):
+    print("=====Testing model with jit compilation torchscript")
+    predictor = MentionPredictor(artifacts_dir, torchscript=True).predict
+    # save the mention list somewhere?
+    [add_mentions_to_doc(file_path, predictor) for file_path in file_list]
+
+def test_with_original_model(file_list):
+    print("=====Testing original model")
     predictor = MentionPredictor(artifacts_dir).predict
     # save the mention list somewhere?
     [add_mentions_to_doc(file_path, predictor) for file_path in file_list]
 
+def test_with_onnx_runtime_accelerator(file_list):
+    # filling the model piece with correct artifact path
+    pass
 
-file_list = list(test_dir.glob('**/*.json'))[:num_req]
-len_requests = len(file_list)
-print(f"There are {len_requests} requests")
 
-# time cost calc, there must be a beter way
-start = datetime.datetime.now()
+def test_main(test_func: callable):
+    file_list = list(test_dir.glob('**/*.json'))[:num_req]
+    len_requests = len(file_list)
+    print(f"There are {len_requests} requests")
 
-test_with_jit_traced_torchscript(file_list)
+    # time cost calc, there must be a beter way
+    start = datetime.datetime.now()
 
-end = datetime.datetime.now()
-total_time = (end - start).seconds
-average = "{:.2f}".format(total_time / len_requests)
-# p50
-print("\n"+ average + " s per each request")
+    test_func(file_list)
+
+    end = datetime.datetime.now()
+    total_time = (end - start).seconds
+    average = "{:.2f}".format(total_time / len_requests)
+    # p50
+    print("\n"+ average + " s per each request")
+
+
+test_main(test_with_original_model)
+test_main(test_with_jit_traced_torchscript)
