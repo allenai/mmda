@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 from typing import *
+import os
+import pathlib
 import json
+import random
 import sys
 from timeit import default_timer as timer
 
+from numpy import percentile
 import torch
 from transformers import AutoModelForTokenClassification, AutoTokenizer
 
@@ -12,12 +16,12 @@ from mmda.types.document import Document
 from mmda.types.api import SpanGroup
 
 
-input_file = "/home/yogic/data/0193f03c92707c675163ab0939ec931b16278502-34-request.json"
+input_dir = pathlib.Path("/home/yogic/data")
 output_file = "/home/yogic/weights/trace.pt"
 artifacts_dir = "/home/yogic/weights"
 
 
-def mk_inputs():
+def mk_inputs(input_file):
     with open(input_file) as f:
         inst = json.load(f)['instances'][0]
     doc = Document(inst['symbols'])
@@ -43,8 +47,9 @@ def mk_inputs():
 
 
 def gen():
+    input_file = input_dir / "0193f03c92707c675163ab0939ec931b16278502-34-request.json"
     model = AutoModelForTokenClassification.from_pretrained(artifacts_dir, return_dict=False)
-    _, inputs = mk_inputs()
+    _, inputs = mk_inputs(input_file)
 
     # convert to tuple for neuron model
     neuron_inputs = (inputs['input_ids'], inputs['attention_mask'], inputs['token_type_ids'])
@@ -54,25 +59,57 @@ def gen():
 
 
 def predict():
+    files = [f for f in os.listdir(input_dir) if f.endswith("-request.json")]
+    files_sample = random.sample(files, 1000)
+
+    ts1 = []
+    ts2 = []
+    ts3 = []
+
     model1 = MentionPredictor(artifacts_dir)
-    doc1, _ = mk_inputs()
-    s1 = timer()
-    pred1 = model1.predict(doc1)
-    e1 = timer()
-
     model2 = MentionPredictor(artifacts_dir, torchscript=True)
-    doc2, _ = mk_inputs()
-    s2 = timer()
-    pred2 = model2.predict(doc2)
-    e2 = timer()
+    model3 = MentionPredictor(artifacts_dir, onnx=True)
 
-    print(f"Regular model took {e1 - s1}")
-    for sg in pred1:
-        print(json.dumps(SpanGroup.from_mmda(sg).dict()))
+    for file in files_sample:
+        try:
+            doc, _ = mk_inputs(input_dir / file)
+        except Exception:
+            print(f"failed {file}.")
+            continue
 
-    print(f"\nTorchscript model took {e2 - s2}")
-    for sg in pred2:
-        print(json.dumps(SpanGroup.from_mmda(sg).dict()))
+        s1 = timer()
+        model1.predict(doc)
+        e1 = timer()
+        ts1.append(e1 - s1)
+
+        s2 = timer()
+        model2.predict(doc)
+        e2 = timer()
+        ts2.append(e2 - s2)
+
+        s3 = timer()
+        model3.predict(doc)
+        e3 = timer()
+        ts3.append(e3 - s3)
+
+        print(f"finished {file}. t1={e1 - s1}, t2={e2 - s2}, t3={e3 - s3}.")
+
+    percentiles = [50, 75, 90, 95]
+
+    latencies = percentile(ts1, percentiles)
+    print("times for regular model")
+    for p, l in zip(percentiles, latencies):
+        print(f"p{p} = {l}")
+
+    latencies = percentile(ts2, percentiles)
+    print("times for torchscript model")
+    for p, l in zip(percentiles, latencies):
+        print(f"p{p} = {l}")
+
+    latencies = percentile(ts3, percentiles)
+    print("times for onnx model")
+    for p, l in zip(percentiles, latencies):
+        print(f"p{p} = {l}")
 
 
 def main():
