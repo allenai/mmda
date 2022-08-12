@@ -43,20 +43,18 @@ class Labels:
 
 
 class MentionPredictor:
-    def __init__(self, artifacts_dir: str):
-        self.tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
+    def __init__(self, artifacts_dir: str, onnx: bool = False, torchscript: bool = False):
+        self.torchscript = torchscript
+        self.onnx = onnx
 
-        onnx = os.path.exists(os.path.join(artifacts_dir, "model.onnx"))
-        if onnx:
+        self.tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
+        if self.onnx:
             self.model = ORTModelForTokenClassification.from_pretrained(artifacts_dir, file_name="model.onnx")
         else:
-            self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir)
+            self.model = AutoModelForTokenClassification.from_pretrained(artifacts_dir, torchscript=self.torchscript)
 
-        # this is a side-effect(y) function
-        self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
-
-        if not onnx:
-            # https://stackoverflow.com/a/60018731
+        self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))  # side-effect
+        if not self.onnx:
             self.model.eval()  # for some reason the onnx version doesnt have an eval()
 
     def predict(self, doc: Document, print_warnings: bool = False) -> List[SpanGroup]:
@@ -88,8 +86,13 @@ class MentionPredictor:
         del inputs["overflow_to_sample_mapping"]
 
         with torch.no_grad():
-            outputs = self.model(**inputs)
-        prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
+            if self.torchscript:
+                inputs_t = (inputs['input_ids'], inputs['attention_mask'], inputs['token_type_ids'])
+                outputs = self.model(*inputs_t)
+                prediction_label_ids = torch.argmax(outputs[0], dim=-1)
+            else:
+                outputs = self.model(**inputs)
+                prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
 
         def has_label_id(lbls: List[int], want_label_id: int) -> bool:
             return any(lbl == want_label_id for lbl in lbls)
