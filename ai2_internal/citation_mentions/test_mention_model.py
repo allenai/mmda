@@ -1,5 +1,5 @@
 import pathlib
-import time, json
+import datetime, json
 import tensorflow  # to workaround a protobuf version conflict issue
 import torch
 import torch.neuron
@@ -30,8 +30,8 @@ artifacts_dir = pathlib.Path.home() / "fangzhou" / "weights"
 #file = pdfs_dir / "382098006be8d6e8541bf74956d80eb9781f738e-294-request.json"
 
 # Loop through instances
-def add_mentions_to_doc(file_path:str, predictor:callable, check:bool=False):
-    instance_dict = json.load(open(file))
+def add_mentions_to_doc(file_path, predictor:callable, verbose:bool=False):
+    instance_dict = json.load(open(file_path))
     for instance in instance_dict['instances']:
         instance = Instance(**instance)
         doc = Document(symbols=instance.symbols)
@@ -39,16 +39,28 @@ def add_mentions_to_doc(file_path:str, predictor:callable, check:bool=False):
         doc.annotate(pages=[p.to_mmda() for p in instance.pages])
 
         mentions = predictor(doc)
-        doc.annotate(mentions=mentions)    
+        if verbose: 
+            print(f"mentions from request {file_path}, get mentions: {mentions}")
 
-        symbol_list = [mention.symbols for mention in doc.mentions]
-        print(f"mentions from request {file_path}, get symbols: {symbol_list}")
-
-        return symbol_list
+        return mentions
  
-def test_bench(test_data_dir:Path):
-    file_list = list(test_data_dir.glob('**/*.json'))
+def test_bench(file_list):
     predictor = MentionPredictor(artifacts_dir).predict
+    # save the mention list?
     [add_mentions_to_doc(file_path, predictor) for file_path in file_list]
 
-test_bench(test_dir)
+
+file_list = list(test_dir.glob('**/*.json'))[:1000]
+len_requests = len(file_list)
+print(f"There are {len_requests} requests")
+
+# time cost calc, there must be a beter way
+start = datetime.datetime.now()
+
+test_bench(file_list)
+
+end = datetime.datetime.now()
+total_time = (end - start).seconds
+average = "{:.2f}".format(total_time / len_requests)
+# p50
+print("\n"+ average + " s per each request")

@@ -120,14 +120,11 @@ class MentionPredictor:
         with torch.no_grad():
             if not NEURON: 
                 outputs = self.model(**inputs)
-                print(outputs)
                 
                 prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
             else:
                 # call the model differently 
                 outputs = self.model(*neuron_inputs)
-                print(neuron_inputs)
-                print(outputs)
                 prediction_label_ids = torch.argmax(outputs[0], dim=-1)
 
 
