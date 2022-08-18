@@ -16,7 +16,7 @@ from typing import (
 __all__ = ["store_field_in_metadata", "Metadata"]
 
 
-class __DEFAULT:
+class _DEFAULT:
     # object to keep track if a default value is provided when getting
     # or popping a key from Metadata
     ...
@@ -38,13 +38,13 @@ class Metadata:
         return `default` if not found"""
         ...
 
-    def get(self, key: str, default: Optional[Any] = __DEFAULT) -> Any:
+    def get(self, key: str, default: Optional[Any] = _DEFAULT) -> Any:
         """Get value with name `key` in metadata;
         if not found, return `default` if specified,
         otherwise raise `KeyError`"""
         if key in self.__dict__:
             return self.__dict__[key]
-        elif default != __DEFAULT:
+        elif default != _DEFAULT:
             return default
         else:
             raise KeyError(f"{key} not found in metadata")
@@ -77,13 +77,13 @@ class Metadata:
         if not found, return `default`"""
         ...
 
-    def pop(self, key: str, default: Optional[Any] = __DEFAULT) -> Any:
+    def pop(self, key: str, default: Optional[Any] = _DEFAULT) -> Any:
         """Remove & returns value for `key` from metadata;
         if not found, return `default` if specified,
         otherwise raise `KeyError`"""
         if key in self.__dict__:
             return self.__dict__.pop(key)
-        elif default != __DEFAULT:
+        elif default != _DEFAULT:
             return default
         else:
             raise KeyError(f"{key} not found in metadata")
