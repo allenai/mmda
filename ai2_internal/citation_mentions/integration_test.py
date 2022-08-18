@@ -48,10 +48,9 @@ class TestInterfaceIntegration(unittest.TestCase):
         doc = PDFPlumberParser(split_at_punctuation=True).parse(str(pdf_path))
 
         tokens = [api.SpanGroup.from_mmda(sg) for sg in doc.tokens]
-        rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
         pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
 
-        instances = [Instance(symbols=doc.symbols, tokens=tokens, rows=rows, pages=pages)]
+        instances = [Instance(symbols=doc.symbols, tokens=tokens, pages=pages)]
         predictions = container.predict_batch(instances)
         mentions = [
             {"start": span.start, "end": span.end}
