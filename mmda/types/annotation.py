@@ -9,11 +9,11 @@ Iterable of Group-type objects within the Document
 from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
 from uuid import uuid4
 
 from mmda.types.box import Box
-from mmda.types.decorators import store_field_in_metadata
+from mmda.types.metadata import Metadata, store_field_in_metadata
 from mmda.types.span import Span
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ class Annotation:
     # it is about 10% of the wall time in processing a document
     uuid: str = field(default_factory=default_factory)
     doc: Optional["Document"] = field(default=None, init=False)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: Metadata = field(default_factory=Metadata)
 
     @abstractmethod
     def to_json(self) -> Dict:
@@ -104,17 +104,19 @@ class BoxGroup(Annotation):
                 Box.from_json(box_coords=box_dict)
                 for box_dict in box_group_dict["boxes"]
             ],
-            metadata=box_group_dict.get(
-                "metadata",
-                # this is necessary to ensure compatibility with
-                # box groups that were create before the metadata
-                # migration and therefore have "id", "type" in the
-                # main representation instead.
-                {
-                    key: box_group_dict[key]
-                    for key in ("id", "type")
-                    if key in box_group_dict
-                }
+            metadata=Metadata.from_json(
+                box_group_dict.get(
+                    "metadata",
+                    # this fallback is necessary to ensure compatibility with
+                    # box groups that were create before the metadata
+                    # migration and therefore have "id", "type" in the
+                    # root of the json dict instead.
+                    {
+                        key: box_group_dict[key]
+                        for key in ("id", "type")
+                        if key in box_group_dict
+                    },
+                )
             ),
             uuid=box_group_dict.get("uuid", str(uuid4())),
         )
@@ -135,18 +137,15 @@ class BoxGroup(Annotation):
         return box_group
 
 
-def _text_span_group_getter(span_group: 'SpanGroup') -> str:
+def _text_span_group_getter(span_group: "SpanGroup") -> str:
     """Getter used to obtain a textual representation of a SpanGroup.
 
     When SpanGroup.text is not set, this function uses the SpanGroup's
     symbols to generate approximate a text. However, if text is set,
     this function returns it instead.
     """
-
-    if text := span_group.metadata.get("text", None):
-        return text
-    else:
-        return " ".join(span_group.symbols)
+    maybe_text = span_group.metadata.get("text", None)
+    return maybe_text if maybe_text else " ".join(span_group.symbols)
 
 
 # NOTE[LucaS]: by using the store_field_in_metadata decorator, we are
@@ -216,17 +215,19 @@ class SpanGroup(Annotation):
                 Span.from_json(span_dict=span_dict)
                 for span_dict in span_group_dict["spans"]
             ],
-            metadata=span_group_dict.get(
-                "metadata",
-                # this is necessary to ensure compatibility with
-                # span groups that were create before the metadata
-                # migration and therefore have "id", "type", and "text"
-                # in the main representation instead.
-                {
-                    key: span_group_dict[key]
-                    for key in ("id", "type", "text")
-                    if key in span_group_dict
-                }
+            metadata=Metadata.from_json(
+                span_group_dict.get(
+                    "metadata",
+                    # this fallback is necessary to ensure compatibility with
+                    # span groups that were create before the metadata
+                    # migration and therefore have "id", "type" in the
+                    # root of the json dict instead.
+                    {
+                        key: span_group_dict[key]
+                        for key in ("id", "type", "text")
+                        if key in span_group_dict
+                    },
+                )
             ),
             box_group=box_group,
             uuid=span_group_dict.get("uuid", str(uuid4())),
