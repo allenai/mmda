@@ -6,6 +6,7 @@ Collections of Annotations are how one constructs a new
 Iterable of Group-type objects within the Document
 
 """
+import warnings
 from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -20,8 +21,22 @@ if TYPE_CHECKING:
     from mmda.types.document import Document
 
 
+__all__ = ["Annotation", "BoxGroup", "SpanGroup"]
+
+
 def default_factory():
     return str(uuid4())
+
+
+def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
+    """Warns when a deepcopy is performed on an Annotation."""
+
+    cls_name = type(obj).__name__
+    msg = (
+        f"Creating a deep copy of a {cls_name} is computationally"
+        "expensive; consider using references instead."
+    )
+    warnings.warn(msg, UserWarning, stacklevel=2)
 
 
 @dataclass
@@ -125,6 +140,8 @@ class BoxGroup(Annotation):
         return self.boxes[key]
 
     def __deepcopy__(self, memo):
+        warn_deepcopy_of_annotation(self)
+
         box_group = BoxGroup(
             boxes=deepcopy(self.boxes, memo),
             metadata=deepcopy(self.metadata, memo),
@@ -259,6 +276,8 @@ class SpanGroup(Annotation):
             return self.start < other.start
 
     def __deepcopy__(self, memo):
+        warn_deepcopy_of_annotation(self)
+
         span_group = SpanGroup(
             spans=deepcopy(self.spans, memo),
             metadata=deepcopy(self.metadata, memo),
