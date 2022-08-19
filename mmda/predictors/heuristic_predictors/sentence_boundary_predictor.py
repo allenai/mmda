@@ -124,18 +124,13 @@ class PysbdSentenceBoundaryPredictor(BaseHeuristicPredictor):
 
         if hasattr(doc, Words):
             words = [
-                # if available, we use the text representation of a word;
-                # if not, we concatenate symbols of in the word instead.
-                (word.text or ''.join(word.symbols))
-                for word in getattr(doc, Words)
+                word.text for word in getattr(doc, Words)
             ]
             attr_name = Words
             # `words` is preferred as it should has better reading
             # orders and text representation
         else:
-            # tokens don't have text representation, so we always
-            # concatenate symbols instead.
-            words = [''.join(token.symbols) for token in doc.tokens]
+            words = [token.text for token in doc.tokens]
             attr_name = Tokens
 
         split = self.split_token_based_on_sentences_boundary(words)
