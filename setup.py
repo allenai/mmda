@@ -24,7 +24,7 @@ setup(
         "mention_predictor": ["transformers[torch]", "optimum[onnxruntime]"],
         "mention_predictor_gpu": ["transformers[torch]", "optimum[onnxruntime-gpu]"],
         "bibentry_predictor": ["transformers", "unidecode", "torch"],
-        "bibentry_detection_predictor":["layoutparser", "torch==1.8.0", "torchvision==0.9.0"]
+        "bibentry_detection_predictor":["layoutparser", "torch==1.8.0", "torchvision==0.9.0"],
         "citation_links": ["numpy", "thefuzz[speedup]", "sklearn", "xgboost"],
     },
     include_package_data=True,
