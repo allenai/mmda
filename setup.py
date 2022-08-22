@@ -1,12 +1,12 @@
-import setuptools
+from setuptools import find_namespace_packages, setup
 
-setuptools.setup(
+setup(
     name="mmda",
     description="mmda",
-    version="0.0.19",
+    version="0.0.26",
     url="https://www.github.com/allenai/mmda",
     python_requires=">= 3.7",
-    packages=setuptools.find_packages(include=["mmda*", "ai2_internal*"]),
+    packages=find_namespace_packages(include=["mmda*", "ai2_internal*"]),
     install_requires=[
         "tqdm",
         "pdf2image",
@@ -21,9 +21,16 @@ setuptools.setup(
         "spacy_predictors": ["spacy"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
         "vila_predictors": ["vila>=0.4.2,<0.5", "transformers"],
-        "mentions": ["transformers[torch]"],
+        "mention_predictor": ["transformers[torch]", "optimum[onnxruntime]"],
+        "mention_predictor_gpu": ["transformers[torch]", "optimum[onnxruntime-gpu]"],
         "bibentry_predictor": ["transformers", "unidecode", "torch"],
         "bibentry_detection_predictor":["layoutparser", "torch==1.8.0", "torchvision==0.9.0"]
+        "citation_links": ["numpy", "thefuzz[speedup]", "sklearn", "xgboost"],
     },
     include_package_data=True,
+    package_data={
+        "ai2_internal.citation_mentions.data": ["*"],
+        "ai2_internal.vila.test_fixtures": ["*"],
+        "ai2_internal.shared_test_fixtures": ["*"]
+    }
 )

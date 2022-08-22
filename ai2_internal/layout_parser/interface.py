@@ -6,6 +6,7 @@ You must provide a wrapper around your model, as well
 as a definition of the objects it expects, and those it returns.
 """
 
+import logging
 from typing import List
 
 from mmda.predictors.lp_predictors import LayoutParserPredictor
@@ -14,6 +15,10 @@ from mmda.types.api import BoxGroup
 from mmda.types.document import Document
 
 from pydantic import BaseModel, BaseSettings, Field
+import torch
+
+
+logger = logging.getLogger(__name__)
 
 
 class Instance(BaseModel):
@@ -67,8 +72,15 @@ class Predictor:
         by the underlying layoutparser tool:
         https://layout-parser.readthedocs.io/en/latest/api_doc/models.html
         """
+        device = "cuda" if torch.cuda.is_available() else None
+
+        if device == "cuda":
+            logger.info("CUDA device detected, running model with GPU acceleration.")
+        else:
+            logger.info("No CUDA device detected, running model on CPU.")
+
         self._lp_predictors = [
-            LayoutParserPredictor.from_pretrained(weights_path)
+            LayoutParserPredictor.from_pretrained(weights_path, device=device)
             for weights_path in self._config.weights_paths
         ]
 

@@ -6,29 +6,30 @@ You must provide a wrapper around your model, as well
 as a definition of the objects it expects, and those it returns.
 """
 
-from typing import List
+from typing import List, Tuple
 
 from pydantic import BaseModel, BaseSettings
 
-from mmda.predictors.hf_predictors.mention_predictor import MentionPredictor
+from mmda.predictors.xgb_predictors.citation_link_predictor import CitationLinkPredictor
 from mmda.types import api
 from mmda.types.document import Document
 
-
+# these should represent the extracted citation mentions and bibliography entries for a paper
 class Instance(BaseModel):
     """
     Describes one Instance over which the model performs inference.
     """
     symbols: str
-    tokens: List[api.SpanGroup]
-    pages: List[api.SpanGroup]
+    mentions: List[api.SpanGroup]
+    bibs: List[api.SpanGroup]
 
 
 class Prediction(BaseModel):
     """
     Describes the outcome of inference for one Instance
     """
-    mentions: List[api.SpanGroup]
+    # tuple represents mention.id and bib.id for the linked pair
+    linked_mentions: List[Tuple[str, str]]
 
 
 class PredictorConfig(BaseSettings):
@@ -52,7 +53,7 @@ class Predictor:
     arg below.
     """
     def __init__(self, config: PredictorConfig, artifacts_dir: str):
-        self._predictor = MentionPredictor(artifacts_dir)
+        self._predictor = CitationLinkPredictor(artifacts_dir)
 
     def predict_one(self, inst: Instance) -> Prediction:
         """
@@ -60,11 +61,12 @@ class Predictor:
         Leverage your underlying model to perform this inference.
         """
         doc = Document(symbols=inst.symbols)
-        doc.annotate(tokens=[sg.to_mmda() for sg in inst.tokens])
-        doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
+        doc.annotate(mentions=[sg.to_mmda() for sg in inst.mentions])
+        doc.annotate(bibs=[sg.to_mmda() for sg in inst.bibs])
 
-        prediction = self._predictor.predict(doc)
-        return Prediction(mentions=[api.SpanGroup.from_mmda(sg) for sg in prediction])
+        prediction = self._predictor.predict(doc) # returns (mention.id, bib.id)
+        
+        return Prediction(linked_mentions = prediction)
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """
