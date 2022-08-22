@@ -23,7 +23,7 @@ setuptools.setup(
         "vila_predictors": ["vila>=0.4.2,<0.5", "transformers"],
         "mentions": ["transformers[torch]"],
         "bibentry_predictor": ["transformers", "unidecode", "torch"],
-        "bibentry_detection_predictor":["layoutparser", "torch==1.8.0", "torchvision==0.9.0", "detectron2"]
+        "bibentry_detection_predictor":["layoutparser", "torch==1.8.0", "torchvision==0.9.0"]
     },
     include_package_data=True,
 )
