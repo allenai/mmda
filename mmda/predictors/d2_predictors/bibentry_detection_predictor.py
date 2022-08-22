@@ -18,18 +18,7 @@ def union(block1, block2):
     x11, y11, x12, y12 = block1.coordinates
     x21, y21, x22, y22 = block2.coordinates
 
-    block = lp.Rectangle(min(x11, x21), min(y11, y21), max(x12, x22), max(y12, y22))
-    if isinstance(block1, lp.TextBlock):
-        return lp.TextBlock(
-            block,
-            id=block1.id,
-            type=block1.type,
-            text=block1.text,
-            parent=block1.parent,
-            next=block1.next,
-        )
-    else:
-        return block
+    return lp.Rectangle(min(x11, x21), min(y11, y21), max(x12, x22), max(y12, y22))
 
 
 def union_blocks(blocks):
