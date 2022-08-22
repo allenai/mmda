@@ -28,8 +28,9 @@ class Instance(BaseModel):
 
     symbols: str
     tokens: List[api.SpanGroup]
-    rows: List[api.SpanGroup]  # TODO i think this still has to be listed since it's part of the doc that we'll receive
+    rows: List[api.SpanGroup]
     pages: List[api.SpanGroup]
+    vila_span_groups: List[api.SpanGroup]
     page_images: List[str] = Field(description="List of base64-encoded page images")
 
 
@@ -37,8 +38,8 @@ class Prediction(BaseModel):
     """
     Describes the outcome of inference for one Instance
     """
-
-    bibs: List[api.SpanGroup]
+    bib_entries: List[api.SpanGroup]
+    original_boxes: List[api.BoxGroup]
 
 
 class PredictorConfig(BaseSettings):
@@ -50,7 +51,8 @@ class PredictorConfig(BaseSettings):
     vars the consuming application needs to set.
     """
 
-    threshold: float = Field(default=0.90, description="Prediction accuracy score used to determine threshold of returned predictions")
+    BIB_ENTRY_DETECTION_PREDICTOR_SCORE_THRESHOLD: float = Field(default=0.88, description="Prediction accuracy score used to determine threshold of returned predictions")
+    BIB_ENTRY_DETECTION_MIN_VILA_BIB_ROWS: int = Field(default=2, description="Minimum number of rows in a Bibliography VILA SpanGroup required to qualify as a Bibliography section")
 
 
 class Predictor:
@@ -80,7 +82,7 @@ class Predictor:
         model ready for inference. This operation is performed only once
         during the application life-cycle.
         """
-        self._predictor = BibEntryDetectionPredictor(self._artifacts_dir, self._config.threshold)
+        self._predictor = BibEntryDetectionPredictor(self._artifacts_dir, self._config.BIB_ENTRY_DETECTION_PREDICTOR_SCORE_THRESHOLD)
 
     def predict_one(self, inst: Instance) -> Prediction:
         """
@@ -89,13 +91,19 @@ class Predictor:
         """
         doc = Document(symbols=inst.symbols)
         doc.annotate(tokens=[sg.to_mmda() for sg in inst.tokens])
-        # doc.annotate(rows=[sg.to_mmda() for sg in inst.rows])  # TODO I think don't need here
+        doc.annotate(rows=[sg.to_mmda() for sg in inst.rows])
         doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
         images = [image.frombase64(im) for im in inst.page_images]
         doc.annotate_images(images)
+        doc.annotate(vila_span_groups=[sg.to_mmda() for sg in inst.vila_span_groups])
 
-        prediction = self._predictor.predict(doc)
-        return Prediction(mentions=[api.SpanGroup.from_mmda(sg) for sg in prediction])
+        predicted_span_groups_with_boxes, original_box_groups = self._predictor.predict(doc, self._config.BIB_ENTRY_DETECTION_MIN_VILA_BIB_ROWS)
+
+        prediction = Prediction(
+            bib_entries=[api.SpanGroup.from_mmda(sg) for sg in predicted_span_groups_with_boxes],
+            original_boxes=[api.BoxGroup.from_mmda(bg) for bg in original_box_groups])
+
+        return prediction
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """
