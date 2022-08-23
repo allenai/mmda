@@ -39,7 +39,7 @@ class Prediction(BaseModel):
     Describes the outcome of inference for one Instance
     """
     bib_entries: List[api.SpanGroup]
-    original_boxes: List[api.BoxGroup]
+    raw_bib_entry_boxes: List[api.BoxGroup]
 
 
 class PredictorConfig(BaseSettings):

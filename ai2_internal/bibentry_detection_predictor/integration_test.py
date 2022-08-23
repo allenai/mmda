@@ -91,5 +91,5 @@ class TestInterfaceIntegration(unittest.TestCase):
             self.assertEqual(bib_entry.type, "bib_entry")
             self.assertEqual(bib_entry.box_group.type, "processed_box")
 
-        for original_box in predictions[0].original_boxes:
+        for original_box in predictions[0].raw_bib_entry_boxes:
             self.assertEqual(original_box.type, "raw_model_prediction")
