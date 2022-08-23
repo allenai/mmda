@@ -87,7 +87,7 @@ class TestInterfaceIntegration(unittest.TestCase):
 
         predictions = container.predict_batch(instances)
 
-        for bib_entry in predictions[0].bib_entries:
+        for bib_entry in predictions[0].bib_entry_boxes:
             self.assertEqual(bib_entry.type, "bib_entry")
             self.assertEqual(bib_entry.box_group.type, "processed_box")
 
