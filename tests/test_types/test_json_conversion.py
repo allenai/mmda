@@ -12,10 +12,12 @@ from mmda.types.document import Document
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 
 
+PDFFILEPATH = "../fixtures/1903.10676.pdf"
+
 def test_json_conversion():
     pdfparser = PDFPlumberParser()
 
-    orig_doc = pdfparser.parse(input_pdf_path="tests/fixtures/1903.10676.pdf")
+    orig_doc = pdfparser.parse(input_pdf_path=PDFFILEPATH)
 
     json_doc = json.dumps(orig_doc.to_json())
     new_doc = Document.from_json(json.loads(json_doc))
