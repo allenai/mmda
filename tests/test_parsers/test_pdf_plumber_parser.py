@@ -30,14 +30,22 @@ class TestPDFPlumberParser(unittest.TestCase):
         no_split_parser = PDFPlumberParser(split_at_punctuation=False)
         no_split_doc = no_split_parser.parse(input_pdf_path="../fixtures/2107.07170.pdf")
         no_split_tokens_with_numbers = [token.text for token in no_split_doc.tokens if re.search(r'[0-9]', token.text)]
+        assert '[1-5]' in no_split_tokens_with_numbers
+        assert 'GPT-3[10]' in no_split_tokens_with_numbers
 
         split_parser = PDFPlumberParser(split_at_punctuation=True)
         split_doc = split_parser.parse(input_pdf_path="../fixtures/2107.07170.pdf")
         split_tokens_with_numbers = [token.text for token in split_doc.tokens if re.search(r'[0-9]', token.text)]
+        assert '[1-5]' not in split_tokens_with_numbers
+        assert '1-5' in split_tokens_with_numbers
+        assert 'GPT-3[10]' not in split_tokens_with_numbers
+        assert 'GPT-3' in split_tokens_with_numbers
 
         custom_split_parser = PDFPlumberParser(split_at_punctuation='!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~–§')
         custom_split_doc = custom_split_parser.parse(input_pdf_path="../fixtures/2107.07170.pdf")
         custom_split_tokens_with_numbers = [token.text for token in custom_split_doc.tokens if re.search(r'[0-9]', token.text)]
+        assert '1-5' not in custom_split_tokens_with_numbers
+        assert 'GPT-3' not in custom_split_tokens_with_numbers
 
         assert len(no_split_tokens_with_numbers) < len(split_tokens_with_numbers) < len(custom_split_tokens_with_numbers)
 
