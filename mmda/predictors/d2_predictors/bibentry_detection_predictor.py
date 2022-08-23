@@ -1,17 +1,16 @@
-from typing import Union, List, Dict, Any, Optional
-
 from copy import copy
 from functools import reduce
-
 import itertools
+from typing import Union, List, Dict, Any, Optional
+
 import layoutparser as lp
 
+from mmda.predictors.base_predictors.base_predictor import BasePredictor
 from mmda.types.annotation import SpanGroup, BoxGroup
 from mmda.types.box import Box
 from mmda.types.document import Document
 from mmda.types.names import Pages, Images, Tokens
 from mmda.types.span import Span
-from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
 
 def union(block1, block2):
