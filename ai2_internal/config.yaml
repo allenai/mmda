@@ -189,7 +189,7 @@ model_variants:
     python_version: "3.8"
 
     # Whether this model supports CUDA GPU acceleration
-    cuda: false
+    cuda: true
 
     # One of the versions here: https://gitlab.com/nvidia/container-images/cuda/blob/master/doc/supported-tags.md#ubuntu2004, but less than 11.4.3.
     # If cuda=True and cuda_version is unspecified, defaults to 11.4.2.
@@ -204,6 +204,8 @@ model_variants:
     # One or more bash commands to execute as part of a RUN step in a Dockerfile AFTER extras require.
     # Leave this unset unless your model has special system requirements beyond
     # those in your setup.py.
+
+    # pip installing dependencies listed in setup.py so that detectron2 installs successfully
     docker_run_commands: [ "apt-get update && apt-get install -y poppler-utils libgl1",
                            "pip install layoutparser",
                            "pip install torch==1.8.0",
@@ -212,4 +214,4 @@ model_variants:
 
     # Any additional sets of dependencies required by the model.
     # These are the 'extras_require' keys in your setup.py.
-    extras_require: [ "bibentry_detection_predictor", "vila_predictors" ]
+    extras_require: [ "bibentry_detection_predictor" ]
