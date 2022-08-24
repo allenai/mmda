@@ -26,6 +26,7 @@ def test_prediction(self, container):
 ```
 """
 
+import json
 import logging
 import os
 import pathlib
@@ -35,7 +36,6 @@ import unittest
 from .interface import Instance
 
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
-from mmda.predictors.hf_predictors.token_classification_predictor import IVILATokenClassificationPredictor
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from mmda.types import api
 from mmda.types.image import tobase64
@@ -49,18 +49,22 @@ except ImportError as e:
     """)
     sys.exit(0)
 
-pdf_path = os.path.join(pathlib.Path(os.path.dirname(__file__)).parent, "shared_test_fixtures",
-                        "26bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf")
+pdf = "26bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf"
+
+
+def resolve(file: str) -> str:
+    return os.path.join(pathlib.Path(os.path.dirname(__file__)), "data", file)
+
 
 @with_timo_container
 class TestInterfaceIntegration(unittest.TestCase):
 
     def get_images(self):
         rasterizer = PDF2ImageRasterizer()
-        return rasterizer.rasterize(str(pdf_path), dpi=72)
+        return rasterizer.rasterize(str(resolve(pdf)), dpi=72)
 
     def test__predictions(self, container):
-        doc = PDFPlumberParser(split_at_punctuation=True).parse(pdf_path)
+        doc = PDFPlumberParser(split_at_punctuation=True).parse(resolve(pdf))
 
         tokens = [api.SpanGroup.from_mmda(sg) for sg in doc.tokens]
         rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
@@ -71,11 +75,8 @@ class TestInterfaceIntegration(unittest.TestCase):
 
         doc.annotate_images(page_images)
 
-        ivilaA = IVILATokenClassificationPredictor.from_pretrained(
-            "allenai/ivila-row-layoutlm-finetuned-s2vl-v2"
-        )
-
-        vila_span_groups = [api.SpanGroup.from_mmda(sg) for sg in ivilaA.predict(doc, subpage_per_run=2)]
+        with open(resolve("vila_span_groups.json")) as f:
+            vila_span_groups = [api.SpanGroup(**sg) for sg in json.load(f)["vila_span_groups"]]
 
         instances = [Instance(
             symbols=doc.symbols,

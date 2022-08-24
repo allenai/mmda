@@ -29,6 +29,7 @@ setup(
     },
     include_package_data=True,
     package_data={
+        "ai2_internal.bibentry_detection_predictor.data": ["*"],
         "ai2_internal.citation_mentions.data": ["*"],
         "ai2_internal.vila.test_fixtures": ["*"],
         "ai2_internal.shared_test_fixtures": ["*"]
