@@ -6,18 +6,31 @@ Author:      @soldni
 '''
 
 import json
+from pathlib import Path
 
-from mmda.types.annotation import SpanGroup
+from mmda.types.annotation import BoxGroup, SpanGroup
 from mmda.types.document import Document
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from mmda.types.metadata import Metadata
 
 
-PDFFILEPATH = "../fixtures/1903.10676.pdf"
+PDFFILEPATH = Path(__file__).parent / "../fixtures/1903.10676.pdf"
 
-def test_json_conversion():
+
+def test_span_group_conversion():
+    sg = SpanGroup(id=3, metadata=Metadata.from_json({"text": "test"}))
+    sg2 = SpanGroup.from_json(sg.to_json())
+    assert sg2 == sg
+
+    bg = BoxGroup(metadata=Metadata.from_json({"text": "test", "id": 1}))
+    bg2 = BoxGroup.from_json(bg.to_json())
+    assert bg2 == bg
+
+
+def test_doc_conversion():
     pdfparser = PDFPlumberParser()
 
-    orig_doc = pdfparser.parse(input_pdf_path=PDFFILEPATH)
+    orig_doc = pdfparser.parse(input_pdf_path=str(PDFFILEPATH))
 
     json_doc = json.dumps(orig_doc.to_json())
     new_doc = Document.from_json(json.loads(json_doc))
