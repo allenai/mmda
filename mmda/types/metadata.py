@@ -1,5 +1,8 @@
 from copy import deepcopy
 from dataclasses import MISSING, Field, fields, is_dataclass
+from functools import wraps
+import inspect
+
 from typing import (
     Any,
     Callable,
@@ -202,12 +205,37 @@ def store_field_in_metadata(
             to the metadata dictionary.
     """
 
-    def wrapper(
+    def wrapper_fn(
         cls_: Type[T],
         wrapper_field_name: str = field_name,
         wrapper_getter_fn: Optional[Callable[[T], Any]] = getter_fn,
         wrapper_setter_fn: Optional[Callable[[T, Any], None]] = setter_fn,
     ) -> Type[T]:
+        """
+        This wrapper consists of three steps:
+        1. Basic checks to determine if a field can be stored in the metadata.
+           This includes checking that cls_ is a dataclass, that cls_ has a
+           metadata attribute, and that the field is a field of cls_.
+        2. Wrap the init method of cls_ to ensure that, if a field is specified
+           in the metadata, it is *NOT* overwritten by the default value of the
+           field. (keep reading through this function for more details)
+        3. Create getter and setter methods for the field; these are going to
+           override the original attribute and will be responsible for querying
+           the metadata for the value of the field.
+
+        Args:
+            cls_ (Type[T]): The dataclass to wrap.
+            wrapper_field_name (str): The name of the field to store in the
+                metadata.
+            wrapper_getter_fn (Optional[Callable[[T], Any]]): A function that
+                takes returns the value of the field. If None, the getter
+                is a simple lookup in the metadata dictionary.
+            wrapper_setter_fn (Optional[Callable[[T, Any], None]]): A function
+                that is used to set the value of the field. If None, the setter
+                is a simple addition to the metadata dictionary.
+        """
+
+        # # # # # # # # # # # # STEP 1: BASIC CHECKS # # # # # # # # # # # # #
         if not (is_dataclass(cls_)):
             raise TypeError("add_deprecated_field only works on dataclasses")
 
@@ -233,7 +261,82 @@ def store_field_in_metadata(
                 f"add_deprecated_field requires a `{wrapper_field_name}` field"
                 "in the dataclass."
             )
+        # # # # # # # # # # # # # # END OF STEP 1 # # # # # # # # # # # # # # #
 
+        # # # # # # # # # # # # # STEP 2: WRAP INIT # # # # # # # # # # # # # #
+        # In the following comment, we explain the need for step 2.
+        #
+        # We want to make sure that if a field is specified in the metadata,
+        # the default value of the field provided during class annotation does
+        # not override it. For example, consider the following code:
+        #
+        #   @store_field_in_metadata('field_a')
+        #   @dataclass
+        #   class MyDataclass:
+        #       metadata: Metadata = field(default_factory=Metadata)
+        #       field_a: int = 3
+        #
+        # If we don't disable wrap the __init__ method, the following code
+        # will print `3`
+        #
+        #   d = MyDataclass(metadata={'field_a': 5})
+        #   print(d.field_a)
+        #
+        # but if we do, it will work fine and print `5` as expected.
+        #
+        # The reason why this occurs is that the __init__ method generated
+        # by a dataclass uses the default value of the field to initialize the
+        # class if a default is not provided.
+        #
+        # Our solution is rather simple: before calling the dataclass init,
+        # we look if:
+        #   1. A `metadata` argument is provided in the constructor, and
+        #   2. The `metadata` argument contains a field with name ``
+        #
+        # To disable the auto-init, we have to do two things:
+        #   1. create a new dataclass that inherits from the original one,
+        #      but with init=False for field wrapper_field_name
+        #   2. create a wrapper for the __init__ method of the new dataclass
+        #      that, when called, calls the original __init__ method and then
+        #      adds the field value to the metadata dict.
+
+        # This signature is going to be used to bind to the args/kwargs during
+        # init, which allows easy lookup of arguments/keywords arguments by
+        # name.
+        cls_signature = inspect.signature(cls_.__init__)
+
+        # We need to save the init method since we will override it.
+        cls_init_fn = cls_.__init__
+
+        @wraps(cls_init_fn)
+        def init_wrapper(self, *args, **kwargs):
+            # parse the arguments and keywords arguments
+            arguments = cls_signature.bind(self, *args, **kwargs).arguments
+
+            # this adds the metadata to kwargs if it is not already there
+            metadata = arguments.setdefault("metadata", Metadata())
+
+            # this is the main check:
+            # (a) the metadata argument contains the field we are storing in
+            # the metadata, and (b) the field is not in args/kwargs, then we
+            # pass the field value in the metadata to the original init method
+            # to prevent it from being overwritten by its default value.
+            if (
+                wrapper_field_name in metadata
+                and wrapper_field_name not in arguments
+            ):
+                arguments[wrapper_field_name] = metadata[wrapper_field_name]
+
+            # type: ignore is due to pylance not recognizing that the
+            # arguments in the signature contain a `self` key
+            cls_init_fn(**arguments)  # type: ignore
+
+        setattr(cls_, "__init__", init_wrapper)
+        # # # # # # # # # # # # # # END OF STEP 2 # # # # # # # # # # # # # # #
+
+        # # # # # # # # # # # STEP 3: GETTERS & SETTERS # # # # # # # # # # # #
+
+        # We add the getter from here on:
         if wrapper_getter_fn is None:
             # create property for the deprecated field, as well as a setter
             # that will add to the underlying metadata dict
@@ -261,6 +364,7 @@ def store_field_in_metadata(
 
         field_property = property(wrapper_getter_fn)
 
+        # We add the setter from here on:
         if wrapper_setter_fn is None:
 
             def _wrapper_setter_fn(self: T, value: Any) -> None:
@@ -289,7 +393,8 @@ def store_field_in_metadata(
 
         # assign the property to the dataclass
         setattr(cls_, wrapper_field_name, field_property)
+        # # # # # # # # # # # # # # END OF STEP 3 # # # # # # # # # # # # # # #
 
         return cls_
 
-    return wrapper
+    return wrapper_fn
