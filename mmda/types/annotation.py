@@ -105,7 +105,7 @@ class BoxGroup(Annotation):
     def to_json(self) -> Dict:
         box_group_dict = dict(
             boxes=[box.to_json() for box in self.boxes],
-            metadata=self.metadata,
+            metadata=self.metadata.to_json(),
             uuid=self.uuid,
         )
         return {
@@ -210,7 +210,7 @@ class SpanGroup(Annotation):
     def to_json(self) -> Dict:
         span_group_dict = dict(
             spans=[span.to_json() for span in self.spans],
-            metadata=self.metadata,
+            metadata=self.metadata.to_json(),
             box_group=self.box_group.to_json() if self.box_group else None,
             uuid=self.uuid,
         )
