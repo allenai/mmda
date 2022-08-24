@@ -20,6 +20,7 @@ setup(
         "dev": ["pytest"],
         "spacy_predictors": ["spacy"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
+        "hf_predictors": ["transformers", "smashed@git+https://github.com/allenai/smashed@v0.0.1"],
         "vila_predictors": ["vila>=0.4.2,<0.5", "transformers"],
         "mention_predictor": ["transformers[torch]", "optimum[onnxruntime]"],
         "mention_predictor_gpu": ["transformers[torch]", "optimum[onnxruntime-gpu]"],
