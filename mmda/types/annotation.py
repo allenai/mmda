@@ -114,25 +114,27 @@ class BoxGroup(Annotation):
 
     @classmethod
     def from_json(cls, box_group_dict: Dict) -> "BoxGroup":
-        return BoxGroup(
+
+        if "metadata" in box_group_dict:
+            metadata_dict = box_group_dict["metadata"]
+        else:
+            # this fallback is necessary to ensure compatibility with box
+            # groups that were create before the metadata migration and
+            # therefore have "id", "type" in the root of the json dict instead.
+            metadata_dict = {
+                "id": box_group_dict.get("id", None),
+                "type": box_group_dict.get("type", None),
+                "text": box_group_dict.get("text", None)
+            }
+
+        return cls(
             boxes=[
                 Box.from_json(box_coords=box_dict)
-                for box_dict in box_group_dict["boxes"]
+                # box_group_dict["boxes"] might not be present since we
+                # minimally serialize when running to_json()
+                for box_dict in box_group_dict.get("boxes", [])
             ],
-            metadata=Metadata.from_json(
-                box_group_dict.get(
-                    "metadata",
-                    # this fallback is necessary to ensure compatibility with
-                    # box groups that were create before the metadata
-                    # migration and therefore have "id", "type" in the
-                    # root of the json dict instead.
-                    {
-                        key: box_group_dict[key]
-                        for key in ("id", "type")
-                        if key in box_group_dict
-                    },
-                )
-            ),
+            metadata=Metadata.from_json(metadata_dict),
             uuid=box_group_dict.get("uuid", str(uuid4())),
         )
 
