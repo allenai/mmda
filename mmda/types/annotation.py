@@ -105,7 +105,7 @@ class BoxGroup(Annotation):
     def to_json(self) -> Dict:
         box_group_dict = dict(
             boxes=[box.to_json() for box in self.boxes],
-            metadata=self.metadata,
+            metadata=self.metadata.to_json(),
             uuid=self.uuid,
         )
         return {
@@ -114,25 +114,27 @@ class BoxGroup(Annotation):
 
     @classmethod
     def from_json(cls, box_group_dict: Dict) -> "BoxGroup":
-        return BoxGroup(
+
+        if "metadata" in box_group_dict:
+            metadata_dict = box_group_dict["metadata"]
+        else:
+            # this fallback is necessary to ensure compatibility with box
+            # groups that were create before the metadata migration and
+            # therefore have "id", "type" in the root of the json dict instead.
+            metadata_dict = {
+                "id": box_group_dict.get("id", None),
+                "type": box_group_dict.get("type", None),
+                "text": box_group_dict.get("text", None)
+            }
+
+        return cls(
             boxes=[
                 Box.from_json(box_coords=box_dict)
-                for box_dict in box_group_dict["boxes"]
+                # box_group_dict["boxes"] might not be present since we
+                # minimally serialize when running to_json()
+                for box_dict in box_group_dict.get("boxes", [])
             ],
-            metadata=Metadata.from_json(
-                box_group_dict.get(
-                    "metadata",
-                    # this fallback is necessary to ensure compatibility with
-                    # box groups that were create before the metadata
-                    # migration and therefore have "id", "type" in the
-                    # root of the json dict instead.
-                    {
-                        key: box_group_dict[key]
-                        for key in ("id", "type")
-                        if key in box_group_dict
-                    },
-                )
-            ),
+            metadata=Metadata.from_json(metadata_dict),
             uuid=box_group_dict.get("uuid", str(uuid4())),
         )
 
@@ -165,7 +167,7 @@ def _text_span_group_getter(span_group: "SpanGroup") -> str:
     return maybe_text if maybe_text else " ".join(span_group.symbols)
 
 
-# NOTE[LucaS]: by using the store_field_in_metadata decorator, we are
+# NOTE[@soldni]: by using the store_field_in_metadata decorator, we are
 # able to store id and type in the metadata of BoxGroup, while keeping it
 # accessible via SpanGroup.id and SpanGroup.type respectively. This is
 # useful because it keeps backward compatibility with the old API, while
@@ -210,7 +212,7 @@ class SpanGroup(Annotation):
     def to_json(self) -> Dict:
         span_group_dict = dict(
             spans=[span.to_json() for span in self.spans],
-            metadata=self.metadata,
+            metadata=self.metadata.to_json(),
             box_group=self.box_group.to_json() if self.box_group else None,
             uuid=self.uuid,
         )
@@ -227,25 +229,25 @@ class SpanGroup(Annotation):
             box_group = BoxGroup.from_json(box_group_dict=box_group_dict)
         else:
             box_group = None
-        return SpanGroup(
+
+        if "metadata" in span_group_dict:
+            metadata_dict = span_group_dict["metadata"]
+        else:
+            # this fallback is necessary to ensure compatibility with span
+            # groups that were create before the metadata migration and
+            # therefore have "id", "type" in the root of the json dict instead.
+            metadata_dict = {
+                "id": span_group_dict.get("id", None),
+                "type": span_group_dict.get("type", None),
+                "text": span_group_dict.get("text", None)
+            }
+
+        return cls(
             spans=[
                 Span.from_json(span_dict=span_dict)
                 for span_dict in span_group_dict["spans"]
             ],
-            metadata=Metadata.from_json(
-                span_group_dict.get(
-                    "metadata",
-                    # this fallback is necessary to ensure compatibility with
-                    # span groups that were create before the metadata
-                    # migration and therefore have "id", "type" in the
-                    # root of the json dict instead.
-                    {
-                        key: span_group_dict[key]
-                        for key in ("id", "type", "text")
-                        if key in span_group_dict
-                    },
-                )
-            ),
+            metadata=Metadata.from_json(metadata_dict),
             box_group=box_group,
             uuid=span_group_dict.get("uuid", str(uuid4())),
         )
