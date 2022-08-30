@@ -14,7 +14,6 @@ from mmda.predictors.hf_predictors.bibentry_predictor.types import (
 from mmda.types.document import Document
 
 
-
 class BibEntryPredictor:
     _SPAN_JOINER = " "
 
