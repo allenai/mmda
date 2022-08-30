@@ -1,65 +1,41 @@
-from enum import Enum
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
-from pydantic import BaseModel
 from transformers import AutoConfig, AutoTokenizer, AutoModelForTokenClassification
 from unidecode import unidecode
 
+from mmda.predictors.hf_predictors.bibentry_predictor import utils
+from mmda.predictors.hf_predictors.bibentry_predictor.types import (
+    BibEntryLabel,
+    BibEntryPredictionWithSpan,
+    BibEntryStructureSpanGroups,
+    StringWithSpan
+)
+from mmda.types.document import Document
 
-class BibEntryLabel(Enum):
-    MISC = 0
-
-    CITATION_NUMBER = 1
-
-    AUTHOR_START = 2
-    AUTHOR_MIDDLE = 3
-    AUTHOR_END = 4
-
-    ISSUED_DAY = 5
-    ISSUED_MONTH = 6
-    ISSUED_YEAR = 7
-
-    TITLE = 8
-    JOURNAL = 9
-    PUBLISHER = 10
-    VOLUME = 11
-    ISSUE = 12
-    PAGE = 13
-    URL = 14
-    DOI = 15
-    EVENT = 16
-    ISBN = 17
-
-
-class StringWithSpan(BaseModel):
-    content: str
-    start: int  # inclusive
-    end: int  # exclusive
-
-
-class BibEntryPredictionWithSpan(BaseModel):
-    citation_number: Optional[StringWithSpan]
-    authors: Optional[List[StringWithSpan]]
-    title: Optional[StringWithSpan]
-    journal_venue_or_event: Optional[StringWithSpan]
-    year: Optional[StringWithSpan]
-    doi: Optional[StringWithSpan]
-    url: Optional[StringWithSpan]
 
 
 class BibEntryPredictor:
+    _SPAN_JOINER = " "
+
     def __init__(self, model_name_or_path: str):
         self.model = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
         self.config = AutoConfig.from_pretrained(model_name_or_path)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)    
-    
-    def predict(self, bib_entries: List[str]) -> List[BibEntryPredictionWithSpan]:
-        # TODO: eventually, this input will be a Document
-        # and this function should have argstring: def predict(self, document: Document) -> List[Annotation]:
-        # and some processing that looks like:
-        # for bib_entry in document.bib_entries:
-        #     bib_entry.text -> treat this as text
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+
+    def predict(self, document: Document) -> BibEntryStructureSpanGroups:
+        # Recover the (approximate) raw bibentry strings from mmda document
+        bib_entry_strings = utils.mk_bib_entry_strings(document)
+
+        # Delegate to underlying model for inference
+        raw_predictions = self.predict_raw(bib_entry_strings)
+
+        # Map raw predictions back into valid annotations for passed document
+        prediction = utils.map_raw_predictions_to_mmda(document.bib_entry_boxes, raw_predictions)
+
+        return prediction
+
+    def predict_raw(self, bib_entries: List[str]) -> List[BibEntryPredictionWithSpan]:
         res = []
 
         tokenized_inputs = self.tokenizer(bib_entries, padding=True, truncation=True, return_tensors="pt")
