@@ -128,7 +128,7 @@ model_variants:
     python_version: 3.7
 
     # Whether this model supports CUDA GPU acceleration
-    cuda: False
+    cuda: True
 
     # Python path to a fn in <model_package_name>==<model_package_version> that
     # returns a unittest.TestCase. Builder function receives a model container
