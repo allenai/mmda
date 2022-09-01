@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple
 from transformers import AutoConfig, AutoTokenizer, AutoModelForTokenClassification
 from unidecode import unidecode
 
+from mmda.predictors.hf_predictors.base_hf_predictor import BasePredictor
 from mmda.predictors.hf_predictors.bibentry_predictor import utils
 from mmda.predictors.hf_predictors.bibentry_predictor.types import (
     BibEntryLabel,
@@ -14,7 +15,11 @@ from mmda.predictors.hf_predictors.bibentry_predictor.types import (
 from mmda.types.document import Document
 
 
-class BibEntryPredictor:
+class BibEntryPredictor(BasePredictor):
+
+    REQUIRED_BACKENDS = ["transformers", "torch"]
+    REQUIRED_DOCUMENT_FIELDS = ["tokens", "pages", "bib_entry_boxes"]
+
     def __init__(self, model_name_or_path: str):
         self.model = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
         self.config = AutoConfig.from_pretrained(model_name_or_path)
