@@ -1,6 +1,7 @@
 import re
 from typing import Dict, List, Optional, Tuple
 
+import torch
 from transformers import AutoConfig, AutoTokenizer, AutoModelForTokenClassification
 from unidecode import unidecode
 
@@ -24,6 +25,8 @@ class BibEntryPredictor(BasePredictor):
         self.model = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
         self.config = AutoConfig.from_pretrained(model_name_or_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+
+        self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
     def predict(self, document: Document) -> BibEntryStructureSpanGroups:
         # Recover the (approximate) raw bibentry strings from mmda document
