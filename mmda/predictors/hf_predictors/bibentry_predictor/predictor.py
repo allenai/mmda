@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple
 from transformers import AutoConfig, AutoTokenizer, AutoModelForTokenClassification
 from unidecode import unidecode
 
+from mmda.predictors.hf_predictors.base_hf_predictor import BasePredictor
 from mmda.predictors.hf_predictors.bibentry_predictor import utils
 from mmda.predictors.hf_predictors.bibentry_predictor.types import (
     BibEntryLabel,
@@ -14,13 +15,19 @@ from mmda.predictors.hf_predictors.bibentry_predictor.types import (
 from mmda.types.document import Document
 
 
-class BibEntryPredictor:
+class BibEntryPredictor(BasePredictor):
+
+    REQUIRED_DOCUMENT_FIELDS = ['bib_entry_boxes']
+
+
     def __init__(self, model_name_or_path: str):
         self.model = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
         self.config = AutoConfig.from_pretrained(model_name_or_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     def predict(self, document: Document) -> BibEntryStructureSpanGroups:
+        self._doc_field_checker(document)
+
         # Recover the (approximate) raw bibentry strings from mmda document
         bib_entry_strings = utils.mk_bib_entry_strings(document)
 
