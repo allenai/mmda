@@ -15,8 +15,6 @@ from mmda.types.document import Document
 
 
 class BibEntryPredictor:
-    _SPAN_JOINER = " "
-
     def __init__(self, model_name_or_path: str):
         self.model = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
         self.config = AutoConfig.from_pretrained(model_name_or_path)

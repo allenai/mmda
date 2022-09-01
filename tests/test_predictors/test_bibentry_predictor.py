@@ -10,7 +10,7 @@ from mmda.types.span import Span
 
 
 class TestBibEntryPredictor(unittest.TestCase):
-    def tet__map_raw_predictions_to_mmda(self):
+    def test__map_raw_predictions_to_mmda(self):
         sg = SpanGroup(spans=[Span(start=17778, end=17832, box=None), Span(start=20057, end=20233, box=None)])
         raw_prediction = BibEntryPredictionWithSpan(
             citation_number=StringWithSpan(content='10', start=0, end=2),

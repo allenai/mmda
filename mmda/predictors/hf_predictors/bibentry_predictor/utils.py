@@ -67,7 +67,7 @@ def map_raw_predictions_to_mmda(
                     new_spans.append(Span(start=new_sg_span_start, end=new_sg_span_end))
 
                     # Advance our current position, accounting for whitespace before beginning of next span.
-                    cur_pos = interval_end + 1
+                    cur_pos = interval_end + len(_SPAN_JOINER)
                     if cur_pos >= end:
                         break
 
