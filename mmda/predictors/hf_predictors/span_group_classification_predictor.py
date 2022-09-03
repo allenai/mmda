@@ -192,17 +192,20 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
         for i, page in enumerate(doc.pages):
             for j, span_group in enumerate(getattr(page, self.span_group_name)):
                 pred = page_id_to_span_group_id_to_pred[i].get(j, None)
+                # TODO: double-check whether this deepcopy is needed...
+                new_metadata = Metadata.from_json(span_group.metadata.to_json())
                 if pred is not None:
-                    new_metadata = Metadata.from_json(span_group.metadata.to_json())
-                    new_metadata.type = pred.label
+                    new_metadata.label = pred.label
                     new_metadata.score = pred.score
-                    new_span_group = SpanGroup(
-                        spans=span_group.spans,
-                        box_group=span_group.box_group,
-                        # TODO: double-check whether this deepcopy is needed...
-                        metadata=new_metadata
-                    )
-                    annotations.append(new_span_group)
+                else:
+                    new_metadata.label = None
+                    new_metadata.score = None
+                new_span_group = SpanGroup(
+                    spans=span_group.spans,
+                    box_group=span_group.box_group,
+                    metadata=new_metadata
+                )
+                annotations.append(new_span_group)
         return annotations
 
     def predict(self, document: Document) -> List[Annotation]:
