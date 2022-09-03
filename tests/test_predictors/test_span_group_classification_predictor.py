@@ -31,7 +31,8 @@ class TestSpangroupClassificationPredictor(unittest.TestCase):
     def test_predict(self):
         predictor = SpanGroupClassificationPredictor.from_pretrained(
             model_name_or_path=TEST_SCIBERT_WEIGHTS,
-            span_group_name='tokens'
+            span_group_name='tokens',
+            context_name='pages'
         )
         token_tags = predictor.predict(document=self.doc)
         assert len(token_tags) == len(self.doc.tokens)

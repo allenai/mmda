@@ -31,9 +31,9 @@ class SpanGroupClassificationBatch:
             input_ids: List[List[int]],
             attention_mask: List[List[int]],
             span_group_ids: List[List[Optional[int]]],
-            page_id: List[int]
+            context_id: List[int]
     ):
-        assert len(input_ids) == len(attention_mask) == len(span_group_ids) == len(page_id), \
+        assert len(input_ids) == len(attention_mask) == len(span_group_ids) == len(context_id), \
             f"Inputs to batch arent same length"
         self.batch_size = len(input_ids)
         assert [len(example) for example in input_ids] == \
@@ -42,23 +42,44 @@ class SpanGroupClassificationBatch:
         self.input_ids = input_ids
         self.attention_mask = attention_mask
         self.span_group_ids = span_group_ids
-        self.page_id = page_id
+        self.context_id = context_id
 
 
 class SpanGroupClassificationPrediction:
-    def __init__(self, page_id: int, span_group_id: int, label: str, score: float):
-        self.page_id = page_id
+    def __init__(self, context_id: int, span_group_id: int, label: str, score: float):
+        self.context_id = context_id
         self.span_group_id = span_group_id
         self.label = label
         self.score = score
 
 
 class SpanGroupClassificationPredictor(BaseHFPredictor):
+    """
+    This is a generic wrapper around Huggingface Token Classification models.
+
+    First, we need a `span_group_name` which defines the Document field that we will treat as the
+    target unit of prediction. For example, if `span_group_name` is 'tokens', then we expect
+    to classify every Document.token.  But technically, `span_group_name` could be anything,
+    such as `words` or `rows` or any SpanGroup.
+
+    Second, we need a `context_name` which defines the Document field that we will treat as the
+    intuitive notion of an "example" that we want to run our model over. For example, if
+    `context_name` is 'pages', then we'll loop over each page, running our classifier
+    over all the 'tokens' in each page. If the `context_name` is `bib_entries`, then we'll
+    loop over each bib entry, running our classifier over the 'tokens' in each page.
+
+    The key consequence of defining a `context_name` is, when the model constructs batches
+    of sequences that fit within the Huggingface transformer's window, it will *not*
+    mix sequences from different contexts into the same batch.
+
+    @kylel
+    """
+
     REQUIRED_BACKENDS = ["transformers", "torch", "smashed"]
-    REQUIRED_DOCUMENT_FIELDS = ["pages"]
+    REQUIRED_DOCUMENT_FIELDS = []
 
     _SPAN_GROUP = 'inputs'
-    _PAGE_ID = 'page_id'
+    _CONTEXT_ID = 'context_id'
 
     def __init__(
             self,
@@ -66,12 +87,14 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
             config: Any,
             tokenizer: Any,
             span_group_name: str,
+            context_name: str,
             batch_size: Optional[int] = 2,
             device: Optional[str] = 'cpu'
     ):
         super().__init__(model=model, config=config, tokenizer=tokenizer)
 
         self.span_group_name = span_group_name
+        self.context_name = context_name
         self.batch_size = batch_size
         self.device = device
 
@@ -89,7 +112,7 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
         # since input data is automatically chunked into segments (e.g. 512 length),
         # each example <dict> actually becomes many input sequences.
         # this mapper unpacks all of this into one <dict> per input sequence.
-        # we set `repeat` because we want other fields (e.g., `page_id`) to repeat across sequnces
+        # we set `repeat` because we want other fields (`context_id`) to repeat across sequnces
         self.unpacking_mapper = UnpackingMapper(
             fields_to_unpack=['input_ids', 'attention_mask', 'word_ids'],
             ignored_behavior='repeat'
@@ -124,6 +147,7 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
             cls,
             model_name_or_path: str,
             span_group_name: str,
+            context_name: str,
             batch_size: Optional[int] = 2,
             device: Optional[str] = 'cpu',
             *args,
@@ -145,20 +169,27 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
             pretrained_model_name_or_path=model_name_or_path, *args, **kwargs
         )
         predictor = cls(model, config, tokenizer,
-                        span_group_name=span_group_name, batch_size=batch_size, device=device)
+                        span_group_name=span_group_name, context_name=context_name,
+                        batch_size=batch_size, device=device)
         return predictor
 
-    def preprocess(self, document: Document) -> Sequence[SpanGroupClassificationBatch]:
+    def preprocess(
+            self,
+            document: Document,
+            context_name: str
+    ) -> List[SpanGroupClassificationBatch]:
         """Processes document into whatever makes sense for the Huggingface model"""
         # (1) get it into a dictionary format that Smashed expects
         dataset = [
             {
-                self._SPAN_GROUP: [sg.text for sg in getattr(page, self.span_group_name)],
-                self._PAGE_ID: i
+                self._SPAN_GROUP: [sg.text for sg in getattr(context, self.span_group_name)],
+                self._CONTEXT_ID: i
             }
-            for i, page in enumerate(document.pages)
+            for i, context in enumerate(getattr(document, context_name))
         ]
-        # (2) get it
+        # (2) apply Smashed
+        batch_dicts = self.preprocess_mapper.map(dataset=dataset)
+        # (3) convert dicts to objects
         return [
             # slightly annoying, but the names `input_ids`, `attention_mask` and `word_ids` are
             # reserved and produced after tokenization, which is why hard-coded here.
@@ -166,13 +197,14 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
                 input_ids=batch_dict['input_ids'],
                 attention_mask=batch_dict['attention_mask'],
                 span_group_ids=batch_dict['word_ids'],
-                page_id=batch_dict[self._PAGE_ID]
-            ) for batch_dict in self.preprocess_mapper.map(dataset=dataset)
+                context_id=batch_dict[self._CONTEXT_ID]
+            ) for batch_dict in batch_dicts
         ]
 
     def postprocess(
             self,
             doc: Document,
+            context_name: str,
             preds: List[SpanGroupClassificationPrediction]
     ) -> List[Annotation]:
         """This function handles a bunch of nonsense that happens with Huggingface models &
@@ -182,16 +214,16 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
         we need to organize our predictions into a Lookup <dict> and cross-reference
         with the original input SpanGroups to make sure they all got classified.
         """
-        # (1) organize predictions into a Lookup at the (Page, SpanGroup) level.
-        page_id_to_span_group_id_to_pred = defaultdict(dict)
+        # (1) organize predictions into a Lookup at the (Context, SpanGroup) level.
+        context_id_to_span_group_id_to_pred = defaultdict(dict)
         for pred in preds:
-            page_id_to_span_group_id_to_pred[pred.page_id][pred.span_group_id] = pred
+            context_id_to_span_group_id_to_pred[pred.context_id][pred.span_group_id] = pred
 
         # (2) iterate through original data to check against that Lookup
         annotations: List[Annotation] = []
-        for i, page in enumerate(doc.pages):
-            for j, span_group in enumerate(getattr(page, self.span_group_name)):
-                pred = page_id_to_span_group_id_to_pred[i].get(j, None)
+        for i, context in enumerate(getattr(doc, context_name)):
+            for j, span_group in enumerate(getattr(context, self.span_group_name)):
+                pred = context_id_to_span_group_id_to_pred[i].get(j, None)
                 # TODO: double-check whether this deepcopy is needed...
                 new_metadata = Metadata.from_json(span_group.metadata.to_json())
                 if pred is not None:
@@ -212,7 +244,9 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
         self._doc_field_checker(document)
 
         # (1) Make batches
-        batches: List[SpanGroupClassificationBatch] = self.preprocess(document=document)
+        batches: List[SpanGroupClassificationBatch] = self.preprocess(
+            document=document, context_name=self.context_name
+        )
 
         # (2) Predict each batch.
         preds: List[SpanGroupClassificationPrediction] = []
@@ -221,7 +255,7 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
                 preds.append(pred)
 
         # (3) Postprocess into proper Annotations
-        annotations = self.postprocess(doc=document, preds=preds)
+        annotations = self.postprocess(doc=document, context_name=self.context_name, preds=preds)
         return annotations
 
     def _predict_batch(
@@ -256,8 +290,8 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
         #   postprocessing (map back to original inputs)!!
         #
         preds = []
-        for j, (page_id, word_ids, token_scoress) in enumerate(zip(
-                batch.page_id,
+        for j, (context_id, word_ids, token_scoress) in enumerate(zip(
+                batch.context_id,
                 batch.span_group_ids,
                 token_scoresss)
         ):
@@ -271,7 +305,7 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
                 else:
                     label_id = np.argmax(token_scores)
                     pred = SpanGroupClassificationPrediction(
-                        page_id=page_id,
+                        context_id=context_id,
                         span_group_id=word_id,
                         label=self.config.id2label[label_id],
                         score=token_scores[label_id]
