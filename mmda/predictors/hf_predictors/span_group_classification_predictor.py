@@ -81,6 +81,11 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
     _SPAN_GROUP = 'inputs'
     _CONTEXT_ID = 'context_id'
 
+    _HF_RESERVED_INPUT_IDS = 'input_ids'
+    _HF_RESERVED_ATTN_MASK = 'attention_mask'
+    _HF_RESERVED_WORD_IDS = 'word_ids'
+    _HF_RESERVED_WORD_PAD_VALUE = -1
+
     def __init__(
             self,
             model: Any,
@@ -114,7 +119,11 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
         # this mapper unpacks all of this into one <dict> per input sequence.
         # we set `repeat` because we want other fields (`context_id`) to repeat across sequnces
         self.unpacking_mapper = UnpackingMapper(
-            fields_to_unpack=['input_ids', 'attention_mask', 'word_ids'],
+            fields_to_unpack=[
+                self._HF_RESERVED_INPUT_IDS,
+                self._HF_RESERVED_ATTN_MASK,
+                self._HF_RESERVED_WORD_IDS
+            ],
             ignored_behavior='repeat'
         )
         # at the end of this, each <dict> contains <lists> of length `batch_size`
@@ -130,7 +139,7 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
             tokenizer=tokenizer,
             pad_to_length=None,  # keeping this `None` is best because dynamic padding
             fields_pad_ids={
-                'word_ids': -1,  # avoid word_ids which are <int> >= 0. can be any number tbh...
+                self._HF_RESERVED_WORD_IDS: self._HF_RESERVED_WORD_PAD_VALUE
             }
         )
         # this casts python Dict[List] into tensors.  if using GPU, would do `device='gpu'`
@@ -194,9 +203,9 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
             # slightly annoying, but the names `input_ids`, `attention_mask` and `word_ids` are
             # reserved and produced after tokenization, which is why hard-coded here.
             SpanGroupClassificationBatch(
-                input_ids=batch_dict['input_ids'],
-                attention_mask=batch_dict['attention_mask'],
-                span_group_ids=batch_dict['word_ids'],
+                input_ids=batch_dict[self._HF_RESERVED_INPUT_IDS],
+                attention_mask=batch_dict[self._HF_RESERVED_ATTN_MASK],
+                span_group_ids=batch_dict[self._HF_RESERVED_WORD_IDS],
                 context_id=batch_dict[self._CONTEXT_ID]
             ) for batch_dict in batch_dicts
         ]
@@ -270,8 +279,8 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
         pytorch_batch = self.python_to_torch_mapper.transform(
             data=self.list_collator_mapper.transform(
                 data={
-                    'input_ids': batch.input_ids,
-                    'attention_mask': batch.attention_mask
+                    self._HF_RESERVED_INPUT_IDS: batch.input_ids,
+                    self._HF_RESERVED_ATTN_MASK: batch.attention_mask
                 }
             )
         )
@@ -347,26 +356,3 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
             for is_word, word_id in zip(mask, word_ids)
         ]
         return mask
-
-
-
-
-        #
-        # def _convert_token_preds_to_spans(
-        #     self,
-        #     token_preds: List[SpanGroupClassificationPrediction]
-        # ) -> List[PredictedSpan]:
-        #     """For a sequence of token predictions, convert them to spans
-        #     of consecutive same predictions."""
-        #     spans = []
-        #     for label, subsequence in itertools.groupby(token_preds, key=lambda p: p.label):
-        #         subsequence = list(subsequence)
-        #         print(f"{label}\t{subsequence}")
-        #         span = PredictedSpan(span=Span.small_spans_to_big_span(spans=),
-        #                              label=label,
-        #                              score=0.00)
-        #         # spans.append(span)
-        #         # prev_len = prev_len + cur_len
-        #     import pdb;pdb.set_trace()
-        #     return spans
-        #
