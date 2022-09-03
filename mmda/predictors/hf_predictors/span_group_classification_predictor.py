@@ -241,7 +241,9 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
         return annotations
 
     def predict(self, document: Document) -> List[Annotation]:
-        self._doc_field_checker(document)
+        # (0) Check fields
+        assert self.span_group_name in document.fields, f"Input doc missing {self.span_group_name}"
+        assert self.context_name in document.fields, f"Input doc missing {self.context_name}"
 
         # (1) Make batches
         batches: List[SpanGroupClassificationBatch] = self.preprocess(
