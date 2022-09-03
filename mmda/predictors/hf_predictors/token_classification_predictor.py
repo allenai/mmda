@@ -8,13 +8,13 @@ from vila.predictors import (
     HierarchicalPDFPredictor,
 )
 
+import itertools
 from collections import defaultdict
 from smashed.interfaces.simple import (
     TokenizerMapper,
     UnpackingMapper,
     FixedBatchSizeMapper,
     FromTokenizerListCollatorMapper,
-    ChangeFieldsMapper,
     Python2TorchMapper,
 )
 import numpy as np
@@ -24,6 +24,7 @@ import transformers
 from mmda.types.names import *
 from mmda.types.annotation import Annotation, Span, SpanGroup
 from mmda.types.document import Document
+from mmda.types.metadata import Metadata
 from mmda.predictors.hf_predictors.utils import (
     convert_document_page_to_pdf_dict,
     convert_sequence_tagging_to_spans,
@@ -32,10 +33,9 @@ from mmda.predictors.hf_predictors.base_hf_predictor import BaseHFPredictor
 
 
 class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
-
     REQUIRED_BACKENDS = ["transformers", "torch", "vila"]
     REQUIRED_DOCUMENT_FIELDS = [Pages, Tokens]
-    DEFAULT_SUBPAGE_PER_RUN = 2 #TODO: Might remove this in the future for longformer-like models
+    DEFAULT_SUBPAGE_PER_RUN = 2  # TODO: Might remove this in the future for longformer-like models
 
     @property
     @abstractmethod
@@ -54,12 +54,12 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
 
     @classmethod
     def from_pretrained(
-        cls,
-        model_name_or_path: str,
-        preprocessor=None,
-        device: Optional[str] = None,
-        subpage_per_run: Optional[int] = None,
-        **preprocessor_config
+            cls,
+            model_name_or_path: str,
+            preprocessor=None,
+            device: Optional[str] = None,
+            subpage_per_run: Optional[int] = None,
+            **preprocessor_config
     ):
         predictor = cls.VILA_MODEL_CLASS.from_pretrained(
             model_path=model_name_or_path,
@@ -71,7 +71,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
         return cls(predictor, subpage_per_run)
 
     def predict(
-        self, document: Document, subpage_per_run: Optional[int] = None
+            self, document: Document, subpage_per_run: Optional[int] = None
     ) -> List[Annotation]:
 
         page_prediction_results = []
@@ -91,7 +91,8 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
                     return_type="list",
                 )
 
-                assert len(model_predictions) == len(page.tokens), f"Model predictions and tokens are not the same length ({len(model_predictions)} != {len(page.tokens)}) for page {page_id}"
+                assert len(model_predictions) == len(
+                    page.tokens), f"Model predictions and tokens are not the same length ({len(model_predictions)} != {len(page.tokens)}) for page {page_id}"
 
                 page_prediction_results.extend(
                     self.postprocess(page, model_predictions)
@@ -155,29 +156,59 @@ class HVILATokenClassificationPredictor(BaseSinglePageTokenClassificationPredict
         return base_reqs
 
 
+class SpanGroupClassificationBatch:
+    def __init__(
+            self,
+            input_ids: List[List[int]],
+            attention_mask: List[List[int]],
+            span_group_ids: List[List[Optional[int]]],
+            page_id: List[int]
+    ):
+        assert len(input_ids) == len(attention_mask) == len(span_group_ids) == len(page_id), \
+            f"Inputs to batch arent same length"
+        self.batch_size = len(input_ids)
+        assert [len(example) for example in input_ids] == \
+               [len(example) for example in attention_mask] == \
+               [len(example) for example in span_group_ids], f"Examples in batch arent same length"
+        self.input_ids = input_ids
+        self.attention_mask = attention_mask
+        self.span_group_ids = span_group_ids
+        self.page_id = page_id
 
-class SmashedTokenClassificationPredictor(BaseHFPredictor):
+
+class SpanGroupClassificationPrediction:
+    def __init__(self, page_id: int, span_group_id: int, label: str, score: float):
+        self.page_id = page_id
+        self.span_group_id = span_group_id
+        self.label = label
+        self.score = score
+
+
+class SpanGroupClassificationPredictor(BaseHFPredictor):
     REQUIRED_BACKENDS = ["transformers", "torch", "smashed"]
-    REQUIRED_DOCUMENT_FIELDS = ["tokens", "pages"]
+    REQUIRED_DOCUMENT_FIELDS = ["pages"]
+
+    _SPAN_GROUP = 'inputs'
+    _PAGE_ID = 'page_id'
 
     def __init__(
             self,
             model: Any,
             config: Any,
             tokenizer: Any,
-            input_field: Optional[str] = 'tokens',
+            span_group_name: str,
             batch_size: Optional[int] = 2,
             device: Optional[str] = 'cpu'
     ):
         super().__init__(model=model, config=config, tokenizer=tokenizer)
 
-        self.input_field = input_field
+        self.span_group_name = span_group_name
         self.batch_size = batch_size
         self.device = device
 
         # handles tokenization, sliding window, truncation, subword to input word mapping, etc.
         self.tokenizer_mapper = TokenizerMapper(
-            input_field=input_field,
+            input_field=self._SPAN_GROUP,
             tokenizer=tokenizer,
             is_split_into_words=True,
             add_special_tokens=True,
@@ -207,20 +238,23 @@ class SmashedTokenClassificationPredictor(BaseHFPredictor):
             tokenizer=tokenizer,
             pad_to_length=None,  # keeping this `None` is best because dynamic padding
             fields_pad_ids={
-                # 'input_ids': tokenizer.pad_token_id,      # default
-                # 'attention_mask': 0,                      # default
-                'word_ids': -1,
+                'word_ids': -1,  # avoid word_ids which are <int> >= 0. can be any number tbh...
             }
         )
         # this casts python Dict[List] into tensors.  if using GPU, would do `device='gpu'`
         self.python_to_torch_mapper = Python2TorchMapper(
             device=device
         )
+        # combining everything
+        self.preprocess_mapper = self.tokenizer_mapper >> \
+                                 self.unpacking_mapper >> \
+                                 self.batch_size_mapper
 
     @classmethod
     def from_pretrained(
-            cls, model_name_or_path: str,
-            input_field: Optional[str] = 'tokens',
+            cls,
+            model_name_or_path: str,
+            span_group_name: str,
             batch_size: Optional[int] = 2,
             device: Optional[str] = 'cpu',
             *args,
@@ -242,125 +276,152 @@ class SmashedTokenClassificationPredictor(BaseHFPredictor):
             pretrained_model_name_or_path=model_name_or_path, *args, **kwargs
         )
         predictor = cls(model, config, tokenizer,
-                        input_field=input_field, batch_size=batch_size, device=device)
+                        span_group_name=span_group_name, batch_size=batch_size, device=device)
         return predictor
 
-    def preprocess(self, document: Document) -> Sequence[Dict]:
-        """Processes document into whatever makes sense for the model"""
-        if self.input_field == 'tokens':
-            dataset = [
-                {
-                    self.input_field: [token.text for token in page.tokens],
-                    'page_id': page.id if page.id else i
-                }
-                for i, page in enumerate(document.pages)
-            ]
-        else:
-            raise NotImplementedError(f'Currently only supports mmda.Document.tokens as input')
+    def preprocess(self, document: Document) -> Sequence[SpanGroupClassificationBatch]:
+        """Processes document into whatever makes sense for the Huggingface model"""
+        # (1) get it into a dictionary format that Smashed expects
+        dataset = [
+            {
+                self._SPAN_GROUP: [sg.text for sg in getattr(page, self.span_group_name)],
+                self._PAGE_ID: i
+            }
+            for i, page in enumerate(document.pages)
+        ]
+        # (2) get it
+        return [
+            # slightly annoying, but the names `input_ids`, `attention_mask` and `word_ids` are
+            # reserved and produced after tokenization, which is why hard-coded here.
+            SpanGroupClassificationBatch(
+                input_ids=batch_dict['input_ids'],
+                attention_mask=batch_dict['attention_mask'],
+                span_group_ids=batch_dict['word_ids'],
+                page_id=batch_dict[self._PAGE_ID]
+            ) for batch_dict in self.preprocess_mapper.map(dataset=dataset)
+        ]
 
-        dataset = self.batch_size_mapper.map(
-            dataset=self.unpacking_mapper.map(
-                dataset=self.tokenizer_mapper.map(
-                    dataset=dataset
-                )
-            )
-        )
+    def postprocess(
+            self,
+            doc: Document,
+            preds: List[SpanGroupClassificationPrediction]
+    ) -> List[Annotation]:
+        """This function handles a bunch of nonsense that happens with Huggingface models &
+        how we processed the data.  Namely:
 
-        return dataset
+        Because Huggingface might drop tokens during the course of tokenization
+        we need to organize our predictions into a Lookup <dict> and cross-reference
+        with the original input SpanGroups to make sure they all got classified.
+        """
+        # (1) organize predictions into a Lookup at the (Page, SpanGroup) level.
+        page_id_to_span_group_id_to_pred = defaultdict(dict)
+        for pred in preds:
+            page_id_to_span_group_id_to_pred[pred.page_id][pred.span_group_id] = pred
 
-    # TODO: kyle - unneeded, get rid of from HFPredictor
-    def postprocess(self, model_outputs: defaultdict) -> List[Annotation]:
-        pass
+        # (2) iterate through original data to check against that Lookup
+        annotations: List[Annotation] = []
+        for i, page in enumerate(doc.pages):
+            for j, span_group in enumerate(getattr(page, self.span_group_name)):
+                pred = page_id_to_span_group_id_to_pred[i].get(j, None)
+                if pred is not None:
+                    new_metadata = Metadata.from_json(span_group.metadata.to_json())
+                    new_metadata.type = pred.label
+                    new_metadata.score = pred.score
+                    new_span_group = SpanGroup(
+                        spans=span_group.spans,
+                        box_group=span_group.box_group,
+                        # TODO: double-check whether this deepcopy is needed...
+                        metadata=new_metadata
+                    )
+                    annotations.append(new_span_group)
+        return annotations
 
     def predict(self, document: Document) -> List[Annotation]:
         self._doc_field_checker(document)
-        dataset: List[Dict] = self.preprocess(document=document)
 
-        # every (page, word) has a prediction
-        page_id_to_word_id_to_pred = defaultdict(dict)
-        for i, batch in enumerate(dataset):
-            preds = self._predict_batch(batch=batch)
-            for pred in preds:
-                page_id_to_word_id_to_pred[pred['page_id']][pred['word_id']] = (pred['label'],
-                                                                                pred['score'])
-        # TODO: here - make into SpanGroups
-        for page in dataset:
-            for word_id in range(len(page['page_tokens'])):
-                page_id_to_word_id_to_pred[page['page_id']].get(word_id, None)
+        # (1) Make batches
+        batches: List[SpanGroupClassificationBatch] = self.preprocess(document=document)
 
-        import pdb; pdb.set_trace()
+        # (2) Predict each batch.
+        preds: List[SpanGroupClassificationPrediction] = []
+        for batch in batches:
+            for pred in self._predict_batch(batch=batch):
+                preds.append(pred)
 
-        annotations = self.postprocess(model_outputs=page_id_to_word_id_to_pred)
+        # (3) Postprocess into proper Annotations
+        annotations = self.postprocess(doc=document, preds=preds)
         return annotations
 
-
-    def _predict_batch(self, batch: Dict) -> List[Dict]:
-            #
-            #   preprocessing!!  (padding & tensorification)
-            #
-            pytorch_batch = self.python_to_torch_mapper.transform(
-                data=self.list_collator_mapper.transform(
-                    data={
-                        'input_ids': batch['input_ids'],
-                        'attention_mask': batch['attention_mask']
-                    }
-                )
+    def _predict_batch(
+            self,
+            batch: SpanGroupClassificationBatch
+    ) -> List[SpanGroupClassificationPrediction]:
+        #
+        #   preprocessing!!  (padding & tensorification)
+        #
+        pytorch_batch = self.python_to_torch_mapper.transform(
+            data=self.list_collator_mapper.transform(
+                data={
+                    'input_ids': batch.input_ids,
+                    'attention_mask': batch.attention_mask
+                }
             )
-            #
-            #   inference!! (preferably on gpu)
-            #
-            # TODO: add something here for gpu migration
-            pytorch_output = self.model(**pytorch_batch)
-            scores_tensor = torch.softmax(pytorch_output.logits, dim=2)
-            token_scoresss = [
-                [
-                    token_scores for token_scores, yn in zip(token_scoress, yns)
-                    if yn == 1
-                ]
-                for token_scoress, yns in zip(scores_tensor.tolist(), batch['attention_mask'])
+        )
+        #
+        #   inference!! (preferably on gpu)
+        #
+        # TODO: add something here for gpu migration
+        pytorch_output = self.model(**pytorch_batch)
+        scores_tensor = torch.softmax(pytorch_output.logits, dim=2)
+        token_scoresss = [
+            [
+                token_scores for token_scores, yn in zip(token_scoress, yns)
+                if yn == 1
             ]
-            #
-            #   postprocessing (map back to original inputs)!!
-            #
-            preds = []
-            for j, (page_id, word_ids, token_scoress) in enumerate(zip(
-                    batch['page_id'],
-                    batch['word_ids'],
-                    token_scoresss)
+            for token_scoress, yns in zip(scores_tensor.tolist(), batch.attention_mask)
+        ]
+        #
+        #   postprocessing (map back to original inputs)!!
+        #
+        preds = []
+        for j, (page_id, word_ids, token_scoress) in enumerate(zip(
+                batch.page_id,
+                batch.span_group_ids,
+                token_scoresss)
+        ):
+            for word_id, token_scores, is_valid_pred in zip(
+                    word_ids,
+                    token_scoress,
+                    self._token_pooling_strategy_mask(word_ids=word_ids)
             ):
-                for word_id, token_scores, is_valid_pred in zip(
-                        word_ids,
-                        token_scoress,
-                        self._token_pooling_mask(word_ids=word_ids)
-                ):
-                    if word_id is None or is_valid_pred is False:
-                        continue
-                    else:
-                        label_id = np.argmax(token_scores)
-                        label_str = self.config.id2label[label_id]
-                        preds.append({
-                            'page_id': page_id,
-                            'word_id': word_id,
-                            'label': label_str,
-                            'score': token_scores[label_id]
-                        })
-            return preds
+                if word_id is None or is_valid_pred is False:
+                    continue
+                else:
+                    label_id = np.argmax(token_scores)
+                    pred = SpanGroupClassificationPrediction(
+                        page_id=page_id,
+                        span_group_id=word_id,
+                        label=self.config.id2label[label_id],
+                        score=token_scores[label_id]
+                    )
+                    preds.append(pred)
+        return preds
 
-    def _token_pooling_mask(
+    def _token_pooling_strategy_mask(
             self,
             token_ids: Optional[List[int]] = None,
             word_ids: Optional[List[int]] = None,
             token_scores: Optional[List[Tuple[float, float]]] = None,
-            mode: str = 'first'
+            strategy: str = 'first'
     ) -> List[bool]:
         """
-            words are split into multiple tokens, each of which has a prediction.
-            there are multiple strategies here:
-            1) take only the first token prediction for whole word
-            2) take the highest scoring token prediction for whole word
-            3) ...
+        words are split into multiple tokens, each of which has a prediction.
+        there are multiple strategies to decide the model prediction at a word-level:
+        1) 'first': take only the first token prediction for whole word
+        2) 'max': take the highest scoring token prediction for whole word
+        3) ...
         """
-        if mode == 'first':
+        if strategy == 'first':
             mask = [True]
             prev_word_id = word_ids[0]
             for current_word_id in word_ids[1:]:
@@ -369,12 +430,35 @@ class SmashedTokenClassificationPredictor(BaseHFPredictor):
                 else:
                     mask.append(True)
                 prev_word_id = current_word_id
-            assert len(mask) == len(word_ids)
         else:
-            raise NotImplementedError(f"mode {mode} not implemented yet")
+            raise NotImplementedError(f"mode {strategy} not implemented yet")
 
         # if no word ID (e.g. [cls], [sep]), always mask
-        mask = [tf if word_id is not None else False for tf, word_id in zip(mask, word_ids)]
+        mask = [
+            is_word if word_id is not None else False
+            for is_word, word_id in zip(mask, word_ids)
+        ]
         return mask
 
 
+
+
+        #
+        # def _convert_token_preds_to_spans(
+        #     self,
+        #     token_preds: List[SpanGroupClassificationPrediction]
+        # ) -> List[PredictedSpan]:
+        #     """For a sequence of token predictions, convert them to spans
+        #     of consecutive same predictions."""
+        #     spans = []
+        #     for label, subsequence in itertools.groupby(token_preds, key=lambda p: p.label):
+        #         subsequence = list(subsequence)
+        #         print(f"{label}\t{subsequence}")
+        #         span = PredictedSpan(span=Span.small_spans_to_big_span(spans=),
+        #                              label=label,
+        #                              score=0.00)
+        #         # spans.append(span)
+        #         # prev_len = prev_len + cur_len
+        #     import pdb;pdb.set_trace()
+        #     return spans
+        #
