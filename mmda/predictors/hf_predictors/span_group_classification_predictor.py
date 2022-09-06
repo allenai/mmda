@@ -177,7 +177,7 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
         model = transformers.AutoModelForTokenClassification.from_pretrained(
             pretrained_model_name_or_path=model_name_or_path, *args, **kwargs
         )
-        predictor = cls(model, config, tokenizer,
+        predictor = cls(model=model, config=config, tokenizer=tokenizer,
                         span_group_name=span_group_name, context_name=context_name,
                         batch_size=batch_size, device=device)
         return predictor
