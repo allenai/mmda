@@ -1,5 +1,6 @@
 import itertools
 import os.path
+import string
 from typing import Dict, Iterator, List, Optional
 
 from optimum.onnxruntime import ORTModelForTokenClassification
@@ -43,6 +44,8 @@ class Labels:
 
 
 class MentionPredictor:
+    PUNCTUATION_TO_SPLIT_AT = string.punctuation + chr(0x2013)
+
     def __init__(self, artifacts_dir: str):
         self.tokenizer = AutoTokenizer.from_pretrained(artifacts_dir)
 

@@ -1,7 +1,5 @@
 from typing import Optional, List, Dict, Union
 
-import string
-
 import pdfplumber
 
 from mmda.types.span import Span
@@ -10,8 +8,6 @@ from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.parsers.parser import Parser
 from mmda.types.names import *
-
-_SPLIT_AT_PUNCTUATION = string.punctuation + chr(0x2013)
 
 
 def simple_line_detection(
