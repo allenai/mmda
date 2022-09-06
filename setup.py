@@ -17,7 +17,7 @@ setup(
         "ncls",
     ],
     extras_require={
-        "dev": ["pytest"],
+        "dev": ["pytest", "torch"],
         "spacy_predictors": ["spacy"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
         "hf_predictors": ["torch", "transformers", "smashed@git+https://github.com/allenai/smashed@v0.0.1"],
