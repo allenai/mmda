@@ -1,6 +1,8 @@
+import os
 import re
 from typing import Dict, List, Optional, Tuple
 
+from optimum.onnxruntime import ORTModelForTokenClassification
 import torch
 from transformers import AutoConfig, AutoTokenizer, AutoModelForTokenClassification
 from unidecode import unidecode
@@ -22,11 +24,20 @@ class BibEntryPredictor(BasePredictor):
     REQUIRED_DOCUMENT_FIELDS = ["tokens", "pages", "bib_entry_boxes"]
 
     def __init__(self, model_name_or_path: str):
-        self.model = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
         self.config = AutoConfig.from_pretrained(model_name_or_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
+        onnx = os.path.exists(os.path.join(model_name_or_path, "model.onnx"))
+        if onnx:
+            self.model = ORTModelForTokenClassification.from_pretrained(model_name_or_path, file_name="model.onnx")
+        else:
+            self.model = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
+
         self.model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+
+        if not onnx:
+            # https://stackoverflow.com/a/60018731
+            self.model.eval()  # for some reason the onnx version doesnt have an eval()
 
     def predict(self, document: Document) -> BibEntryStructureSpanGroups:
         # Recover the (approximate) raw bibentry strings from mmda document
