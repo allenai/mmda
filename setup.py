@@ -3,14 +3,14 @@ from setuptools import find_namespace_packages, setup
 setup(
     name="mmda",
     description="mmda",
-    version="0.0.32",
+    version="0.0.33",
     url="https://www.github.com/allenai/mmda",
     python_requires=">= 3.7",
     packages=find_namespace_packages(include=["mmda*", "ai2_internal*"]),
     install_requires=[
         "tqdm",
         "pdf2image",
-        "pdfplumber@git+https://github.com/allenai/pdfplumber@63db31f8452c93d72baaca1e843f2ab68bc6ca85",
+        "pdfplumber>0.7.1",
         "requests",
         "pandas",
         "pydantic",
