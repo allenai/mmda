@@ -37,3 +37,20 @@ class Span:
             return self.id < other.id
         else:
             return self.start < other.start
+
+    @classmethod
+    def small_spans_to_big_span(cls, spans: List['Span']) -> 'Span':
+        # TODO: add warning for unsorted spans or not-contiguous spans
+        # TODO: what happens when Boxes cant be merged?
+        start = None
+        end = None
+        for span in spans:
+            if span.start < start:
+                start = span.start
+            if span.end > end:
+                end = span.end
+        return Span(
+            start=start,
+            end=end,
+            box=Box.small_boxes_to_big_box(boxes=[span.box for span in spans])
+        )

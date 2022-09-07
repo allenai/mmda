@@ -1,4 +1,4 @@
-from typing import List, Union, Dict, Any, Tuple, Optional
+from typing import List, Union, Dict, Any, Tuple, Optional, Sequence
 from abc import abstractmethod
 
 from tqdm import tqdm
@@ -7,6 +7,7 @@ from vila.predictors import (
     LayoutIndicatorPDFPredictor,
     HierarchicalPDFPredictor,
 )
+
 
 from mmda.types.names import *
 from mmda.types.annotation import Annotation, Span, SpanGroup
@@ -19,10 +20,9 @@ from mmda.predictors.hf_predictors.base_hf_predictor import BaseHFPredictor
 
 
 class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
-
     REQUIRED_BACKENDS = ["transformers", "torch", "vila"]
     REQUIRED_DOCUMENT_FIELDS = [Pages, Tokens]
-    DEFAULT_SUBPAGE_PER_RUN = 2 #TODO: Might remove this in the future for longformer-like models 
+    DEFAULT_SUBPAGE_PER_RUN = 2  # TODO: Might remove this in the future for longformer-like models
 
     @property
     @abstractmethod
@@ -41,12 +41,12 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
 
     @classmethod
     def from_pretrained(
-        cls,
-        model_name_or_path: str,
-        preprocessor=None,
-        device: Optional[str] = None,
-        subpage_per_run: Optional[int] = None,
-        **preprocessor_config
+            cls,
+            model_name_or_path: str,
+            preprocessor=None,
+            device: Optional[str] = None,
+            subpage_per_run: Optional[int] = None,
+            **preprocessor_config
     ):
         predictor = cls.VILA_MODEL_CLASS.from_pretrained(
             model_path=model_name_or_path,
@@ -58,7 +58,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
         return cls(predictor, subpage_per_run)
 
     def predict(
-        self, document: Document, subpage_per_run: Optional[int] = None
+            self, document: Document, subpage_per_run: Optional[int] = None
     ) -> List[Annotation]:
 
         page_prediction_results = []
@@ -78,7 +78,8 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
                     return_type="list",
                 )
 
-                assert len(model_predictions) == len(page.tokens), f"Model predictions and tokens are not the same length ({len(model_predictions)} != {len(page.tokens)}) for page {page_id}"
+                assert len(model_predictions) == len(
+                    page.tokens), f"Model predictions and tokens are not the same length ({len(model_predictions)} != {len(page.tokens)}) for page {page_id}"
 
                 page_prediction_results.extend(
                     self.postprocess(page, model_predictions)
@@ -140,3 +141,4 @@ class HVILATokenClassificationPredictor(BaseSinglePageTokenClassificationPredict
         elif self.predictor.preprocessor.config.agg_level == "block":
             base_reqs.append(Blocks)
         return base_reqs
+
