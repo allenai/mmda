@@ -3,7 +3,7 @@ from typing import List, Union, Dict, Any, Tuple, Optional
 from mmda.types.span import Span
 
 
-def merge_neighbor_spans(spans: List[Span], distance: Optional[int]) -> List[Span]:
+def merge_neighbor_spans(spans: List[Span], distance: int) -> List[Span]:
     """Merge neighboring spans in a list of un-overlapped spans:
     when the gaps between neighboring spans is not larger than the
     specified distance, they are considered as the neighbors.
