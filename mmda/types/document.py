@@ -51,15 +51,18 @@ class Document:
                 field_name not in self.SPECIAL_FIELDS
             ), f"The field_name {field_name} should not be in {self.SPECIAL_FIELDS}."
 
-            assert field_name not in dir(
-                self
-            ), f"The field_name {field_name} should not conflict with existing class properties"
-
-            if field_name in self.fields and not is_overwrite:
+            if field_name in self.fields:
+                # already existing field, check if ok overriding
+                if not is_overwrite:
+                    raise AssertionError(
+                        f"This field name {field_name} already exists. To override, set `is_overwrite=True`"
+                    )
+            elif field_name in dir(self):
+                # not an existing field, but a reserved class method name
                 raise AssertionError(
-                    f"This field name {field_name} already exists. To override, set `is_overwrite=True`"
+                    f"The field_name {field_name} should not conflict with existing class properties"
                 )
-
+                
         # Kyle's preserved comment:
         # Is it worth deepcopying the annotations? Safer, but adds ~10%
         # overhead on large documents.

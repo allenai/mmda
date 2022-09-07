@@ -10,7 +10,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, BaseSettings, Field
 
-from mmda.predictors.hf_predictors.bibentry_predictor import BibEntryPredictor
+from mmda.predictors.hf_predictors.bibentry_predictor.predictor import BibEntryPredictor
 
 
 class Instance(BaseModel):
@@ -32,8 +32,7 @@ class PredictorConfig(BaseSettings):
     appropriate for your model. These serve as a record of the ENV
     vars the consuming application needs to set.
     """
-
-    # example_field: str = Field(default="asdf", description="Used to [...]")
+    pass
 
 
 class Predictor:
@@ -89,6 +88,6 @@ class Predictor:
         via environment variable by the calling application.
         """
         bib_entries = [i.bib_entry for i in instances]
-        preds = self._predictor.predict(bib_entries)
+        preds = self._predictor.predict_raw(bib_entries)
         cleaned = [Prediction.parse_obj(BibEntryPredictor.postprocess(p)) for p in preds]
         return cleaned
