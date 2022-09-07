@@ -1,10 +1,9 @@
-from typing import List, Union, Dict, Any, Tuple
+from typing import List, Union, Dict, Any, Tuple, Optional
 
 from mmda.types.span import Span
-from mmda.types.box import Box
 
 
-def merge_neighbor_spans(spans: List[Span], distance) -> List[Span]:
+def merge_neighbor_spans(spans: List[Span], distance: Optional[int]) -> List[Span]:
     """Merge neighboring spans in a list of un-overlapped spans:
     when the gaps between neighboring spans is not larger than the
     specified distance, they are considered as the neighbors.
@@ -50,16 +49,6 @@ def merge_neighbor_spans(spans: List[Span], distance) -> List[Span]:
             cur_merged_spans.extend([prev_span, cur_span])
 
     return cur_merged_spans
-
-
-def find_overlapping_tokens_for_box(token_spans: List[Span], box: Box) -> List[Span]:
-    """Retrun a list of spans where their boxes overlap with the input box."""
-
-    return [
-        token
-        for token in token_spans
-        if token.box is not None and token.box.is_overlap(box)
-    ]
 
 
 def allocate_overlapping_tokens_for_box(
