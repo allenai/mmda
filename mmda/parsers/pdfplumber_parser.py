@@ -1,5 +1,6 @@
 from typing import Optional, List, Dict, Union
 
+import string
 import pdfplumber
 
 from mmda.types.span import Span
@@ -10,61 +11,9 @@ from mmda.parsers.parser import Parser
 from mmda.types.names import *
 
 
-def simple_line_detection(
-    page_tokens: List[Dict], x_tolerance: int = 10, y_tolerance: int = 10
-) -> Dict[int, List]:
-    """Get text lines from the page_tokens.
-    It will automatically add new lines for 1) line breaks (i.e., the current token
-    has a larger y_difference between the previous one than the y_tolerance) or
-    2) big horizontal gaps (i.e., the current token has a larger y_difference between
-    the previous one than the x_tolerance)
-
-    Adapted from https://github.com/allenai/VILA/blob/e6d16afbd1832f44a430074855fbb4c3d3604f4a/src/vila/pdftools/pdfplumber_extractor.py#L24
-    """
-    prev_y = None
-    prev_x = None
-
-    lines = dict()
-    cur_line_id = 0
-    token_in_this_line = []
-    n = 0
-
-    for token in page_tokens:
-        cur_y = token["bbox"].center[1]
-        cur_x = token["bbox"].coordinates[0]
-
-        if prev_y is None:
-            prev_y = cur_y
-            prev_x = cur_x
-
-        if abs(cur_y - prev_y) <= y_tolerance and cur_x - prev_x <= x_tolerance:
-
-            token_in_this_line.append(token)
-            if n == 0:
-                prev_y = cur_y
-            else:
-                prev_y = (prev_y * n + cur_y) / (n + 1)  # EMA of the y_height
-            n += 1
-
-        else:
-
-            lines[cur_line_id] = token_in_this_line
-            cur_line_id += 1
-
-            token_in_this_line = [token]
-            n = 1
-            prev_y = cur_y
-
-        prev_x = token["bbox"].coordinates[2]
-
-    if token_in_this_line:
-        lines[cur_line_id] = token_in_this_line
-
-    return lines
-
-
 class PDFPlumberParser(Parser):
-    DEFAULT_PUNCTUATION_CHARS = r'!–"&\'()*+:;<=>?@[]^`{|}~'
+    # manually added characters: '–' and '§'
+    DEFAULT_PUNCTUATION_CHARS = string.punctuation + chr(8211) + chr(167)
 
     def __init__(
         self,
@@ -77,7 +26,7 @@ class PDFPlumberParser(Parser):
         horizontal_ltr: bool = True,
         vertical_ttb: bool = True,
         extra_attrs: Optional[List[str]] = None,
-        split_at_punctuation: Union[str, bool] = False
+        split_at_punctuation: Union[str, bool] = True
     ):
         """The PDFPlumber PDF Detector
         Args:
@@ -211,7 +160,7 @@ class PDFPlumberParser(Parser):
                 vertical_ttb=self.vertical_ttb,
                 extra_attrs=self.extra_attrs,
             )
-            line_to_tokens = simple_line_detection(
+            line_to_tokens = self._simple_line_detection(
                 page_tokens=page_tokens,
                 x_tolerance=self.line_x_tolerance/cur_page.width,
                 y_tolerance=self.line_y_tolerance/cur_page.height,
@@ -294,3 +243,58 @@ class PDFPlumberParser(Parser):
         doc_json = self._convert_nested_text_to_doc_json(page_to_line_to_tokens)
         doc = Document.from_json(doc_json)
         return doc
+
+    def _simple_line_detection(
+            self,
+            page_tokens: List[Dict],
+            x_tolerance: int = 10,
+            y_tolerance: int = 10
+    ) -> Dict[int, List]:
+        """Get text lines from the page_tokens.
+        It will automatically add new lines for 1) line breaks (i.e., the current token
+        has a larger y_difference between the previous one than the y_tolerance) or
+        2) big horizontal gaps (i.e., the current token has a larger y_difference between
+        the previous one than the x_tolerance)
+
+        Adapted from https://github.com/allenai/VILA/blob/e6d16afbd1832f44a430074855fbb4c3d3604f4a/src/vila/pdftools/pdfplumber_extractor.py#L24
+        """
+        prev_y = None
+        prev_x = None
+
+        lines = dict()
+        cur_line_id = 0
+        token_in_this_line = []
+        n = 0
+
+        for token in page_tokens:
+            cur_y = token["bbox"].center[1]
+            cur_x = token["bbox"].coordinates[0]
+
+            if prev_y is None:
+                prev_y = cur_y
+                prev_x = cur_x
+
+            if abs(cur_y - prev_y) <= y_tolerance and cur_x - prev_x <= x_tolerance:
+
+                token_in_this_line.append(token)
+                if n == 0:
+                    prev_y = cur_y
+                else:
+                    prev_y = (prev_y * n + cur_y) / (n + 1)  # EMA of the y_height
+                n += 1
+
+            else:
+
+                lines[cur_line_id] = token_in_this_line
+                cur_line_id += 1
+
+                token_in_this_line = [token]
+                n = 1
+                prev_y = cur_y
+
+            prev_x = token["bbox"].coordinates[2]
+
+        if token_in_this_line:
+            lines[cur_line_id] = token_in_this_line
+
+        return lines
