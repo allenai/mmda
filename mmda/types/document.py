@@ -13,7 +13,7 @@ from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
 from mmda.types.image import PILImage
 from mmda.types.indexers import Indexer, SpanGroupIndexer
 from mmda.types.names import Images, Symbols
-from mmda.utils.tools import allocate_overlapping_tokens_for_box, merge_neighbor_spans
+from mmda.utils.tools import allocate_overlapping_tokens_for_box, MergeSpans
 
 
 class Document:
@@ -174,10 +174,8 @@ class Document:
 
             derived_span_groups.append(
                 SpanGroup(
-                    spans=merge_neighbor_spans(
-                        spans=all_token_spans_with_box_group, distance=1
-                    ),
-                    box_group=box_group,
+                    spans=MergeSpans(list_of_spans=all_token_spans_with_box_group, index_distance=1)
+                    .merge_neighbor_spans_by_symbol_distance(), box_group=box_group,
                     # id = box_id,
                 )
                 # TODO Right now we cannot assign the box id, or otherwise running doc.blocks will

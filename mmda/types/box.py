@@ -12,12 +12,12 @@ import warnings
 import numpy as np
 
 
-def is_overlap_1d(start1: float, end1: float, start2: float, end2: float) -> bool:
-    """Return whether two 1D intervals overlaps"""
+def is_overlap_1d(start1: float, end1: float, start2: float, end2: float, x: float = 0) -> bool:
+    """Return whether two 1D intervals overlaps given x"""
     assert start1 <= end1
     assert start2 <= end2
 
-    return not (start1 > end2 or end1 < start2)  # ll  # rr
+    return not (start1 - x > end2 or start1 > end2 + x or end1 + x < start2 or end1 < start2 - x)  # ll  # rr
 
 
 @dataclass
@@ -77,6 +77,10 @@ class Box:
     @classmethod
     def small_boxes_to_big_box(cls, boxes: List["Box"]) -> "Box":
         """Computes one big box that tightly encapsulates all smaller input boxes"""
+        boxes = [box for box in boxes if box is not None]
+        if not boxes:
+            return None
+
         if len({box.page for box in boxes}) != 1:
             raise ValueError(f"Bboxes not all on same page: {boxes}")
         x1 = min([bbox.l for bbox in boxes])
@@ -119,9 +123,12 @@ class Box:
             page=self.page,
         )
 
-    def is_overlap(self, other: "Box") -> bool:
-        """Whether self overlaps with the other Box object."""
+    def is_overlap(self, other: "Box", x: float = 0.0, y: float = 0) -> bool:
+        """
+        Whether self overlaps with the other Box object.
+        x, y distances
+        """
         x11, y11, x12, y12 = self.coordinates
         x21, y21, x22, y22 = other.coordinates
 
-        return is_overlap_1d(x11, x12, x21, x22) and is_overlap_1d(y11, y12, y21, y22)
+        return is_overlap_1d(x11, x12, x21, x22, x) and is_overlap_1d(y11, y12, y21, y22, y)
