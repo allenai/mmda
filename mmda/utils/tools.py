@@ -25,7 +25,8 @@ def allocate_overlapping_tokens_for_box(
 
 class MergeSpans:
     """
-    Given w=width and h=height overlap neighboring spans which are w, h or less apart
+    Given w=width and h=height merge neighboring spans which are w, h or less apart or by merging neighboring spans
+    which are index distance apart
     Inspired by https://leetcode.com/problems/merge-intervals/
     """
     def __init__(self, list_of_spans: List["Span"], w: float = 0, h: float = 0, index_distance: int = 1) -> None:
@@ -43,8 +44,8 @@ class MergeSpans:
 
     def build_graph_index_overlap(self):
         """
-        Build graph, each node is represented by (start, end) of tuple, with the list of spans with overlapping
-        boxes given, w, h
+        Build graph, each node is represented by (start, end) of tuple, with the list of spans. Spans are considered
+        overlapping if they are index_distance apart
         """
         is_neighboring_spans = (
             lambda span1, span2: min(
@@ -99,29 +100,30 @@ class MergeSpans:
 
         return nodes_in_comp, comp_number
 
+    def merge_neighbor_spans_by_symbol_distance(self):
+        """
+        For each of the lists of the connected nodes determined by index distance between the spans,
+        merge boxes and find, min, max of the index
+        """
+        return self.build_merged_spans_from_connected_components(index=True)
+
     def merge_neighbor_spans_by_box_coordinate(self):
         """
-        For each of the lists of the connected nodes determined by distnace between the boxes,
+        For each of the lists of the connected nodes determined by distance between the boxes,
         merge boxes and find, min, max of the index
         """
-        self.build_graph_box_overlap()
-        nodes_in_comp, number_of_comps = self.get_components()
+        return self.build_merged_spans_from_connected_components(index=False)
 
-        # all intervals in each connected component must be merged.
-        merged_spans = []
-        for comp in range(number_of_comps):
-            if nodes_in_comp[comp]:
-                merged_box = Box.small_boxes_to_big_box([span.box for span in nodes_in_comp[comp]])
-                merged_spans.append(Span(start=min([span.start for span in nodes_in_comp[comp]]),
-                                         end=max([span.end for span in nodes_in_comp[comp]]), box=merged_box))
-        return merged_spans
-
-    def merge_neighbor_spans_boxes_by_symbol_distance(self):
+    def build_merged_spans_from_connected_components(self, index):
         """
-        For each of the lists of the connected nodes determined by symbol distance,
+        For each of the lists of the connected nodes determined by symbol distance or box distance,
         merge boxes and find, min, max of the index
         """
-        self.build_graph_index_overlap()
+        if index:
+            self.build_graph_index_overlap()
+        else:
+            self.build_graph_box_overlap()
+
         nodes_in_comp, number_of_comps = self.get_components()
 
         # all intervals in each connected component must be merged.
