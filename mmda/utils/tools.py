@@ -5,54 +5,6 @@ from mmda.types.span import Span
 from mmda.types.box import Box
 
 
-def merge_neighbor_spans(spans: List[Span], distance: int) -> List[Span]:
-    """Merge neighboring spans in a list of un-overlapped spans:
-    when the gaps between neighboring spans is not larger than the
-    specified distance, they are considered as the neighbors.
-
-    Args:
-        spans (List[Span]): The input list of spans.
-        distance (int, optional):
-            The upper bound of interval gaps between two neighboring spans.
-            Defaults to 1.
-
-    Returns:
-        List[Span]: A list of merged spans
-    """
-
-    is_neighboring_spans = (
-        lambda span1, span2: min(
-            abs(span1.start - span2.end), abs(span1.end - span2.start)
-        )
-        <= distance
-    )
-    # It assumes non-overlapped intervals within the list
-
-    merge_neighboring_spans = lambda span1, span2: Span(
-        min(span1.start, span2.start), max(span1.end, span2.end)
-    )
-
-    spans = sorted(spans, key=lambda ele: ele.start)
-    # When sorted, only one iteration round is needed.
-
-    if len(spans) == 0:
-        return []
-    if len(spans) == 1:
-        return spans
-
-    cur_merged_spans = [spans[0]]
-
-    for cur_span in spans[1:]:
-        prev_span = cur_merged_spans.pop()
-        if is_neighboring_spans(cur_span, prev_span):
-            cur_merged_spans.append(merge_neighboring_spans(prev_span, cur_span))
-        else:
-            # In this case, the prev_span should be moved to the bottom of the stack
-            cur_merged_spans.extend([prev_span, cur_span])
-
-    return cur_merged_spans
-
-
 def allocate_overlapping_tokens_for_box(
     token_spans: List[Span], box
 ) -> Tuple[List[Span], List[Span]]:
