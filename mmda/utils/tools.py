@@ -28,18 +28,18 @@ class MergeSpans:
     Given w=width and h=height overlap neighboring spans which are w, h or less apart
     Inspired by https://leetcode.com/problems/merge-intervals/
     """
-    def __init__(self, list_of_spans: List["Span"], w: float = 0, h: float = 0, distance: int = 1) -> None:
+    def __init__(self, list_of_spans: List["Span"], w: float = 0, h: float = 0, index_distance: int = 1) -> None:
         """
         Args
             w (float): The input width between boxes to merge
             h (float): The input height between the boxes to merge
-            distance (int): Distance between the spans
+            index_distance (int): Distance between the spans
         """
         self.list_of_spans = list_of_spans
         self.w = w
         self.h = h
         self.graph = defaultdict(list)
-        self.distance = distance
+        self.index_distance = index_distance
 
     def build_graph_index_overlap(self):
         """
@@ -49,7 +49,7 @@ class MergeSpans:
         is_neighboring_spans = (
             lambda span1, span2: min(
                 abs(span1.start - span2.end), abs(span1.end - span2.start)
-            ) <= self.distance
+            ) <= self.index_distance
         )
 
         for i, span_i in enumerate(self.list_of_spans):

@@ -16,8 +16,8 @@ from mmda.utils.tools import merge_neighbor_spans, MergeSpans
 class TestMergeNeighborSpans(unittest.TestCase):
     def test_merge_multiple_neighbor_spans(self):
         spans = [Span(start=0, end=10), Span(start=11, end=20), Span(start=21, end=30)]
-        merge_spans = MergeSpans(list_of_spans=spans, distance=1)
-        out = merge_spans.merge_neighbor_spans_boxes_by_symbol_distance()
+        merge_spans = MergeSpans(list_of_spans=spans, index_distance=1)
+        out = merge_spans.merge_neighbor_spans_by_symbol_distance()
         assert len(out) == 1
         assert isinstance(out[0], Span)
         assert out[0].start == 0
@@ -25,20 +25,20 @@ class TestMergeNeighborSpans(unittest.TestCase):
 
     def test_different_distances(self):
         spans = [Span(start=0, end=10), Span(start=15, end=20)]
-        merge_spans = MergeSpans(list_of_spans=spans, distance=1)
-        out = merge_spans.merge_neighbor_spans_boxes_by_symbol_distance()
+        merge_spans = MergeSpans(list_of_spans=spans, index_distance=1)
+        out = merge_spans.merge_neighbor_spans_by_symbol_distance()
         assert out == spans  # no merge happened
 
-        merge_spans = MergeSpans(list_of_spans=spans, distance=2)
-        out = merge_spans.merge_neighbor_spans_boxes_by_symbol_distance()
+        merge_spans = MergeSpans(list_of_spans=spans, index_distance=2)
+        out = merge_spans.merge_neighbor_spans_by_symbol_distance()
         assert out == spans  # no merge happened
 
-        merge_spans = MergeSpans(list_of_spans=spans, distance=4)
-        out = merge_spans.merge_neighbor_spans_boxes_by_symbol_distance()
+        merge_spans = MergeSpans(list_of_spans=spans, index_distance=4)
+        out = merge_spans.merge_neighbor_spans_by_symbol_distance()
         assert out == spans  # no merge happened
 
-        merge_spans = MergeSpans(list_of_spans=spans, distance=5)
-        out = merge_spans.merge_neighbor_spans_boxes_by_symbol_distance()
+        merge_spans = MergeSpans(list_of_spans=spans, index_distance=5)
+        out = merge_spans.merge_neighbor_spans_by_symbol_distance()
         assert len(out) == 1
         assert isinstance(out[0], Span)
         assert out[0].start == 0
@@ -46,7 +46,7 @@ class TestMergeNeighborSpans(unittest.TestCase):
 
     def test_zero_distance(self):
         spans = [Span(start=0, end=10), Span(start=10, end=20)]
-        out = merge_neighbor_spans(spans=spans, distance=0)
+        out = MergeSpans(list_of_spans=spans, index_distance=0).merge_neighbor_spans_by_symbol_distance()
         assert len(out) == 1
         assert isinstance(out[0], Span)
         assert out[0].start == 0
@@ -58,7 +58,7 @@ class TestMergeNeighborSpans(unittest.TestCase):
             Span(start=11, end=20, box=Box(l=1, t=1, w=2, h=2, page=1)),
             Span(start=100, end=150, box=Box(l=2, t=2, w=3, h=3, page=2))
         ]
-        merge_spans = MergeSpans(list_of_spans=spans, distance=1)
+        merge_spans = MergeSpans(list_of_spans=spans, index_distance=1)
         with self.assertRaises(ValueError) as context:
             merge_spans.merge_neighbor_spans_boxes_by_symbol_distance()
 
@@ -70,7 +70,7 @@ class TestMergeNeighborSpans(unittest.TestCase):
             Span(start=11, end=20, box=Box(l=1, t=1, w=2, h=2, page=1)),
             Span(start=100, end=150, box=Box(l=2, t=2, w=3, h=3, page=1))
         ]
-        merge_spans = MergeSpans(list_of_spans=spans, distance=1)
+        merge_spans = MergeSpans(list_of_spans=spans, index_distance=1)
 
         out = merge_spans.merge_neighbor_spans_boxes_by_symbol_distance()
         assert len(out) == 2
@@ -296,26 +296,26 @@ def test_merge_spans():
     assert [30113, 30359] == [merge_spans.merge_neighbor_spans_by_box_coordinate()[0].start, merge_spans.merge_neighbor_spans_by_box_coordinate()[0].end]
 
 
-def test_merge_neighbor_spans_boxes_by_symbol_distance():
-    assert 7 == (len(MergeSpans(list_of_spans_to_merge, distance=10)
-                 .merge_neighbor_spans_boxes_by_symbol_distance()))
+def test_merge_neighbor_spans_by_symbol_distance():
+    assert 7 == (len(MergeSpans(list_of_spans_to_merge, index_distance=10)
+                 .merge_neighbor_spans_by_symbol_distance()))
 
 
-    assert 10 == len(MergeSpans(list_of_spans_to_merge, distance=1).merge_neighbor_spans_boxes_by_symbol_distance())
+    assert 10 == len(MergeSpans(list_of_spans_to_merge, index_distance=1).merge_neighbor_spans_by_symbol_distance())
 
     list_of_spans_to_merge_2 = [
         Span(start=1, end=3, box=Box(l=0.1, t=0.2, w=0.2, h=0.2, page=11)),
         Span(start=5, end=7, box=Box(l=0.3, t=0.2, w=0.2, h=0.2, page=11)),
     ]
 
-    merge_spans = MergeSpans(list_of_spans_to_merge_2, distance=1)
-    result = merge_spans.merge_neighbor_spans_boxes_by_symbol_distance()
+    merge_spans = MergeSpans(list_of_spans_to_merge_2, index_distance=1)
+    result = merge_spans.merge_neighbor_spans_by_symbol_distance()
     assert 2 == len(result)
 
     assert set([(1, 3), (5, 7)]) == set([(entry.start, entry.end) for entry in result])
 
-    merge_spans = MergeSpans(list_of_spans_to_merge_2, distance=4)
-    result = merge_spans.merge_neighbor_spans_boxes_by_symbol_distance()
+    merge_spans = MergeSpans(list_of_spans_to_merge_2, index_distance=4)
+    result = merge_spans.merge_neighbor_spans_by_symbol_distance()
     assert 1 == len(result)
 
     assert set([(1, 7)]) == set([(entry.start, entry.end) for entry in result])
