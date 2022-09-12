@@ -77,6 +77,10 @@ class Box:
     @classmethod
     def small_boxes_to_big_box(cls, boxes: List["Box"]) -> "Box":
         """Computes one big box that tightly encapsulates all smaller input boxes"""
+        boxes = [box for box in boxes if box is not None]
+        if not boxes:
+            return None
+
         if len({box.page for box in boxes}) != 1:
             raise ValueError(f"Bboxes not all on same page: {boxes}")
         x1 = min([bbox.l for bbox in boxes])
