@@ -105,8 +105,9 @@ class BoxGroup(Annotation):
     def to_json(self) -> Dict:
         box_group_dict = dict(
             boxes=[box.to_json() for box in self.boxes],
-            metadata=self.metadata.to_json(),
-            uuid=self.uuid,
+            # metadata=self.metadata.to_json(),
+            # uuid=self.uuid,
+            id=self.id
         )
         return {
             key: value for key, value in box_group_dict.items() if value
@@ -200,7 +201,7 @@ class SpanGroup(Annotation):
             return []
 
     def annotate(
-        self, is_overwrite: bool = False, **kwargs: Iterable["Annotation"]
+            self, is_overwrite: bool = False, **kwargs: Iterable["Annotation"]
     ) -> None:
         if self.doc is None:
             raise ValueError("SpanGroup has no attached document!")
@@ -212,9 +213,11 @@ class SpanGroup(Annotation):
     def to_json(self) -> Dict:
         span_group_dict = dict(
             spans=[span.to_json() for span in self.spans],
-            metadata=self.metadata.to_json(),
+            # metadata=self.metadata.to_json(),
             box_group=self.box_group.to_json() if self.box_group else None,
-            uuid=self.uuid,
+            # uuid=self.uuid,
+            type=self.type,
+            id=self.id
         )
         return {
             key: value

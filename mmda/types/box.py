@@ -29,8 +29,9 @@ class Box:
     page: int
 
     def to_json(self) -> List:
-        return [self.l, self.t, self.w, self.h, self.page]
-        # return dict(l=self.l, t=self.t, w=self.w, h=self.h, page=self.page)
+        # return [self.l, self.t, self.w, self.h, self.page]
+        #         return dict(l=self.l, t=self.t, w=self.w, h=self.h, page=self.page)
+        return dict(left=self.l, top=self.t, width=self.w, height=self.h, page=self.page)
 
     @classmethod
     def from_json(cls, box_coords: List) -> "Box":
