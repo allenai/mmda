@@ -76,7 +76,6 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
     """
 
     REQUIRED_BACKENDS = ["transformers", "torch", "smashed"]
-    REQUIRED_DOCUMENT_FIELDS = []
 
     _SPAN_GROUP = 'inputs'
     _CONTEXT_ID = 'context_id'
@@ -356,3 +355,107 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
             for is_word, word_id in zip(mask, word_ids)
         ]
         return mask
+
+
+class PageTokenClassificationPredictor(SpanGroupClassificationPredictor):
+    """
+    This model classifies each token in a Document to one of many classes.
+    It performs this page-by-page.
+
+    Examples of such models include https://github.com/allenai/vila or citation-mention extraction.
+
+    @kylel
+    """
+
+    REQUIRED_DOCUMENT_FIELDS = ["pages", "tokens"]
+
+    def __init__(
+            self,
+            model: Any,
+            config: Any,
+            tokenizer: Any,
+            batch_size: Optional[int] = 2,
+            device: Optional[str] = 'cpu'
+    ):
+        super().__init__(
+            model=model,
+            config=config,
+            tokenizer=tokenizer,
+            span_group_name="tokens",
+            context_name="pages",
+            batch_size=batch_size,
+            device=device
+        )
+
+    @classmethod
+    def from_pretrained(
+            cls,
+            model_name_or_path: str,
+            batch_size: Optional[int] = 2,
+            device: Optional[str] = 'cpu',
+            *args,
+            **kwargs
+    ):
+        tokenizer = transformers.AutoTokenizer.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path, *args, **kwargs
+        )
+        config = transformers.AutoConfig.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path, *args, **kwargs
+        )
+        model = transformers.AutoModelForTokenClassification.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path, *args, **kwargs
+        )
+        predictor = cls(model=model, config=config, tokenizer=tokenizer,
+                        batch_size=batch_size, device=device)
+        return predictor
+
+
+class BibEntryTokenClassificationPredictor(SpanGroupClassificationPredictor):
+    """
+    This model classifies each token in a bib entry to one of many classes.
+    It performs this for each bib entry.
+
+    @kylel
+    """
+
+    REQUIRED_DOCUMENT_FIELDS = ["bib_entries", "tokens"]
+
+    def __init__(
+            self,
+            model: Any,
+            config: Any,
+            tokenizer: Any,
+            batch_size: Optional[int] = 2,
+            device: Optional[str] = 'cpu'
+    ):
+        super().__init__(
+            model=model,
+            config=config,
+            tokenizer=tokenizer,
+            span_group_name="tokens",
+            context_name="bib_entries",
+            batch_size=batch_size,
+            device=device
+        )
+
+    @classmethod
+    def from_pretrained(
+            cls,
+            model_name_or_path: str,
+            batch_size: Optional[int] = 2,
+            device: Optional[str] = 'cpu',
+            *args,
+            **kwargs
+    ):
+        tokenizer = transformers.AutoTokenizer.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path, *args, **kwargs
+        )
+        config = transformers.AutoConfig.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path, *args, **kwargs
+        )
+        model = transformers.AutoModelForTokenClassification.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path, *args, **kwargs
+        )
+        predictor = cls(model=model, config=config, tokenizer=tokenizer,
+                        batch_size=batch_size, device=device)
+        return predictor
