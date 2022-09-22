@@ -8,11 +8,8 @@ import tempfile
 import unittest
 from typing import List, Optional, Set
 
-from mmda.predictors.heuristic_predictors.dictionary_word_predictor import (
-    DictionaryWordPredictor,
-)
-from mmda.types.document import Document, SpanGroup
-from mmda.types.span import Span
+from mmda.predictors import DictionaryWordPredictor
+from mmda.types import Document, SpanGroup, Span
 
 
 def mock_document(symbols: str, spans: List[Span], rows: List[SpanGroup]) -> Document:
