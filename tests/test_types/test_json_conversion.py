@@ -8,10 +8,8 @@ Author:      @soldni
 import json
 from pathlib import Path
 
-from mmda.types.annotation import BoxGroup, SpanGroup
-from mmda.types.document import Document
-from mmda.parsers.pdfplumber_parser import PDFPlumberParser
-from mmda.types.metadata import Metadata
+from mmda.types import BoxGroup, SpanGroup, Document, Metadata
+from mmda.parsers import PDFPlumberParser
 
 
 PDFFILEPATH = Path(__file__).parent / "../fixtures/1903.10676.pdf"
