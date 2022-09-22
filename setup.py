@@ -3,7 +3,7 @@ from setuptools import find_namespace_packages, setup
 setup(
     name="mmda",
     description="mmda",
-    version="0.0.35",
+    version="0.0.36",
     url="https://www.github.com/allenai/mmda",
     python_requires=">= 3.7",
     packages=find_namespace_packages(include=["mmda*", "ai2_internal*"]),
@@ -19,6 +19,7 @@ setup(
     extras_require={
         "dev": ["pytest"],
         "spacy_predictors": ["spacy"],
+        "pysbd_predictors": ["pysbd"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
         "hf_predictors": ["torch", "transformers", "smashed==0.1.10"],
         "vila_predictors": ["vila>=0.4.2,<0.5", "transformers"],
