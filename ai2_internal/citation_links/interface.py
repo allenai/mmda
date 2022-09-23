@@ -10,9 +10,10 @@ from typing import List, Tuple
 
 from pydantic import BaseModel, BaseSettings
 
+from ai2_internal import api
 from mmda.predictors.xgb_predictors.citation_link_predictor import CitationLinkPredictor
-from mmda.types import api
 from mmda.types.document import Document
+
 
 # these should represent the extracted citation mentions and bibliography entries for a paper
 class Instance(BaseModel):

@@ -7,16 +7,14 @@ Dockerized application running your model. It exposes a single method:
 
 predict_batch(instances: List[Instance]) -> List[Prediction]
 """
-import json
 import logging
 import pathlib
 import sys
 import unittest
 
+from ai2_internal import api
 from ai2_internal.citation_mentions.interface import Instance
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
-from mmda.types import api
-
 
 try:
     from timo_interface import with_timo_container
