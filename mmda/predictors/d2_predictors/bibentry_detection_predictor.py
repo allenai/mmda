@@ -1,6 +1,6 @@
 from functools import reduce
 import itertools
-from typing import Union, List, Dict, Any, Optional
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 import layoutparser as lp
 
@@ -81,7 +81,8 @@ class BibEntryDetectionPredictor(BasePredictor):
                     model_outputs: lp.Layout,
                     page_tokens: List[Span],
                     page_index: int,
-                    image: "PIL.Image") -> (List[BoxGroup], List[BoxGroup]):
+                    image: "PIL.Image",
+                    id_counter: Iterator[int]) -> (List[BoxGroup], List[BoxGroup]):
         """Convert the model outputs for a single page image into the mmda format
 
         Args:
@@ -102,7 +103,6 @@ class BibEntryDetectionPredictor(BasePredictor):
                A tuple of the BoxGroups detected bibentry boxes tightened around
                tokens, and the BoxGroups containing the originally detected, unprocessed model output boxes.
         """
-        id_counter = itertools.count()
         original_box_groups: List[BoxGroup] = []
         page_width, page_height = image.size
 
@@ -159,6 +159,8 @@ class BibEntryDetectionPredictor(BasePredictor):
         vila_bib_pgs = set([sg.rows[0].spans[0].box.page for sg in vila_bib_sgs])
         vila_bib_pg_to_image = {page_index: doc.images[page_index] for page_index in vila_bib_pgs}
 
+        id_counter = itertools.count()
+
         for page_index, image in vila_bib_pg_to_image.items():
             model_outputs: lp.Layout = self.model.detect(image)
             page_tokens: List[Span] = list(
@@ -172,7 +174,8 @@ class BibEntryDetectionPredictor(BasePredictor):
                 model_outputs,
                 page_tokens,
                 page_index,
-                image
+                image,
+                id_counter
             )
 
             bib_entries.extend(bib_entry_box_groups)

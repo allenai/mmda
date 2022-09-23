@@ -96,3 +96,5 @@ class TestInterfaceIntegration(unittest.TestCase):
         number_of_found_bib_boxes = 31
         self.assertEqual(len(predictions[0].bib_entry_boxes), number_of_found_bib_boxes)
         self.assertEqual(len(predictions[0].raw_bib_entry_boxes), number_of_found_bib_boxes)
+        self.assertEqual(
+            len(set([bib_entry.id for bib_entry in predictions[0].bib_entry_boxes])), number_of_found_bib_boxes)
