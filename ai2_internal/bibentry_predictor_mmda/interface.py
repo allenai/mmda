@@ -8,13 +8,12 @@ as a definition of the objects it expects, and those it returns.
 
 from typing import List
 
-from pydantic import BaseModel, BaseSettings, Field
+from pydantic import BaseModel, BaseSettings
 
-from mmda.types import api
-from mmda.types.document import Document
-
+from ai2_internal import api
 from mmda.predictors.hf_predictors.bibentry_predictor.predictor import BibEntryPredictor
 from mmda.predictors.hf_predictors.bibentry_predictor.types import BibEntryStructureSpanGroups
+from mmda.types.document import Document
 
 
 class Instance(BaseModel):

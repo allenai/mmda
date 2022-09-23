@@ -9,14 +9,13 @@ as a definition of the objects it expects, and those it returns.
 import logging
 from typing import List
 
+import torch
+from pydantic import BaseModel, BaseSettings, Field
+
+from ai2_internal.api import BoxGroup
 from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.types import image
-from mmda.types.api import BoxGroup
 from mmda.types.document import Document
-
-from pydantic import BaseModel, BaseSettings, Field
-import torch
-
 
 logger = logging.getLogger(__name__)
 

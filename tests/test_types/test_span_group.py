@@ -7,9 +7,7 @@ Tests for SpanGroup
 import json
 import unittest
 
-from mmda.types.annotation import SpanGroup
-from mmda.types.document import Document
-from mmda.types.span import Span
+from mmda.types import SpanGroup, Document, Span
 
 
 class TestSpanGroup(unittest.TestCase):

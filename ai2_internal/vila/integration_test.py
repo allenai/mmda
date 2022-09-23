@@ -31,16 +31,14 @@ import logging
 import os
 import sys
 import unittest
-
-from PIL import Image
 from pathlib import Path
 
-from mmda.types import api
+from PIL import Image
+
+from ai2_internal import api
 from mmda.types.document import Document
 from mmda.types.image import tobase64
-
 from .interface import Instance
-
 
 FIXTURE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_fixtures")
 

@@ -1,8 +1,7 @@
 import unittest
 
-from mmda.types.annotation import SpanGroup
+from mmda.types import SpanGroup, Span
 from mmda.types.indexers import SpanGroupIndexer
-from mmda.types.span import Span
 
 
 class TestSpanGroupIndexer(unittest.TestCase):

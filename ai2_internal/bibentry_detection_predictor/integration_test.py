@@ -33,12 +33,11 @@ import pathlib
 import sys
 import unittest
 
-from .interface import Instance
-
+from ai2_internal import api
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
-from mmda.types import api
 from mmda.types.image import tobase64
+from .interface import Instance
 
 try:
     from timo_interface import with_timo_container
