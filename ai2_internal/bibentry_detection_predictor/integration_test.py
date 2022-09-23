@@ -96,5 +96,6 @@ class TestInterfaceIntegration(unittest.TestCase):
 
         expected_bib_count = 31
         self.assertEqual(len(predictions[0].bib_entry_boxes), expected_bib_count)
-        self.assertEqual(len(predictions[0].bib_entry_span_groups), expected_bib_count + 500)
         self.assertEqual(len(predictions[0].raw_bib_entry_boxes), expected_bib_count)
+        self.assertEqual(
+            len(set([bib_entry.id for bib_entry in predictions[0].bib_entry_boxes])), expected_bib_count)
