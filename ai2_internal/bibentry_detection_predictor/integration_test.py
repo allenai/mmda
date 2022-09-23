@@ -94,6 +94,7 @@ class TestInterfaceIntegration(unittest.TestCase):
         for raw_box in predictions[0].raw_bib_entry_boxes:
             self.assertEqual(raw_box.type, "raw_model_prediction")
 
-        number_of_found_bib_boxes = 31
-        self.assertEqual(len(predictions[0].bib_entry_boxes), number_of_found_bib_boxes)
-        self.assertEqual(len(predictions[0].raw_bib_entry_boxes), number_of_found_bib_boxes)
+        expected_bib_count = 31
+        self.assertEqual(len(predictions[0].bib_entry_boxes), expected_bib_count)
+        self.assertEqual(len(predictions[0].bib_entry_span_groups), expected_bib_count + 500)
+        self.assertEqual(len(predictions[0].raw_bib_entry_boxes), expected_bib_count)

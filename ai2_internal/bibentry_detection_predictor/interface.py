@@ -39,6 +39,7 @@ class Prediction(BaseModel):
     Describes the outcome of inference for one Instance
     """
     bib_entry_boxes: List[api.BoxGroup]
+    bib_entry_span_groups: List[api.SpanGroup]
     raw_bib_entry_boxes: List[api.BoxGroup]
 
 
@@ -99,8 +100,12 @@ class Predictor:
 
         processed_bib_entry_box_groups, original_box_groups = self._predictor.predict(doc, self._config.BIB_ENTRY_DETECTION_MIN_VILA_BIB_ROWS)
 
+        # generate SpanGroups
+        doc.annotate(bib_entries=processed_bib_entry_box_groups)
+
         prediction = Prediction(
             bib_entry_boxes=[api.BoxGroup.from_mmda(bg) for bg in processed_bib_entry_box_groups],
+            bib_entry_span_groups=[api.SpanGroup.from_mmda(sg) for sg in doc.bib_entries],
             raw_bib_entry_boxes=[api.BoxGroup.from_mmda(bg) for bg in original_box_groups])
 
         return prediction
