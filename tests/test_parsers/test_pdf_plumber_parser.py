@@ -2,10 +2,9 @@ import os
 import pathlib
 import unittest
 
-from mmda.types.document import Document
-from mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from mmda.types import Document
+from mmda.parsers import PDFPlumberParser
 
-import string
 import re
 
 os.chdir(pathlib.Path(__file__).parent)

@@ -31,9 +31,8 @@ import logging
 import sys
 import unittest
 
-from ai2_internal.citation_links.interface import Instance, Prediction
-from mmda.types import api
-
+from ai2_internal import api
+from ai2_internal.citation_links.interface import Instance
 
 try:
     from timo_interface import with_timo_container

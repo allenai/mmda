@@ -35,11 +35,9 @@ import pathlib
 import sys
 import unittest
 
-from .interface import Instance, Prediction
-
-from mmda.types import api
+from ai2_internal import api
 from mmda.types.document import Document
-
+from .interface import Instance
 
 try:
     from timo_interface import with_timo_container

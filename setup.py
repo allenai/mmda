@@ -15,10 +15,12 @@ setup(
         "pandas",
         "pydantic",
         "ncls",
+        "necessary"
     ],
     extras_require={
         "dev": ["pytest"],
         "spacy_predictors": ["spacy"],
+        "pysbd_predictors": ["pysbd"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
         "hf_predictors": ["torch", "transformers", "smashed==0.1.10"],
         "vila_predictors": ["vila>=0.4.2,<0.5", "transformers"],
