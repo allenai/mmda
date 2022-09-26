@@ -13,9 +13,7 @@ import torch
 from pydantic import BaseModel, BaseSettings, Field
 
 from ai2_internal import api
-from mmda.predictors.hf_predictors.token_classification_predictor import (
-    IVILATokenClassificationPredictor,
-)
+from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor
 from mmda.types.document import Document, SpanGroup
 from mmda.types.image import frombase64
 
@@ -64,12 +62,6 @@ class PredictorConfig(BaseSettings):
     Uninitialized fields will be set via Environment variables.
     """
 
-    subpage_per_run: int = Field(
-        default=2,
-        description="The maximum number of subpages we can send to the models at one time. "
-                    "Used for capping the maximum memory usage during the vila dep."
-    )
-
 
 class Predictor:
     """
@@ -92,7 +84,7 @@ class Predictor:
         else:
             logger.info("No CUDA device detected, running model on CPU.")
 
-        self._predictor = IVILATokenClassificationPredictor.from_pretrained(
+        self._predictor = IVILAPredictor.from_pretrained(
             self._artifacts_dir,
             device=device
         )
@@ -107,7 +99,7 @@ class Predictor:
 
         for inst in instances:
             span_groups = self._predictor.predict(
-                inst.to_mmda(), subpage_per_run=self._config.subpage_per_run
+                inst.to_mmda()
             )
             predictions.append(
                 Prediction(groups=[api.SpanGroup.from_mmda(sg) for sg in span_groups])
