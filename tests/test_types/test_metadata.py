@@ -8,7 +8,7 @@ from copy import deepcopy
 import unittest
 
 
-from mmda.types.metadata import Metadata
+from mmda.types import Metadata
 
 
 class TestSpanGroup(unittest.TestCase):

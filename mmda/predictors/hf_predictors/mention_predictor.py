@@ -70,8 +70,9 @@ class MentionPredictor:
             return []
 
         spangroups = []
+        counter = itertools.count()
         for page in doc.pages:
-            spangroups.extend(self.predict_page(page, counter=itertools.count(), print_warnings=print_warnings))
+            spangroups.extend(self.predict_page(page, counter=counter, print_warnings=print_warnings))
         return spangroups
 
     def predict_page(self, page: Annotation, counter: Iterator[int], print_warnings: bool = False) -> List[SpanGroup]:

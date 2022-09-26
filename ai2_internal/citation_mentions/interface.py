@@ -10,8 +10,8 @@ from typing import List
 
 from pydantic import BaseModel, BaseSettings
 
+from ai2_internal import api
 from mmda.predictors.hf_predictors.mention_predictor import MentionPredictor
-from mmda.types import api
 from mmda.types.document import Document
 
 

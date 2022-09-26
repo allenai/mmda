@@ -9,16 +9,15 @@ as a definition of the objects it expects, and those it returns.
 import logging
 from typing import List
 
-from pydantic import BaseModel, BaseSettings, Field
 import torch
+from pydantic import BaseModel, BaseSettings, Field
 
+from ai2_internal import api
 from mmda.predictors.hf_predictors.token_classification_predictor import (
     IVILATokenClassificationPredictor,
 )
-from mmda.types import api
 from mmda.types.document import Document, SpanGroup
 from mmda.types.image import frombase64
-
 
 logger = logging.getLogger(__name__)
 
