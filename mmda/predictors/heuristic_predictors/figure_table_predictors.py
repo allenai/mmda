@@ -7,9 +7,11 @@ from scipy.optimize import linear_sum_assignment
 
 from dataclasses import dataclass
 
+from tqdm import tqdm
+
+from ai2_internal import api
 from mmda.predictors.base_predictors.base_heuristic_predictor import BaseHeuristicPredictor
-from mmda.types.span import Span
-from mmda.types.box import Box
+from mmda.types.document import Document
 from mmda.predictors.hf_predictors.token_classification_predictor import IVILATokenClassificationPredictor
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
@@ -22,7 +24,7 @@ class ObjectCaptionMap:
     dpi: int
     page: int
     object_type: str
-    box: Box
+    box: api.Box
     caption: str
 
     def to_json(self) -> str:
@@ -32,30 +34,40 @@ class ObjectCaptionMap:
 class FigureTablePredictions(BaseHeuristicPredictor):
     REQUIRED_BACKENDS = ['layoutparser', 'vila']
 
-    def __init__(self, pdf_path: str, dpi: int = 72):
+    def __init__(self, dpi: int = 72):
+        self.doc = None
         self.dpi = dpi
+
+    def create_doc_rasterize(self, pdf_path):
         self.doc = PDFPlumberParser().parse(input_pdf_path=pdf_path)
         assert self.doc.pages
         assert self.doc.tokens
         images = PDF2ImageRasterizer().rasterize(input_pdf_path=pdf_path, dpi=self.dpi)
         self.doc.annotate_images(images=images)
 
-    def make_vision_prediction(self):
+    def make_vision_prediction(self, doc):
         """
 
         """
         vision_predictor = LayoutParserPredictor.from_pretrained()
-        vision_predictions = vision_predictor.predict(document=self.doc)
-        self.doc.annotate(vision_predictions=vision_predictions)
+        layoutparser_span_groups = vision_predictor.predict(document=doc)
+        doc.annotate(layoutparser_span_groups=layoutparser_span_groups)
+        return doc
 
     def make_villa_predictions(
-            self, model_name: str = 'allenai/ivila-row-layoutlm-finetuned-s2vl-v2') -> Dict[int, List[Box]]:
+            self, doc, model_name: str = 'allenai/ivila-row-layoutlm-finetuned-s2vl-v2') -> Dict[int, List[api.Box]]:
         """
         """
         vila_predictor = IVILATokenClassificationPredictor.from_pretrained(model_name)
-        vila_predictions = vila_predictor.predict(document=self.doc)
-        self.doc.annotate(vila_predictions=vila_predictions)
-        vila_caption = [span_group for span_group in self.doc.vila_predictions if
+        vila_span_groups = vila_predictor.predict(document=doc)
+        doc.annotate(vila_span_groups=vila_span_groups)
+        return doc
+
+    @staticmethod
+    def merge_spans(vila_span_groups: List[api.SpanGroup]) -> Dict[int, List[api.Box]]:
+        """
+        """
+        vila_caption = [span_group for span_group in vila_span_groups if
                         span_group.type == 'Caption' and 'fig' in span_group.text.replace(' ', '').lower()]
 
         vila_caption_dict = defaultdict(list)
@@ -77,17 +89,19 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return merged_boxes_list
 
     @staticmethod
-    def merge_boxes(doc, types=['Figure']):
+    def merge_boxes(layoutparser_span_groups: List[api.SpanGroup], types: List[str] = ['Figure']):
         """
         Merges overlapping boxes
         """
         span_map = defaultdict(list)
-        assert doc.vision_predictions
-        for span in doc.vision_predictions:
+        for span in layoutparser_span_groups:
             if span.box_group.type in types:
                 for box in span.box_group.boxes:
                     # Creating unique start, end of spans used as a key for merging boxes
-                    span_map[box.page].append(Span(start=int(box.l * 1000), end=int(box.l * 1000 + 10), box=box))
+                    box_api = api.Box.from_mmda(box)
+                    span_map[box.page].append(api.Span(start=int(box_api.left * 1000),
+                                                       end=int(box_api.left * 1000 + 10),
+                                                       box=box_api).to_mmda())
 
         return {page: MergeSpans(span_map[page], w=0, h=0).merge_neighbor_spans_by_box_coordinate() for page in
                 span_map.keys()}
@@ -95,7 +109,6 @@ class FigureTablePredictions(BaseHeuristicPredictor):
     @staticmethod
     def get_figure_caption_distance(figure_box, caption_box):
         """
-        
         """
         l_fig, t_fig = figure_box.l + figure_box.w / 2, figure_box.t + figure_box.h / 2
         l_cap, t_cap = caption_box.l + caption_box.w / 2, caption_box.t + caption_box.h
@@ -104,25 +117,26 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
         return t_cap - t_fig if t_cap - t_fig > 0 else 900
 
-    def make_boxgroups(self, page: int, box: Box) -> Dict[int, List[Tuple[float, float, float, float]]]:
+    def make_boxgroups(self, doc: Document, page: int, box: api.Box) -> Dict[int, List[Tuple[float, float, float,
+                                                                                             float]]]:
         """
-
         """
-        page_w, page_h = self.doc.images[page].size
+        page_w, page_h = doc.images[page].size
         width_height = [page_w, page_h, page_w, page_h]
         coordinates = box.coordinates
         return [coordinates[idx] * width_height[idx] for idx in range(4)]
 
-    def map_caption_object(self) -> Dict[int, List[ObjectCaptionMap]]:
+    def predict(self, doc: Document) -> Dict[int, List[ObjectCaptionMap]]:
         """
-
         """
-        self.make_vision_prediction()
-        merged_boxes_fig_dict = self.merge_boxes(self.doc)
-        merged_boxes_caption_dict = self.make_villa_predictions()
+        assert doc.layoutparser_span_groups
 
-        map_fig_caption = defaultdict(list)
-        for page in range(len(self.doc.images)):
+        merged_boxes_fig_dict = self.merge_boxes(doc.layoutparser_span_groups)
+        self.make_villa_predictions(doc)
+        merged_boxes_caption_dict = self.merge_spans(doc.vila_span_groups)
+
+        predictions = []
+        for page in range(len(tqdm(doc.images))):
             if merged_boxes_caption_dict[page] and merged_boxes_fig_dict[page]:
                 cost_matrix = np.zeros((len(merged_boxes_fig_dict[page]), len(merged_boxes_caption_dict[page])))
                 for j, fig_box in enumerate(merged_boxes_fig_dict[page]):
@@ -133,13 +147,10 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                                                                              caption_box.box)
 
                 row_ind, col_ind = linear_sum_assignment(cost_matrix)
-                list_of_caption_map = []
                 for row, col in zip(row_ind, col_ind):
-                    list_of_caption_map.append(ObjectCaptionMap(
-                        self.dpi, page, 'Figure', self.make_boxgroups(page, merged_boxes_fig_dict[page][row].box),
-                        self.doc.symbols[merged_boxes_caption_dict[page][col].start:
-                                         merged_boxes_caption_dict[page][col].end]))
+                    predictions.append(ObjectCaptionMap(
+                        self.dpi, page, 'Figure', self.make_boxgroups(doc, page, merged_boxes_fig_dict[page][row].box),
+                        doc.symbols[merged_boxes_caption_dict[page][col].start:
+                                    merged_boxes_caption_dict[page][col].end]))
 
-                map_fig_caption[page].extend(list_of_caption_map)
-
-        return map_fig_caption
+        return predictions
