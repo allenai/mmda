@@ -101,11 +101,17 @@ class Predictor:
         processed_bib_entry_box_groups, original_box_groups = self._predictor.predict(doc, self._config.BIB_ENTRY_DETECTION_MIN_VILA_BIB_ROWS)
 
         # generate SpanGroups
-        doc.annotate(bib_entries=processed_bib_entry_box_groups)
-
-        prediction = Prediction(
-            bib_entries=[api.SpanGroup.from_mmda(sg) for sg in doc.bib_entries],
-            raw_bib_entry_boxes=[api.BoxGroup.from_mmda(bg) for bg in original_box_groups])
+        if len(processed_bib_entry_box_groups) > 0:
+            doc.annotate(bib_entries=processed_bib_entry_box_groups)
+            prediction = Prediction(
+                bib_entries=[api.SpanGroup.from_mmda(sg) for sg in doc.bib_entries],
+                raw_bib_entry_boxes=[api.BoxGroup.from_mmda(bg) for bg in original_box_groups]
+            )
+        else:
+            prediction = Prediction(
+                bib_entries=[],
+                raw_bib_entry_boxes=[]
+            )
 
         return prediction
 
