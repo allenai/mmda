@@ -48,8 +48,6 @@ except ImportError as e:
     """)
     sys.exit(0)
 
-pdf = "26bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf"
-
 
 def resolve(file: str) -> str:
     return os.path.join(pathlib.Path(os.path.dirname(__file__)), "data", file)
@@ -58,18 +56,19 @@ def resolve(file: str) -> str:
 @with_timo_container
 class TestInterfaceIntegration(unittest.TestCase):
 
-    def get_images(self):
+    def get_images(self, pdf_filename):
         rasterizer = PDF2ImageRasterizer()
-        return rasterizer.rasterize(str(resolve(pdf)), dpi=72)
+        return rasterizer.rasterize(str(resolve(pdf_filename)), dpi=72)
 
     def test__predictions(self, container):
+        pdf = "26bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf"
         doc = PDFPlumberParser(split_at_punctuation=True).parse(resolve(pdf))
 
         tokens = [api.SpanGroup.from_mmda(sg) for sg in doc.tokens]
         rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
         pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
 
-        page_images = self.get_images()
+        page_images = self.get_images(pdf)
         encoded_page_images = [tobase64(img) for img in page_images]
 
         doc.annotate_images(page_images)
@@ -96,3 +95,33 @@ class TestInterfaceIntegration(unittest.TestCase):
         expected_bib_count = 31
         self.assertEqual(len(predictions[0].bib_entries), expected_bib_count)
         self.assertEqual(len(predictions[0].raw_bib_entry_boxes), expected_bib_count)
+
+    def test__no_resulting_bibs(self, container):
+        pdf = "no_bibs.pdf"
+        doc = PDFPlumberParser(split_at_punctuation=True).parse(resolve(pdf))
+
+        tokens = [api.SpanGroup.from_mmda(sg) for sg in doc.tokens]
+        rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
+        pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
+
+        page_images = self.get_images(pdf)
+        encoded_page_images = [tobase64(img) for img in page_images]
+
+        doc.annotate_images(page_images)
+
+        with open(resolve("no_bibs_vila_span_groups.json")) as f:
+            vila_span_groups = [api.SpanGroup(**sg) for sg in json.load(f)["vila_span_groups"]]
+
+        instances = [Instance(
+            symbols=doc.symbols,
+            tokens=tokens,
+            rows=rows,
+            pages=pages,
+            page_images=encoded_page_images,
+            vila_span_groups=vila_span_groups)]
+
+        # should not error
+        predictions = container.predict_batch(instances)
+
+        self.assertEqual(len(predictions[0].bib_entries), 0)
+        self.assertEqual(len(predictions[0].raw_bib_entry_boxes), 0)
