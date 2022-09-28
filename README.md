@@ -8,6 +8,11 @@ This is work in progress... Click here for [project status](https://github.com/a
 conda create -n mmda python=3.8
 pip install -r requirements.txt
 ```
+or
+```bash
+conda create -n mmda python=3.8
+pip install -e '.[dev,<extras_require section from setup.py>]'
+```
 
 ## Parsers
 
