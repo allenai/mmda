@@ -72,7 +72,7 @@ class Document:
             if len(annotations) == 0:
                 warnings.warn(f"The annotations is empty for the field {field_name}")
                 setattr(self, field_name, [])
-                self._fields.append(field_name)
+                self.__fields.append(field_name)
                 continue
 
             annotation_types = {type(a) for a in annotations}
