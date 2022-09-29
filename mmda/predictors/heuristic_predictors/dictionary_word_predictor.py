@@ -5,12 +5,14 @@ DictionaryWordPredictor -- Reads rows of text into dehyphenated words.
 """
 
 import string
-from typing import Optional, Set, List
+from typing import Any, Dict, Optional, Set, List
 
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 from mmda.types.annotation import Annotation, Span, SpanGroup
 from mmda.types.document import Document
 from mmda.types.names import Rows, Tokens
+
+from ftfy import fix_text, TextFixerConfig
 
 
 class DictionaryWordPredictor(BasePredictor):
@@ -20,7 +22,11 @@ class DictionaryWordPredictor(BasePredictor):
 
     _dictionary: Optional[Set[str]] = None
 
-    def __init__(self, dictionary_file_path: str) -> None:
+    def __init__(
+        self,
+        dictionary_file_path: str,
+        ftfy_config: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Build a predictor that indexes the given dictionary file.
         A dictionary is simply a case-sensitive list of words as a text file.
         Words should be lower-case in the dictionary unless they are invalid
@@ -40,6 +46,9 @@ class DictionaryWordPredictor(BasePredictor):
             dictionary_file_path (str): [description]
         """
         self.dictionary_file_path = dictionary_file_path
+
+        ftfy_config = ftfy_config or {"explain": False}
+        self.ftfy_config = TextFixerConfig(**ftfy_config)
 
     @property
     def dictionary(self) -> Set[str]:
@@ -171,7 +180,9 @@ class DictionaryWordPredictor(BasePredictor):
         return words
 
     def _token_text(self, token: SpanGroup) -> str:
-        return "".join(token.symbols)
+        text = "".join(token.symbols)
+        text = fix_text(text, config=self.ftfy_config)
+        return text
 
     def _copy_token_with_text(self, token: SpanGroup) -> SpanGroup:
         return SpanGroup(spans=token.spans, text=self._token_text(token))
