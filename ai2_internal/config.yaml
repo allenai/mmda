@@ -259,10 +259,10 @@ model_variants:
     prediction: ai2_internal.figure_table_predictors.interface.Prediction
 
     # Class path to Predictor implementation in <model_package_name>==<model_package_version>
-    predictor: ai2_internal.vfigure_table_predictors.interface.Predictor
+    predictor: ai2_internal.figure_table_predictors.interface.Predictor
 
     # Class path to pydantic PredictorConfig implementation in <model_package_name>==<model_package_version>
-    predictor_config: ai2_internal.figure_table_predictors.interface.PredictorConfig
+    predictor_config: ai2_internal.bibentry_detection_predictor.interface.PredictorConfig
 
     integration_test: ai2_internal.figure_table_predictors.integration_test.TestInterfaceIntegration
 

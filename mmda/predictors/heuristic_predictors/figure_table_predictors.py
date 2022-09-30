@@ -24,7 +24,7 @@ class ObjectCaptionMap:
     dpi: int
     page: int
     object_type: str
-    box: api.Box
+    box: List[float]
     caption: str
 
     def to_json(self) -> str:
@@ -33,7 +33,7 @@ class ObjectCaptionMap:
 
 class FigureTablePredictions(BaseHeuristicPredictor):
     REQUIRED_BACKENDS = ['layoutparser', 'vila']
-
+    REQUIRED_DOCUMENT_FIELDS = ['layoutparser_span_groups', 'vila_span_groups']
     def __init__(self, dpi: int = 72):
         self.doc = None
         self.dpi = dpi
@@ -45,7 +45,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         images = PDF2ImageRasterizer().rasterize(input_pdf_path=pdf_path, dpi=self.dpi)
         self.doc.annotate_images(images=images)
 
-    def make_vision_prediction(self, doc):
+    @staticmethod
+    def make_vision_prediction(doc):
         """
 
         """
@@ -54,8 +55,9 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         doc.annotate(layoutparser_span_groups=layoutparser_span_groups)
         return doc
 
+    @staticmethod
     def make_villa_predictions(
-            self, doc, model_name: str = 'allenai/ivila-row-layoutlm-finetuned-s2vl-v2') -> Dict[int, List[api.Box]]:
+            doc, model_name: str = 'allenai/ivila-row-layoutlm-finetuned-s2vl-v2') -> Dict[int, List[api.Box]]:
         """
         """
         vila_predictor = IVILATokenClassificationPredictor.from_pretrained(model_name)
@@ -64,11 +66,11 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return doc
 
     @staticmethod
-    def merge_spans(vila_span_groups: List[api.SpanGroup]) -> Dict[int, List[api.Box]]:
+    def merge_spans(vila_span_groups: List[api.SpanGroup], caption_content: str = 'fig') -> Dict[int, List[api.Box]]:
         """
         """
         vila_caption = [span_group for span_group in vila_span_groups if
-                        span_group.type == 'Caption' and 'fig' in span_group.text.replace(' ', '').lower()]
+                        span_group.type == 'Caption' and caption_content in span_group.text.replace(' ', '').lower()]
 
         vila_caption_dict = defaultdict(list)
         width_heights_dict = defaultdict(list)
@@ -107,18 +109,17 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                 span_map.keys()}
 
     @staticmethod
-    def get_figure_caption_distance(figure_box, caption_box):
+    def get_object_caption_distance(figure_box, caption_box) -> float:
         """
         """
         l_fig, t_fig = figure_box.l + figure_box.w / 2, figure_box.t + figure_box.h / 2
         l_cap, t_cap = caption_box.l + caption_box.w / 2, caption_box.t + caption_box.h
         if abs(l_fig - l_cap) / l_fig > 0.1:
-            return 900
+            return 900.0
 
-        return t_cap - t_fig if t_cap - t_fig > 0 else 900
+        return t_cap - t_fig
 
-    def make_boxgroups(self, doc: Document, page: int, box: api.Box) -> Dict[int, List[Tuple[float, float, float,
-                                                                                             float]]]:
+    def make_boxgroups(self, doc: Document, page: int, box: api.Box) -> List[float]:
         """
         """
         page_w, page_h = doc.images[page].size
@@ -126,31 +127,42 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         coordinates = box.coordinates
         return [coordinates[idx] * width_height[idx] for idx in range(4)]
 
-    def predict(self, doc: Document) -> Dict[int, List[ObjectCaptionMap]]:
+    def predict(self, doc: Document, caption_type: str = 'Figure') -> List[ObjectCaptionMap]:
         """
         """
         assert doc.layoutparser_span_groups
+        assert doc.vila_span_groups
+        if caption_type == 'Figure':
+            merged_boxes_fig_dict = self.merge_boxes(doc.layoutparser_span_groups)
+            merged_boxes_caption_dict = self.merge_spans(doc.vila_span_groups)
+        else:
+            merged_boxes_fig_dict = self.merge_boxes(doc.layoutparser_span_groups, types=['Table'])
+            merged_boxes_caption_dict = self.merge_spans(doc.vila_span_groups, caption_content='tab')
 
-        merged_boxes_fig_dict = self.merge_boxes(doc.layoutparser_span_groups)
-        self.make_villa_predictions(doc)
-        merged_boxes_caption_dict = self.merge_spans(doc.vila_span_groups)
 
         predictions = []
         for page in range(len(tqdm(doc.images))):
+            #raise Exception(len(doc.images), merged_boxes_fig_dict, merged_boxes_caption_dict )
             if merged_boxes_caption_dict[page] and merged_boxes_fig_dict[page]:
-                cost_matrix = np.zeros((len(merged_boxes_fig_dict[page]), len(merged_boxes_caption_dict[page])))
+                cost_matrix = np.zeros((len(merged_boxes_fig_dict[page]),
+                                        len(merged_boxes_caption_dict[page])))
                 for j, fig_box in enumerate(merged_boxes_fig_dict[page]):
                     for i, caption_box in enumerate(merged_boxes_caption_dict[page]):
                         assert hasattr(fig_box, 'box')
                         assert hasattr(caption_box, 'box')
-                        cost_matrix[j][i] = self.get_figure_caption_distance(fig_box.box,
-                                                                             caption_box.box)
+                        distance = self.get_object_caption_distance(fig_box.box,
+                                                                    caption_box.box)
+
+                        if caption_type == 'Figure':
+                            cost_matrix[j][i] = distance if distance > 0 else 900
+                        else:
+                            cost_matrix[j][i] = distance if distance < 0 else 900
 
                 row_ind, col_ind = linear_sum_assignment(cost_matrix)
                 for row, col in zip(row_ind, col_ind):
                     predictions.append(ObjectCaptionMap(
-                        self.dpi, page, 'Figure', self.make_boxgroups(doc, page, merged_boxes_fig_dict[page][row].box),
+                        self.dpi, page, caption_type,
+                        self.make_boxgroups(doc, page, merged_boxes_fig_dict[page][row].box),
                         doc.symbols[merged_boxes_caption_dict[page][col].start:
                                     merged_boxes_caption_dict[page][col].end]))
-
         return predictions

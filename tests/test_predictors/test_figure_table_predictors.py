@@ -38,12 +38,12 @@ class TestDictionaryWordPredictor(unittest.TestCase):
         assert isinstance(result[0][0], Span)
 
     def test_get_figure_cation_distance(self):
-        distance = FigureTablePredictions.get_figure_caption_distance(
+        distance = FigureTablePredictions.get_object_caption_distance(
             Box(l=0.2, t=0.2, w=0.1, h=0.1, page=0), Box(l=0.3, t=0.3, w=0.1, h=0.1, page=0))
 
         assert distance == 900
 
-        distance = FigureTablePredictions.get_figure_caption_distance(
+        distance = FigureTablePredictions.get_object_caption_distance(
             Box(l=0.2, t=0.2, w=0.1, h=0.1, page=0), Box(l=0.2, t=0.3, w=0.1, h=0.1, page=0))
 
         assert distance == pytest.approx(0.15)
@@ -54,7 +54,8 @@ class TestDictionaryWordPredictor(unittest.TestCase):
         assert result == pytest.approx([122.4, 237.6, 183.6, 316.8])
 
     def test_predict(self):
-        self.figure_table_predictor.make_vision_prediction(self.figure_table_predictor.doc)
+        FigureTablePredictions.make_vision_prediction(self.figure_table_predictor.doc)
+        FigureTablePredictions.make_villa_predictions(self.figure_table_predictor.doc)
         result = self.figure_table_predictor.predict(self.figure_table_predictor.doc)
         assert isinstance(result, list)
         assert [result[idx].to_json() for idx in range(len(result))] == [

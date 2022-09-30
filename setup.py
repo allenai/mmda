@@ -37,6 +37,8 @@ setup(
         "ai2_internal.bibentry_predictor_mmda.data": ["*"],
         "ai2_internal.citation_mentions.data": ["*"],
         "ai2_internal.vila.test_fixtures": ["*"],
+        "ai2_internal.figure_table_predictors.test_fixtures": ["*"],
+        "ai2_internal.figure_table_predictors.test_fixtures.images": ["*"],
         "ai2_internal.shared_test_fixtures": ["*"]
     }
 )

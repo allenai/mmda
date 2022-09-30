@@ -8,10 +8,9 @@ as a definition of the objects it expects, and those it returns.
 
 from typing import List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, BaseSettings
 
 from mmda.predictors.heuristic_predictors.figure_table_predictors import ObjectCaptionMap, FigureTablePredictions
-from mmda.types import image
 from mmda.types.document import Document
 from mmda.types.image import frombase64
 
@@ -35,19 +34,16 @@ class Instance(BaseModel):
     pages: List[api.SpanGroup]
     vila_span_groups: List[api.SpanGroup]
     layoutparser_span_groups: List[api.SpanGroup]
-    page_images: List[str] = Field(description="List of base64-encoded page images")
+    images: List[str] = Field(description="List of base64-encoded page images")
 
     def to_mmda(self):
         doc = Document(symbols=self.symbols)
         doc.annotate(tokens=[sg.to_mmda() for sg in self.tokens])
         doc.annotate(rows=[sg.to_mmda() for sg in self.rows])
         doc.annotate(pages=[sg.to_mmda() for sg in self.pages])
-        doc.annotate(blocks=[bg.to_mmda() for bg in self.blocks])
-
-        images = [frombase64(img) for img in self.images]
-        doc.annotate_images(images)
-        doc.annotate(vila_span_groups=[sg.to_mmda for sg in self.vila_span_groups])
-        doc.annotate(layoutparser_span_groups=[sg.to_mmda for sg in self.layoutparser_span_groups])
+        doc.annotate_images([frombase64(img) for img in self.images])
+        doc.annotate(layoutparser_span_groups=[sg.to_mmda() for sg in self.layoutparser_span_groups])
+        doc.annotate(vila_span_groups=[sg.to_mmda() for sg in self.vila_span_groups])
         return doc
 
 
@@ -57,6 +53,16 @@ class Prediction(BaseModel):
     """
     table_figure_caption_list: List[ObjectCaptionMap]
 
+class PredictorConfig(BaseSettings):
+    """
+    Configuration required by the model to do its work.
+    Uninitialized fields will be set via Environment variables.
+    """
+    dpi: int = Field(
+        default=72,
+        description="The maximum number of subpages we can send to the models at one time. "
+                    "Used for capping the maximum memory usage during the vila dep."
+    )
 
 class Predictor:
     """
@@ -70,31 +76,23 @@ class Predictor:
     have been extracted to `artifacts_dir`, provided as a constructor
     arg below.
     """
+    _config: PredictorConfig
+    _artifacts_dir: str
 
-    def __init__(self, dpi: int = 72):
-        self.dpi = dpi
-        self._predictor = FigureTablePredictions(self.dpi)
+    def __init__(self, config: PredictorConfig, artifacts_dir: str):
+        self._config = config
+        self._artifacts_dir = artifacts_dir
+        self._predictor = FigureTablePredictions()
 
     def predict_one(self, inst: Instance) -> Prediction:
         """
         Should produce a single Prediction for the provided Instance.
         Leverage your underlying model to perform this inference.
         """
-        doc = Document(symbols=inst.symbols)
-        doc.annotate(tokens=[sg.to_mmda() for sg in inst.tokens])
-        doc.annotate(rows=[sg.to_mmda() for sg in inst.rows])
-        doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
-        images = [image.frombase64(im) for im in inst.page_images]
-        doc.annotate_images(images)
-        doc.annotate(vila_span_groups=[sg.to_mmda() for sg in inst.vila_span_groups])
-        doc.annotate(layoutparser_span_groups=[sg.to_mmda() for sg in inst.vila_span_groups])
-
         predictions_table_figure_list = self._predictor.predict(inst.to_mmda())
+        return Prediction(
+             table_figure_caption_list=predictions_table_figure_list)
 
-        prediction = Prediction(
-            table_figure_caption_map=predictions_table_figure_list)
-
-        return prediction
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """
