@@ -58,25 +58,96 @@ class TestDictionaryWordPredictor(unittest.TestCase):
         FigureTablePredictions.make_villa_predictions(self.figure_table_predictor.doc)
         result = self.figure_table_predictor.predict(self.figure_table_predictor.doc)
         assert isinstance(result, list)
-        assert [result[idx].to_json() for idx in range(len(result))] == [
-            '{"dpi": 72, "page": 0, "object_type": "Figure", "box": [307.34411621093756, '
-            '283.10247802734375, 547.9175415039062, 386.5572204589844], "caption": '
-            '"Figure 1 : Motivation of"}',
-            '{"dpi": 72, "page": 2, "object_type": "Figure", "box": [53.39092254638671, '
-            '75.6981201171875, 283.1786117553711, 242.29154968261722], "caption": "Figure '
-            '2 : Given a feature map as an input , max pooling\\n( top right ) and the '
-            'proposed G - pooling ( bottom right ) cre -\\nate different output '
-            'downsampled feature map based on the\\ncharacteristics of spatial cluster . '
-            'The feature map within\\nthe sliding window ( blue dot line ) indicates a '
-            'spatial clus -\\nter . Max pooling takes the max value ignoring the '
-            'spatial\\ncluster , while our G - pooling takes the interpolated value '
-            'at\\nthe center location . ( White , gray and black represent three\\nvalues '
-            'range from low to high . )"}',
-            '{"dpi": 72, "page": 3, "object_type": "Figure", "box": [57.03529357910156, '
-            '69.08863067626953, 282.17950439453125, 174.696044921875], "caption": "Figure '
-            '3 : A FCN network architecture with G - pooling ."}',
-            '{"dpi": 72, "page": 7, "object_type": "Figure", "box": [60.94582748413086, '
-            '68.12191009521484, 552.6776695251465, 347.5070724487305], "caption": "Figure '
-            '4 : Qualitative results of ISPRS Potsdam . White : road , blue : building , '
-            'cyan : low vegetation , green : trees , yellow :\\ncars , red : clutter ."}']
+        assert [{'box_group': {'boxes': [[0.5021962683185254,
+                           0.3574526237718987,
+                           0.3930938321780535,
+                           0.130624674787425,
+                           0]],
+                'metadata': {'id': None, 'type': 'Figure'},
+                'uuid': 'd6cb60fd-4434-44b9-af59-ef4af7dacc07'},
+      'metadata': {'id': None,
+                   'text': 'Figure 1 : Motivation of',
+                   'type': 'Figure'},
+      'spans': [{'box': [0.5046764705882353,
+                         0.505044597979798,
+                         0.15726908267973871,
+                         0.012579040404040343,
+                         0],
+                 'end': 2127,
+                 'start': 2103}],
+      'uuid': '48c6f878-7d8d-40f9-aab8-b301904fd3ff'},
+     {'box_group': {'boxes': [[0.08724006952023973,
+                               0.09557843449139836,
+                               0.3754700804068372,
+                               0.21034523935029004,
+                               2]],
+                    'metadata': {'id': None, 'type': 'Figure'},
+                    'uuid': 'f7ed0df8-1fc0-41ac-983c-8f482d9c0aa4'},
+      'metadata': {'id': None,
+                   'text': 'Figure 2 : Given a feature map as an input , max '
+                           'pooling\n'
+                           '( top right ) and the proposed G - pooling ( bottom '
+                           'right ) cre -\n'
+                           'ate different output downsampled feature map based on '
+                           'the\n'
+                           'characteristics of spatial cluster . The feature map '
+                           'within\n'
+                           'the sliding window ( blue dot line ) indicates a '
+                           'spatial clus -\n'
+                           'ter . Max pooling takes the max value ignoring the '
+                           'spatial\n'
+                           'cluster , while our G - pooling takes the interpolated '
+                           'value at\n'
+                           'the center location . ( White , gray and black '
+                           'represent three\n'
+                           'values range from low to high . )',
+                   'type': 'Figure'},
+      'spans': [{'box': [0.08188235294117646,
+                         0.3222478808080807,
+                         0.3860376222222223,
+                         0.13333787878787873,
+                         2],
+                 'end': 10043,
+                 'start': 9519}],
+      'uuid': '8d3e1417-b118-4f89-a860-55b225edf185'},
+     {'box_group': {'boxes': [[0.09319492414885876,
+                               0.08723311954074436,
+                               0.36788269741083285,
+                               0.13334269475455235,
+                               3]],
+                    'metadata': {'id': None, 'type': 'Figure'},
+                    'uuid': '18081ee9-1458-4dc4-a9a1-d83cbe643313'},
+      'metadata': {'id': None,
+                   'text': 'Figure 3 : A FCN network architecture with G - pooling '
+                           '.',
+                   'type': 'Figure'},
+      'spans': [{'box': [0.09644934640522876,
+                         0.23085498030303023,
+                         0.3568952637254902,
+                         0.012855779292929359,
+                         3],
+                 'end': 14366,
+                 'start': 14310}],
+      'uuid': '653d1729-e99e-432e-8612-35b6bf47f96d'},
+     {'box_group': {'boxes': [[0.09958468543158637,
+                               0.08601251274648339,
+                               0.8034834020278033,
+                               0.3527590433756511,
+                               7]],
+                    'metadata': {'id': None, 'type': 'Figure'},
+                    'uuid': 'edd04791-a07f-4991-bf1e-6737a9f23db3'},
+      'metadata': {'id': None,
+                   'text': 'Figure 4 : Qualitative results of ISPRS Potsdam . '
+                           'White : road , blue : building , cyan : low vegetation '
+                           ', green : trees , yellow :\n'
+                           'cars , red : clutter .',
+                   'type': 'Figure'},
+      'spans': [{'box': [0.08188235294117648,
+                         0.4603690929292929,
+                         0.8088263784313716,
+                         0.02767373737373735,
+                         7],
+                 'end': 33031,
+                 'start': 32877}],
+      'uuid': 'bd67442f-f8e5-4b76-9d21-c51fab68662a'}]
 
