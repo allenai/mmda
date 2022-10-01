@@ -10,7 +10,7 @@ from typing import List
 
 from pydantic import BaseModel, Field, BaseSettings
 
-from mmda.predictors.heuristic_predictors.figure_table_predictors import ObjectCaptionMap, FigureTablePredictions
+from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureTablePredictions
 from mmda.types.document import Document
 from mmda.types.image import frombase64
 
@@ -51,18 +51,15 @@ class Prediction(BaseModel):
     """
     Describes the outcome of inference for one Instance
     """
-    table_figure_caption_list: List[ObjectCaptionMap]
+    table_figure_caption_list: List[api.SpanGroup]
+
 
 class PredictorConfig(BaseSettings):
     """
     Configuration required by the model to do its work.
     Uninitialized fields will be set via Environment variables.
     """
-    dpi: int = Field(
-        default=72,
-        description="The maximum number of subpages we can send to the models at one time. "
-                    "Used for capping the maximum memory usage during the vila dep."
-    )
+    pass
 
 class Predictor:
     """
@@ -91,8 +88,7 @@ class Predictor:
         """
         predictions_table_figure_list = self._predictor.predict(inst.to_mmda())
         return Prediction(
-             table_figure_caption_list=predictions_table_figure_list)
-
+             table_figure_caption_list=[api.SpanGroup.from_mmda(sg) for sg in predictions_table_figure_list])
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """

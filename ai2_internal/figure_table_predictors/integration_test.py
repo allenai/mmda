@@ -39,7 +39,7 @@ from ai2_internal import api
 from mmda.types.document import Document
 from mmda.types.image import tobase64
 from .interface import Instance
-
+from ..api import SpanGroup
 
 try:
     from timo_interface import with_timo_container
@@ -86,6 +86,10 @@ class TestInterfaceIntegration(unittest.TestCase):
         predictions = container.predict_batch(instances)
 
         prediction = predictions[0]
-
-        annotation_types = set(a.type for a in prediction)
-        self.assertEqual({"Title", "Paragraph"}, annotation_types)
+        assert isinstance(prediction.table_figure_caption_list[0], SpanGroup)
+        assert prediction.table_figure_caption_list[0].text == (
+            'Fig . 1 . The original multi - modality data ( T1 , T2 and FA ) of\nan infant subject scanned at 6 - '
+            'month old ( isointense phase ) .')
+        assert [pred.type for prediction in predictions for pred in prediction.table_figure_caption_list] == [
+            'Figure', 'Figure', 'Figure', 'Figure', 'Table',
+        ]
