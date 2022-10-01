@@ -1,34 +1,21 @@
-import json
 from collections import defaultdict
 
 from typing import List, Dict, Tuple
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from dataclasses import dataclass
-
 from tqdm import tqdm
 
 from ai2_internal import api
 from mmda.predictors.base_predictors.base_heuristic_predictor import BaseHeuristicPredictor
+from mmda.types import SpanGroup, BoxGroup
 from mmda.types.document import Document
+from mmda.types.span import Span
 from mmda.predictors.hf_predictors.token_classification_predictor import IVILATokenClassificationPredictor
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.utils.tools import MergeSpans
-
-
-@dataclass
-class ObjectCaptionMap:
-    dpi: int
-    page: int
-    object_type: str
-    box: List[float]
-    caption: str
-
-    def to_json(self) -> str:
-        return json.dumps(self.__dict__)
 
 
 class FigureTablePredictions(BaseHeuristicPredictor):
@@ -127,7 +114,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         coordinates = box.coordinates
         return [coordinates[idx] * width_height[idx] for idx in range(4)]
 
-    def predict(self, doc: Document, caption_type: str = 'Figure') -> List[ObjectCaptionMap]:
+    def _predict(self, doc: Document, caption_type: str = 'Figure') -> List[SpanGroup]:
         """
         """
         assert doc.layoutparser_span_groups
@@ -142,7 +129,6 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
         predictions = []
         for page in range(len(tqdm(doc.images))):
-            #raise Exception(len(doc.images), merged_boxes_fig_dict, merged_boxes_caption_dict )
             if merged_boxes_caption_dict[page] and merged_boxes_fig_dict[page]:
                 cost_matrix = np.zeros((len(merged_boxes_fig_dict[page]),
                                         len(merged_boxes_caption_dict[page])))
@@ -160,9 +146,21 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
                 row_ind, col_ind = linear_sum_assignment(cost_matrix)
                 for row, col in zip(row_ind, col_ind):
-                    predictions.append(ObjectCaptionMap(
-                        self.dpi, page, caption_type,
-                        self.make_boxgroups(doc, page, merged_boxes_fig_dict[page][row].box),
-                        doc.symbols[merged_boxes_caption_dict[page][col].start:
-                                    merged_boxes_caption_dict[page][col].end]))
+                    predictions.append(SpanGroup(spans=[Span(
+                        start=merged_boxes_caption_dict[page][col].start,
+                        end=merged_boxes_caption_dict[page][col].end,
+                        box=merged_boxes_caption_dict[page][col].box)],
+                        box_group=BoxGroup(boxes=[merged_boxes_fig_dict[page][row].box], id=None, type=caption_type),
+                        id=None,
+                        type=caption_type,
+                        text=doc.symbols[merged_boxes_caption_dict[page][col].start:
+                                         merged_boxes_caption_dict[page][col].end]
+                    ))
+        return predictions
+
+    def predict(self, document: Document) -> List[SpanGroup]:
+        predictions = []
+        predictions.extend(self._predict(document, caption_type='Figure'))
+        predictions.extend(self._predict(document, caption_type='Table'))
+
         return predictions
