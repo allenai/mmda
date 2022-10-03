@@ -47,14 +47,16 @@ class Span(BaseModel):
         return mmda_ann.Span.from_json(self.dict())
 
 
-class Metadata(BaseModel):
-    """Class to represent metadata for a SpanGroup or BoxGroup.
+class Attributes(BaseModel):
+    """Class to represent attributes for a SpanGroup or BoxGroup.
+    Attributes are generally stored in mmda as mmda_ann.Metadata objects.
+
     Unlike mmda.types.annotation.Metadata, this class ignores fields
     id, type, and text, which are expected to be stored in the SpanGroup
     / BoxGroup itself."""
 
     @classmethod
-    def from_mmda(cls, metadata: mmda_ann.Metadata) -> "Metadata":
+    def from_mmda(cls, metadata: mmda_ann.Metadata) -> "Attributes":
         metadata_dict = {
             k: v
             for k, v in metadata.to_json().items()
@@ -68,15 +70,15 @@ class Metadata(BaseModel):
 
 
 class Annotation(BaseModel):
-    metadata: Metadata
+    attributes: Attributes
 
     @classmethod
-    def get_metadata_cls(cls) -> Type[Metadata]:
+    def get_metadata_cls(cls) -> Type[Attributes]:
         for inherit_cls in cls.mro():
             if not hasattr(inherit_cls, "__annotations__"):
                 continue
-            if "metadata" in inherit_cls.__annotations__:
-                return inherit_cls.__annotations__["metadata"]
+            if "attributes" in inherit_cls.__annotations__:
+                return inherit_cls.__annotations__["attributes"]
         raise ValueError(
             'No "metadata" annotation found in inheritance hierarchy'
         )
@@ -95,10 +97,18 @@ class BoxGroup(Annotation):
         boxes = [Box.from_mmda(box) for box in box_group.boxes]
         metadata = cls.get_metadata_cls().from_mmda(box_group.metadata)
 
-        return cls(boxes=boxes, id=box_group.id, type=box_group.type, metadata=metadata)
+        return cls(
+            boxes=boxes,
+            id=box_group.id,
+            type=box_group.type,
+            attributes=metadata
+        )
 
     def to_mmda(self) -> mmda_ann.BoxGroup:
-        return mmda_ann.BoxGroup.from_json(self.dict())
+        box_group_dict = self.dict()
+        # we map what's in attributes to a metadata object
+        box_group_dict["metadata"] = box_group_dict.pop("attributes", {})
+        return mmda_ann.BoxGroup.from_json(box_group_dict)
 
 
 class SpanGroup(Annotation):
@@ -124,11 +134,14 @@ class SpanGroup(Annotation):
             id=span_group.id,
             type=span_group.type,
             text=span_group.text,
-            metadata=metadata,
+            attributes=metadata,
         )
         if span_group.box_group is not None:
             ret.box_group = BoxGroup.from_mmda(span_group.box_group)
         return ret
 
     def to_mmda(self) -> mmda_ann.SpanGroup:
-        return mmda_ann.SpanGroup.from_json(self.dict())
+        span_group_dict = self.dict()
+        # we map what's in attributes to a metadata object
+        span_group_dict["metadata"] = span_group_dict.pop("attributes", {})
+        return mmda_ann.SpanGroup.from_json(span_group_dict)

@@ -6,13 +6,13 @@ import ai2_internal.api as mmda_api
 import mmda.types.annotation as mmda_ann
 
 
-class ClassificationMetadata(mmda_api.Metadata):
+class ClassificationAttributes(mmda_api.Attributes):
     label: str
     score: float
 
 
 class ClassificationSpanGroup(mmda_api.SpanGroup):
-    metadata: ClassificationMetadata
+    attributes: ClassificationAttributes
 
 
 class TestApi(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestApi(unittest.TestCase):
 
         self.assertEqual(sg_api.text, 'hello')
         self.assertEqual(sg_api.id, 1)
-        self.assertEqual(sg_api.metadata.dict(), {})
+        self.assertEqual(sg_api.attributes.dict(), {})
 
     def test_classification_span_group(self) -> None:
         sg_ann = mmda_ann.SpanGroup.from_json({
@@ -35,7 +35,8 @@ class TestApi(unittest.TestCase):
         })
 
         with self.assertRaises(ValidationError):
-            # this should fail because metadata is missing label and confidence
+            # this should fail because metadata is missing label
+            # and confidence
             ClassificationSpanGroup.from_mmda(sg_ann)
 
         sg_ann.metadata.label = 'label'
@@ -43,16 +44,29 @@ class TestApi(unittest.TestCase):
 
         sg_api = ClassificationSpanGroup.from_mmda(sg_ann)
         self.assertEqual(
-            sg_api.metadata.dict(), {'label': 'label', 'score': 0.5}
+            sg_api.attributes.dict(), {'label': 'label', 'score': 0.5}
         )
 
         # extra field should just get ignored
         sg_ann.metadata.extra = 'extra'
         self.assertEqual(
-            sg_api.metadata.dict(), {'label': 'label', 'score': 0.5}
+            sg_api.attributes.dict(), {'label': 'label', 'score': 0.5}
         )
 
         with self.assertRaises(ValidationError):
             # this should fail bc score is not a float
             sg_ann.metadata.score = 'not a float'
             ClassificationSpanGroup.from_mmda(sg_ann)
+
+    def test_equivalence(self):
+        sg_ann = mmda_ann.SpanGroup.from_json({
+            'spans': [{'start': 0, 'end': 1}],
+            'metadata': {'label': 'label', 'score': 0.5}
+        })
+        sg_ann_2 = ClassificationSpanGroup.from_mmda(sg_ann).to_mmda()
+
+        # we need to manually set the uuids to be equal
+        # because by default they are randomly generated
+        sg_ann.uuid = sg_ann_2.uuid = 'manually-fix-to-avoid-randomness'
+
+        self.assertEqual(sg_ann, sg_ann_2)
