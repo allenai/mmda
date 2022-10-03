@@ -1,6 +1,6 @@
 from typing import List, Optional, Type
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 import mmda.types.annotation as mmda_ann
 
@@ -57,19 +57,13 @@ class Attributes(BaseModel):
 
     @classmethod
     def from_mmda(cls, metadata: mmda_ann.Metadata) -> "Attributes":
-        metadata_dict = {
-            k: v
-            for k, v in metadata.to_json().items()
-            if k != "id" and k != "type" and k != "text"
-        }
-        print(cls)
-        return cls(**metadata_dict)
+        return cls(**metadata.to_json())
 
     def to_mmda(self) -> mmda_ann.Metadata:
         return mmda_ann.Metadata.from_json(self.dict())
 
 
-class Annotation(BaseModel):
+class Annotation(BaseModel, extra=Extra.ignore):
     attributes: Attributes
 
     @classmethod
