@@ -19,43 +19,38 @@ class TestDictionaryWordPredictor(unittest.TestCase):
     def setUp(cls):
         cls.pdf_path = 'fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf'
         cls.figure_table_predictor = FigureTablePredictions(dpi=72)
-        cls.figure_table_predictor.create_doc_rasterize(cls.pdf_path)
+        cls.figure_table_predictor._create_doc_rasterize(cls.pdf_path)
 
     def test_make_vision_predictions(self):
-        self.figure_table_predictor.make_vision_prediction(self.figure_table_predictor.doc)
+        self.figure_table_predictor._make_vision_prediction(self.figure_table_predictor.doc)
         assert 'layoutparser_span_groups' in self.figure_table_predictor.doc.fields
 
     def test_make_villa_predictions(self):
-        result = self.figure_table_predictor.make_villa_predictions(self.figure_table_predictor.doc)
+        result = self.figure_table_predictor._make_villa_predictions(self.figure_table_predictor.doc)
         assert isinstance(result, Document)
         assert 'vila_span_groups' in result.fields
 
     def test_merge_boxes(self):
-        doc = self.figure_table_predictor.make_vision_prediction(self.figure_table_predictor.doc)
-        result = self.figure_table_predictor.merge_boxes(doc.layoutparser_span_groups)
+        doc = self.figure_table_predictor._make_vision_prediction(self.figure_table_predictor.doc)
+        result = self.figure_table_predictor._merge_boxes(doc.layoutparser_span_groups)
         assert isinstance(result, dict)
         assert list(result.keys()) == [0, 2, 3, 7]
         assert isinstance(result[0][0], Span)
 
     def test_get_figure_cation_distance(self):
-        distance = FigureTablePredictions.get_object_caption_distance(
+        distance = FigureTablePredictions._get_object_caption_distance(
             Box(l=0.2, t=0.2, w=0.1, h=0.1, page=0), Box(l=0.3, t=0.3, w=0.1, h=0.1, page=0))
 
         assert distance == 900
 
-        distance = FigureTablePredictions.get_object_caption_distance(
+        distance = FigureTablePredictions._get_object_caption_distance(
             Box(l=0.2, t=0.2, w=0.1, h=0.1, page=0), Box(l=0.2, t=0.3, w=0.1, h=0.1, page=0))
 
         assert distance == pytest.approx(0.15)
 
-    def test_make_boxgroups(self):
-        result = self.figure_table_predictor.make_boxgroups(self.figure_table_predictor.doc,
-                                                            0, Box(l=0.2, t=0.3, w=0.1, h=0.1, page=0))
-        assert result == pytest.approx([122.4, 237.6, 183.6, 316.8])
-
     def test_predict(self):
-        FigureTablePredictions.make_vision_prediction(self.figure_table_predictor.doc)
-        FigureTablePredictions.make_villa_predictions(self.figure_table_predictor.doc)
+        FigureTablePredictions._make_vision_prediction(self.figure_table_predictor.doc)
+        FigureTablePredictions._make_villa_predictions(self.figure_table_predictor.doc)
         result = self.figure_table_predictor.predict(self.figure_table_predictor.doc)
         assert isinstance(result, list)
         assert [{'box_group': {'boxes': [[0.5021962683185254,
