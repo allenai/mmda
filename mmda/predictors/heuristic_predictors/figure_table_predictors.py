@@ -21,11 +21,16 @@ from mmda.utils.tools import MergeSpans
 class FigureTablePredictions(BaseHeuristicPredictor):
     REQUIRED_BACKENDS = ['layoutparser', 'vila']
     REQUIRED_DOCUMENT_FIELDS = ['layoutparser_span_groups', 'vila_span_groups']
+
     def __init__(self, dpi: int = 72):
         self.doc = None
         self.dpi = dpi
 
-    def create_doc_rasterize(self, pdf_path):
+    def _create_doc_rasterize(self, pdf_path: str) -> None:
+        '''
+        Helper method for creation of rastesterized document
+        pdf_path: path to the pdf file
+        '''
         self.doc = PDFPlumberParser().parse(input_pdf_path=pdf_path)
         assert self.doc.pages
         assert self.doc.tokens
@@ -33,9 +38,9 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         self.doc.annotate_images(images=images)
 
     @staticmethod
-    def make_vision_prediction(doc):
+    def _make_vision_prediction(doc: Document) -> Document:
         """
-
+        Annotates pages using layoutparser model
         """
         vision_predictor = LayoutParserPredictor.from_pretrained()
         layoutparser_span_groups = vision_predictor.predict(document=doc)
@@ -43,9 +48,11 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return doc
 
     @staticmethod
-    def make_villa_predictions(
-            doc, model_name: str = 'allenai/ivila-row-layoutlm-finetuned-s2vl-v2') -> Dict[int, List[api.Box]]:
+    def _make_villa_predictions(
+            doc: Document,
+            model_name: str = 'allenai/ivila-row-layoutlm-finetuned-s2vl-v2') -> Dict[int, List[api.Box]]:
         """
+        Annotate document using villa model
         """
         vila_predictor = IVILATokenClassificationPredictor.from_pretrained(model_name)
         vila_span_groups = vila_predictor.predict(document=doc)
@@ -55,6 +62,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
     @staticmethod
     def merge_spans(vila_span_groups: List[api.SpanGroup], caption_content: str = 'fig') -> Dict[int, List[api.Box]]:
         """
+        Merges span_groups if overlapping
         """
         vila_caption = [span_group for span_group in vila_span_groups if
                         span_group.type == 'Caption' and caption_content in span_group.text.replace(' ', '').lower()]
@@ -78,7 +86,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return merged_boxes_list
 
     @staticmethod
-    def merge_boxes(layoutparser_span_groups: List[api.SpanGroup], types: List[str] = ['Figure']):
+    def _merge_boxes(layoutparser_span_groups: List[api.SpanGroup], types: List[str] = ['Figure']):
         """
         Merges overlapping boxes
         """
@@ -96,8 +104,10 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                 span_map.keys()}
 
     @staticmethod
-    def get_object_caption_distance(figure_box, caption_box) -> float:
+    def _get_object_caption_distance(figure_box, caption_box) -> float:
         """
+        Return 900.0 if left point of figure, caption is offset more than 10%
+        Otherwise returns distance between top of the figure box and cap box
         """
         l_fig, t_fig = figure_box.l + figure_box.w / 2, figure_box.t + figure_box.h / 2
         l_cap, t_cap = caption_box.l + caption_box.w / 2, caption_box.t + caption_box.h
@@ -106,26 +116,20 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
         return t_cap - t_fig
 
-    def make_boxgroups(self, doc: Document, page: int, box: api.Box) -> List[float]:
-        """
-        """
-        page_w, page_h = doc.images[page].size
-        width_height = [page_w, page_h, page_w, page_h]
-        coordinates = box.coordinates
-        return [coordinates[idx] * width_height[idx] for idx in range(4)]
-
     def _predict(self, doc: Document, caption_type: str = 'Figure') -> List[SpanGroup]:
         """
+        Merges boxes corresponding to tokens of table, figure captions. For each page each caption/object create cost
+        matrix which is distance based on get_object_caption_distance. Using linear_sum_assignment find corresponding
+        pairs, caption-object
         """
         assert doc.layoutparser_span_groups
         assert doc.vila_span_groups
         if caption_type == 'Figure':
-            merged_boxes_fig_dict = self.merge_boxes(doc.layoutparser_span_groups)
+            merged_boxes_fig_dict = self._merge_boxes(doc.layoutparser_span_groups)
             merged_boxes_caption_dict = self.merge_spans(doc.vila_span_groups)
         else:
-            merged_boxes_fig_dict = self.merge_boxes(doc.layoutparser_span_groups, types=['Table'])
+            merged_boxes_fig_dict = self._merge_boxes(doc.layoutparser_span_groups, types=['Table'])
             merged_boxes_caption_dict = self.merge_spans(doc.vila_span_groups, caption_content='tab')
-
 
         predictions = []
         for page in range(len(tqdm(doc.images))):
@@ -136,8 +140,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                     for i, caption_box in enumerate(merged_boxes_caption_dict[page]):
                         assert hasattr(fig_box, 'box')
                         assert hasattr(caption_box, 'box')
-                        distance = self.get_object_caption_distance(fig_box.box,
-                                                                    caption_box.box)
+                        distance = self._get_object_caption_distance(fig_box.box,
+                                                                     caption_box.box)
 
                         if caption_type == 'Figure':
                             cost_matrix[j][i] = distance if distance > 0 else 900
@@ -159,6 +163,12 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return predictions
 
     def predict(self, document: Document) -> List[SpanGroup]:
+        """
+        Predict figure->caption mapping and, table->caption mapping.
+        Return: List[SpanGroup], SpanGroup has start, end corresponding to caption start, end indexes and box
+        corresponding to merged boxes of the tokens of the caption. Type is one of ['Figure', 'Table']. BoxGroup stores
+        information about the boundaries of figure or table.
+        """
         predictions = []
         predictions.extend(self._predict(document, caption_type='Figure'))
         predictions.extend(self._predict(document, caption_type='Table'))
