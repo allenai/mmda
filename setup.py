@@ -30,7 +30,6 @@ setup(
         "bibentry_predictor_gpu": ["transformers", "unidecode", "torch", "optimum[onnxruntime-gpu]"],
         "bibentry_detection_predictor": ["layoutparser", "torch==1.8.0+cu111", "torchvision==0.9.0+cu111"],
         "citation_links": ["numpy", "thefuzz[speedup]", "sklearn", "xgboost"],
-        "figure_table_predictors": ["scipy"],
     },
     include_package_data=True,
     package_data={
