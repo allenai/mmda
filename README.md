@@ -6,18 +6,130 @@ This is work in progress... Click here for [project status](https://github.com/a
 
 ```bash
 conda create -n mmda python=3.8
-pip install -r requirements.txt
+pip install -e '.[dev,<extras_require section from setup.py>]'
 ```
+
+## Quickstart guide
+
+#### 1. Create a Document for the first time from a PDF
+
+In this example, we use the `PdfPlumberParser` to convert a PDF into a bunch of text and `PDF2ImageRasterizer` to convert that same PDF into a bunch of page images.
+```python
+from typing import List
+from mmda.parsers import PDFPlumberParser
+from mmda.rasterizers import PDF2ImageRasterizer 
+from mmda.types import Document, PILImage
+
+# PDF to text
+parser = PDFPlumberParser()
+doc: Document = parser.parse(input_pdf_path='...pdf')
+
+# PDF to images
+rasterizer = PDF2ImageRasterizer()
+images: List[PILImage] = rasterizer.rasterize(input_pdf_path='...pdf', dpi=72)
+
+# attach those images to the document
+doc.annotate_images(images=images)
+```
+
+#### 2. Iterating through a Document
+
+The minimum requirement for a `Document` is its `.symbols` field, which is just a `<str>`.  For example:
+
+```python
+doc.symbols
+> "Language Models as Knowledge Bases?\nFabio Petroni1 Tim Rockt..."
+```
+
+But the usefulness of this library really is when you have multiple different ways of segmenting `.symbols`. For example, segmenting the paper into Pages, and then each page into Rows: 
+
+```python
+for page in doc.pages:
+    print(f'\n=== PAGE: {page.id} ===\n\n')
+    for row in page.rows:
+        print(row.symbols)
+        
+> ...
+> === PAGE: 5 ===
+> ['tence x, s′ will be linked to s and o′ to o. In']
+> ['practice, this means RE can return the correct so-']
+> ['lution o if any relation instance of the right type']
+> ['was extracted from x, regardless of whether it has']
+> ...
+```
+
+shows two nice aspects of this library:
+
+* `Document` provides iterables for different segmentations of `symbols`.  Options include things like `pages, tokens, rows, sents, paragraphs, sections, ...`.  Not every Parser will provide every segmentation, though.  For example, `SymbolScraperParser` only provides `pages, tokens, rows`.  More on how to obtain other segmentations later.
+
+* Each one of these segments (in our library, we call them `SpanGroup` objects) is aware of (and can access) other segment types. For example, you can call `page.rows` to get all Rows that intersect a particular Page.  Or you can call `sent.tokens` to get all Tokens that intersect a particular Sentence.  Or you can call `sent.rows` to get the Row(s) that intersect a particular Sentence.  These indexes are built *dynamically* when the `Document` is created and each time a new `SpanGroup` type is loaded.  In the extreme, one can do:
+
+```python
+for page in doc.pages:
+    for paragraph in page.paragraphs:
+        for sent in paragraph.sents:
+            for row in sent.rows: 
+                ...
+```
+
+as long as those fields are available in the Document. You can check which fields are available in a Document via:
+
+```python
+doc.fields
+> ['pages', 'tokens', 'rows']
+```
+
+#### 3. Understanding intersection of SpanGroups
+
+Note that `SpanGroup` don't necessarily perfectly nest each other. For example, what happens if:
+
+```python
+for sent in doc.sents:
+    for row in sent.rows:
+        print([token.symbols for token in row.tokens])
+```
+
+Tokens that are *outside* each sentence can still be printed. This is because when we jump from a sentence to its rows, we are looking for *all* rows that have *any* overlap with the sentence. Rows can extend beyond sentence boundaries, and as such, can contain tokens outside that sentence.
+
+Here's another example:
+```python
+for page in doc.pages:
+    print([sent.symbols for sent in page.sents])
+```
+
+Sentences can cross page boundaries. As such, adjacent pages may end up printing the same sentence.
+
+But
+```python
+for page in doc.pages:
+    print([row.symbols for row in page.rows])
+    print([token.symbols for token in page.tokens])
+``` 
+rows and tokens adhere strictly to page boundaries, and thus will not repeat when printed across pages.
+
+A key aspect of using this library is understanding how these different fields are defined & anticipating how they might interact with each other. We try to make decisions that are intuitive, but we do ask users to experiment with fields to build up familiarity.
+
+
+
+
+#### 4. Adding a new SpanGroup field
+
+Not all Documents will have all segmentations available at creation time. You may need to load new fields to an existing `Document`. This is where `Predictor` comes in:
+
+```python
+from mmda.predictors.lp_predictors import LayoutParserPredictor
+
+predictor = LayoutParserPredictor(model='lp://efficientdet/PubLayNet')
+
+output = predictor.predict(document=doc)
+
+```
+ 
+
 
 ## Parsers
 
-* [SymbolScraper](https://github.com/zanibbi/SymbolScraper/commit/bd3b04de61c7cc390d4219358ca0cd95e43aae50) - Apache 2.0
-
-    * Quoted from their `README`: From the main directory, issue `make`. This will run the Maven build system, download dependencies, etc., compile source files and generate .jar files in `./target`. Finally, a bash script `bin/sscraper` is generated, so that the program can be easily used in different directories.
-
 * [PDFPlumber](https://github.com/jsvine/pdfplumber) - MIT License    
-
-* [Grobid](https://github.com/kermitt2/grobid) - Apache 2.0    
 
 
 ## Rasterizers
@@ -25,30 +137,13 @@ pip install -r requirements.txt
 * [PDF2Image](https://github.com/Belval/pdf2image) - MIT License
 
 
+## Predictors
+
+
 ## Library walkthrough
 
 
-#### 1. Creating a Document for the first time
 
-In this example, we use the `SymbolScraperParser` to convert a PDF into a bunch of text and `PDF2ImageRasterizer` to convert that same PDF into a bunch of page images.
-```python
-from typing import List
-from mmda.parsers.symbol_scraper_parser import SymbolScraperParser
-from mmda.rasterizers.rasterizer import PDF2ImageRasterizer 
-from mmda.types.document import Document
-from mmda.types.image import PILImage
-
-# PDF to text
-ssparser = SymbolScraperParser(sscraper_bin_path='...')
-doc: Document = ssparser.parse(input_pdf_path='...pdf')
-
-# PDF to images
-pdf2img_rasterizer = PDF2ImageRasterizer()
-images: List[PILImage] = pdf2img_rasterizer.rasterize(input_pdf_path='...pdf', dpi=72)
-
-# attach those images to the document
-doc.annotate_images(images=images)
-```
 
 #### 2. Saving a Document
 
@@ -96,60 +191,6 @@ doc.annotate_images(images=images)
 ```  
 
 
-#### 4. Iterating through a Document
-
-The minimum requirement for a `Document` is its `.symbols` field, which is just a `<str>`.  For example:
-
-```python
-doc.symbols
-> "Language Models as Knowledge Bases?\nFabio Petroni1 Tim Rockt..."
-```
-
-But the usefulness of this library really is when you have multiple different ways of segmenting `.symbols`. For example, segmenting the paper into Pages, and then each page into Rows: 
-
-```python
-for page in doc.pages:
-    print(f'\n=== PAGE: {page.id} ===\n\n')
-    for row in page.rows:
-        print(row.symbols)
-        
-> ...
-> === PAGE: 5 ===
-> ['tence x, s′ will be linked to s and o′ to o. In']
-> ['practice, this means RE can return the correct so-']
-> ['lution o if any relation instance of the right type']
-> ['was extracted from x, regardless of whether it has']
-> ...
-```
-
-shows two nice aspects of this library:
-
-* `Document` provides iterables for different segmentations of `symbols`.  Options include things like `pages, tokens, rows, sents, paragraphs, sections, ...`.  Not every Parser will provide every segmentation, though.  For example, `SymbolScraperParser` only provides `pages, tokens, rows`.  More on how to obtain other segmentations later.
-
-* Each one of these segments (in our library, we call them `SpanGroup` objects) is aware of (and can access) other segment types. For example, you can call `page.rows` to get all Rows that intersect a particular Page.  Or you can call `sent.tokens` to get all Tokens that intersect a particular Sentence.  Or you can call `sent.rows` to get the Row(s) that intersect a particular Sentence.  These indexes are built *dynamically* when the `Document` is created and each time a new `DocSpan` type is loaded.  In the extreme, one can do:
-
-```python
-for page in doc.pages:
-    for paragraph in page.paragraphs:
-        for sent in paragraph.sents:
-            for row in sent.rows:
-                for token in sent.tokens:
-                    pass
-```
-
-You can check which fields are available in a Document via:
-
-```python
-doc.fields
-> ['pages', 'tokens', 'rows']
-```
-
-
-#### 5. Loading new SpanGroup field
-
-Not all Documents will have all segmentations available at creation time. You may need to load new fields to an existing `Document`.
- 
-TBD...
 
 #### 6. Editing existing fields in the Document
 

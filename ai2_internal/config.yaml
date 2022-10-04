@@ -88,7 +88,7 @@ model_variants:
     artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/bibentryparser/v0.onnx.tar.gz
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
-    python_version: 3.7
+    python_version: 3.8
 
     # Whether this model supports CUDA GPU acceleration
     cuda: False
@@ -125,7 +125,7 @@ model_variants:
     artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/bibentryparser/v0.onnx.tar.gz
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
-    python_version: 3.7
+    python_version: 3.8
 
     # Whether this model supports CUDA GPU acceleration
     cuda: True

@@ -62,7 +62,7 @@ class Document:
                 raise AssertionError(
                     f"The field_name {field_name} should not conflict with existing class properties"
                 )
-                
+
         # Kyle's preserved comment:
         # Is it worth deepcopying the annotations? Safer, but adds ~10%
         # overhead on large documents.
@@ -71,6 +71,8 @@ class Document:
         for field_name, annotations in kwargs.items():
             if len(annotations) == 0:
                 warnings.warn(f"The annotations is empty for the field {field_name}")
+                setattr(self, field_name, [])
+                self.__fields.append(field_name)
                 continue
 
             annotation_types = {type(a) for a in annotations}
