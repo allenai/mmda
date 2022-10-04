@@ -15,7 +15,8 @@ setup(
         "pandas",
         "pydantic",
         "ncls",
-        "necessary"
+        "necessary",
+        "scipy",
     ],
     extras_require={
         "dev": ["pytest"],
