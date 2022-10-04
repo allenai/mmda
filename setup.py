@@ -23,7 +23,7 @@ setup(
         "pysbd_predictors": ["pysbd"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
         "hf_predictors": ["torch", "transformers", "smashed==0.1.10"],
-        "vila_predictors": ["vila>=0.5,<0.6", "transformers"],
+        "vila_predictors": ["vila==0.5.0", "transformers"],
         "mention_predictor": ["transformers[torch]", "optimum[onnxruntime]"],
         "mention_predictor_gpu": ["transformers[torch]", "optimum[onnxruntime-gpu]"],
         "bibentry_predictor": ["transformers", "unidecode", "torch", "optimum[onnxruntime]"],
