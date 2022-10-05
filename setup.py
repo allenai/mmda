@@ -15,7 +15,8 @@ setup(
         "pandas",
         "pydantic",
         "ncls",
-        "necessary"
+        "necessary",
+        "ftfy>=6.1.0,<7.0.0",
     ],
     extras_require={
         "dev": ["pytest"],

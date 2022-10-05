@@ -186,7 +186,7 @@ class TestDictionaryWordPredictor(unittest.TestCase):
 
     def test_next_row_single_token(self):
         # fmt:off
-               #0         10 
+               #0         10
                #012345678901
         text = "Many lin-es"
         # fmt:on
@@ -214,3 +214,52 @@ class TestDictionaryWordPredictor(unittest.TestCase):
             "Many lin-es",
             " ".join([w.text for w in words]),
         )
+
+
+class TestFtfyFixes(unittest.TestCase):
+    def test_ftfy(self):
+        text = (
+            "Fact Veriﬁcation, which reasons whether "
+            "a claim is supported / refuted by mult-"
+            "iple evidences"
+        )
+        spans = [
+            Span(start=0, end=4),       # Fact
+            Span(start=5, end=17),      # Veriﬁcation,
+            Span(start=18, end=23),     # which
+            Span(start=24, end=31),     # reasons
+            Span(start=32, end=39),     # whether
+            Span(start=40, end=41),     # a
+            Span(start=42, end=47),     # claim
+            Span(start=48, end=50),     # is
+            Span(start=51, end=60),     # supported
+            Span(start=61, end=62),     # /
+            Span(start=63, end=70),     # refuted
+            Span(start=71, end=73),     # by
+            Span(start=74, end=79),     # mult-
+            Span(start=79, end=83),     # ple
+            Span(start=84, end=93),     # evidences
+        ]
+        rows = [
+            SpanGroup(id=1, spans=spans[:5]),
+            SpanGroup(id=2, spans=spans[5:13]),
+            SpanGroup(id=3, spans=spans[13:]),
+        ]
+
+        doc = mock_document(symbols=text, spans=spans, rows=rows)
+
+        with tempfile.NamedTemporaryFile() as f:
+            f.write("multiple\n".encode("utf-8"))
+            f.flush()
+
+            predictor = DictionaryWordPredictor(
+                dictionary_file_path=f.name
+            )
+            words: List[SpanGroup] = predictor.predict(doc)
+
+        parsed = " ".join([str(w.text) for w in words])
+        reference = (
+            "Fact Verification, which reasons whether a claim is "
+            "supported / refuted by multiple evidences"
+        )
+        self.assertEqual(reference, parsed)

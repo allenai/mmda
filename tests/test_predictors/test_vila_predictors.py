@@ -1,4 +1,5 @@
-import json 
+import json
+from pathlib import Path
 
 from PIL import Image
 
@@ -52,6 +53,8 @@ S2VL_LABEL_MAP = {
 
 S2VL_LABEL_MAP = {int(key): val for key, val in S2VL_LABEL_MAP.items()}
 
+FIXTURES_PATH = Path(__file__).parent.parent / "fixtures"
+
 
 def test_vila_predictors():
     layout_predictor = LayoutParserPredictor.from_pretrained(
@@ -61,8 +64,13 @@ def test_vila_predictors():
     pdfplumber_parser = PDFPlumberParser()
     rasterizer = PDF2ImageRasterizer()
 
-    doc = pdfplumber_parser.parse(input_pdf_path="tests/fixtures/1903.10676.pdf")
-    images = rasterizer.rasterize(input_pdf_path="tests/fixtures/1903.10676.pdf", dpi=72)
+    doc = pdfplumber_parser.parse(
+        input_pdf_path=str(FIXTURES_PATH /"1903.10676.pdf")
+    )
+    images = rasterizer.rasterize(
+        input_pdf_path=str(FIXTURES_PATH /"1903.10676.pdf"),
+        dpi=72
+    )
     doc.annotate_images(images)
 
     layout_regions = layout_predictor.predict(doc)
@@ -123,9 +131,9 @@ def test_vila_predictors():
     assert [ele.type for ele in resA] == [S2VL_LABEL_MAP[ele.type] for ele in resB]
 
 def test_vila_predictors_with_special_unicode_inputs():
-    
-    test_doc_path = "tests/fixtures/unicode-test.json"
-    
+
+    test_doc_path = FIXTURES_PATH / "unicode-test.json"
+
     with open(test_doc_path, 'r') as fp:
         res = json.load(fp)
 
