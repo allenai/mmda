@@ -45,7 +45,10 @@ class Span(BaseModel):
         return ret
 
     def to_mmda(self) -> mmda_ann.Span:
-        return mmda_ann.Span.from_json(self.dict())
+        ret = mmda_ann.Span(start=self.start, end=self.end)
+        if self.box is not None:
+            ret.box = self.box.to_mmda()
+        return ret
 
 
 class Attributes(BaseModel):
