@@ -1,6 +1,7 @@
 from typing import List, Optional, Type
 
 from pydantic import BaseModel, Extra
+from pydantic.fields import ModelField
 
 import mmda.types.annotation as mmda_ann
 
@@ -68,14 +69,8 @@ class Annotation(BaseModel, extra=Extra.ignore):
 
     @classmethod
     def get_metadata_cls(cls) -> Type[Attributes]:
-        for inherit_cls in cls.mro():
-            if not hasattr(inherit_cls, "__annotations__"):
-                continue
-            if "attributes" in inherit_cls.__annotations__:
-                return inherit_cls.__annotations__["attributes"]
-        raise ValueError(
-            'No "metadata" annotation found in inheritance hierarchy'
-        )
+        attrs_field: ModelField = cls.__fields__["attributes"]
+        return attrs_field.type_
 
 
 class BoxGroup(Annotation):
