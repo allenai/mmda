@@ -65,8 +65,5 @@ class TestApi(unittest.TestCase):
         })
         sg_ann_2 = ClassificationSpanGroup.from_mmda(sg_ann).to_mmda()
 
-        # we need to manually set the uuids to be equal
-        # because by default they are randomly generated
-        sg_ann.uuid = sg_ann_2.uuid = 'manually-fix-to-avoid-randomness'
-
-        self.assertEqual(sg_ann, sg_ann_2)
+        self.assertDictEqual(sg_ann.to_json(), sg_ann_2.to_json())
+        self.assertDictEqual(sg_ann.__dict__, sg_ann_2.__dict__)
