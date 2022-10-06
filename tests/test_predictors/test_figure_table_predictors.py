@@ -2,14 +2,17 @@ import unittest
 
 import pytest
 
+from mmda.predictors import LayoutParserPredictor
 from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureTablePredictions
 
 import os
 import pathlib
 
+from mmda.predictors.hf_predictors.token_classification_predictor import IVILATokenClassificationPredictor
+from mmda.rasterizers import PDF2ImageRasterizer
 from mmda.types.box import Box
-from mmda.types.document import Document
 from mmda.types.span import Span
+from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 
 os.chdir(pathlib.Path(__file__).parent.parent)
 
@@ -17,18 +20,20 @@ os.chdir(pathlib.Path(__file__).parent.parent)
 class TestDictionaryWordPredictor(unittest.TestCase):
     @classmethod
     def setUp(cls):
-        cls.pdf_path = 'fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf'
-        cls.figure_table_predictor = FigureTablePredictions(dpi=72)
-        cls.figure_table_predictor._create_doc_rasterize(cls.pdf_path)
-
-    def test_make_vision_predictions(self):
-        self.figure_table_predictor._make_vision_prediction(self.figure_table_predictor.doc)
-        assert 'layoutparser_span_groups' in self.figure_table_predictor.doc.fields
-
-    def test_make_villa_predictions(self):
-        result = self.figure_table_predictor._make_villa_predictions(self.figure_table_predictor.doc)
-        assert isinstance(result, Document)
-        assert 'vila_span_groups' in result.fields
+        cls.doc = (PDFPlumberParser()
+                   .parse(input_pdf_path='fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf'))
+        cls.images = PDF2ImageRasterizer().rasterize(input_pdf_path='fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf',
+                                                     dpi=72)
+        assert cls.doc.pages
+        assert cls.doc.tokens
+        cls.doc.annotate_images(images=cls.images)
+        vision_predictor = LayoutParserPredictor.from_pretrained()
+        layoutparser_span_groups = vision_predictor.predict(document=cls.doc)
+        cls.doc.annotate(layoutparser_span_groups=layoutparser_span_groups)
+        vila_predictor = IVILATokenClassificationPredictor.from_pretrained(
+            'allenai/ivila-row-layoutlm-finetuned-s2vl-v2')
+        vila_span_groups = vila_predictor.predict(document=cls.doc)
+        cls.doc.annotate(vila_span_groups=vila_span_groups)
 
     def test_merge_boxes(self):
         doc = self.figure_table_predictor._make_vision_prediction(self.figure_table_predictor.doc)

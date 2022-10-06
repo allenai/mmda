@@ -11,53 +11,11 @@ from mmda.predictors.base_predictors.base_heuristic_predictor import BaseHeurist
 from mmda.types import SpanGroup, BoxGroup
 from mmda.types.document import Document
 from mmda.types.span import Span
-from mmda.predictors.hf_predictors.token_classification_predictor import IVILATokenClassificationPredictor
-from mmda.parsers.pdfplumber_parser import PDFPlumberParser
-from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
-from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.utils.tools import MergeSpans
 
 
 class FigureTablePredictions(BaseHeuristicPredictor):
-    REQUIRED_BACKENDS = ['layoutparser', 'vila']
-    REQUIRED_DOCUMENT_FIELDS = ['layoutparser_span_groups', 'vila_span_groups']
-
-    def __init__(self, dpi: int = 72):
-        self.doc = None
-        self.dpi = dpi
-
-    def _create_doc_rasterize(self, pdf_path: str) -> None:
-        '''
-        Helper method for creation of rastesterized document
-        pdf_path: path to the pdf file
-        '''
-        self.doc = PDFPlumberParser().parse(input_pdf_path=pdf_path)
-        assert self.doc.pages
-        assert self.doc.tokens
-        images = PDF2ImageRasterizer().rasterize(input_pdf_path=pdf_path, dpi=self.dpi)
-        self.doc.annotate_images(images=images)
-
-    @staticmethod
-    def _make_vision_prediction(doc: Document) -> Document:
-        """
-        Annotates pages using layoutparser model
-        """
-        vision_predictor = LayoutParserPredictor.from_pretrained()
-        layoutparser_span_groups = vision_predictor.predict(document=doc)
-        doc.annotate(layoutparser_span_groups=layoutparser_span_groups)
-        return doc
-
-    @staticmethod
-    def _make_villa_predictions(
-            doc: Document,
-            model_name: str = 'allenai/ivila-row-layoutlm-finetuned-s2vl-v2') -> Dict[int, List[api.Box]]:
-        """
-        Annotate document using villa model
-        """
-        vila_predictor = IVILATokenClassificationPredictor.from_pretrained(model_name)
-        vila_span_groups = vila_predictor.predict(document=doc)
-        doc.annotate(vila_span_groups=vila_span_groups)
-        return doc
+    REQUIRED_DOCUMENT_FIELDS = ['pages', 'tokens', 'rows', 'layoutparser_span_groups', 'vila_span_groups']
 
     @staticmethod
     def merge_spans(vila_span_groups: List[api.SpanGroup], caption_content: str = 'fig') -> Dict[int, List[api.Box]]:
