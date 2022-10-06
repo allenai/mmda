@@ -5,12 +5,15 @@ Annotations are objects that are 'aware' of the Document
 Collections of Annotations are how one constructs a new
 Iterable of Group-type objects within the Document
 
+@kylel, @lucas
+
 """
 import warnings
 from abc import abstractmethod
 from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
 
+from mmda.types.names import
 from mmda.types.box import Box
 from mmda.types.metadata import Metadata
 from mmda.types.span import Span
@@ -18,9 +21,7 @@ from mmda.types.span import Span
 if TYPE_CHECKING:
     from mmda.types.document import Document
 
-
 __all__ = ["Annotation", "BoxGroup", "SpanGroup", "Relation"]
-
 
 
 def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
@@ -32,7 +33,6 @@ def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
         "expensive; consider using references instead."
     )
     warnings.warn(msg, UserWarning, stacklevel=2)
-
 
 
 class Annotation:
@@ -75,7 +75,6 @@ class Annotation:
             return self.doc.find_overlapping(self, field)
 
         return self.__getattribute__(field)
-
 
 
 class BoxGroup(Annotation):
@@ -150,7 +149,6 @@ class BoxGroup(Annotation):
 
 
 class SpanGroup(Annotation):
-
     def __init__(
             self,
             spans: List[Span],
@@ -171,16 +169,6 @@ class SpanGroup(Annotation):
             ]
         else:
             return []
-
-    def annotate(
-        self, is_overwrite: bool = False, **kwargs: Iterable["Annotation"]
-    ) -> None:
-        if self.doc is None:
-            raise ValueError("SpanGroup has no attached document!")
-
-        key_remaps = {k: v for k, v in kwargs.items()}
-
-        self.doc.annotate(is_overwrite=is_overwrite, **key_remaps)
 
     def to_json(self) -> Dict:
         span_group_dict = dict(
@@ -284,6 +272,58 @@ class SpanGroup(Annotation):
         self.metadata.text = text
 
 
-
 class Relation(Annotation):
-    pass
+    def __init__(
+            self,
+            query: SpanGroup,
+            value: SpanGroup,
+            id: Optional[int] = None,
+            doc: Optional['Document'] = None,
+            metadata: Optional[Metadata] = None
+    ):
+        if query.id is None:
+            raise ValueError(f'Relation requires the query {query} to have an ID')
+        if value.id is None:
+            raise ValueError(f'Relation requires the value {value} to have an ID')
+        self.query = query
+        self.value = value
+        super().__init__(id=id, doc=doc, metadata=metadata)
+
+    def to_json(self, is_minimal: Optional[bool] = True) -> Dict:
+        if is_minimal:
+            relation_dict = dict(
+                query=self.query.id,
+                value=self.value.id,
+                id=self.id,
+                metadata=self.metadata.to_json()
+            )
+        else:
+            relation_dict = dict(
+                query=self.query.to_json(),
+                value=self.value.to_json(),
+                id=self.id,
+                metadata=self.metadata.to_json()
+            )
+        return {
+            key: value
+            for key, value in relation_dict.items()
+            if value is not None
+        }  # only serialize non-null values
+
+    @classmethod
+    def from_json(cls, relation_dict: Dict, is_minimal: Optional[bool] = True) -> "Relation":
+        metadata_dict = relation_dict.get('metadata', {})
+        if is_minimal:
+            return cls(
+                query=SpanGroup.from_json(span_group_dict=relation_dict['query']),
+                value=SpanGroup.from_json(span_group_dict=relation_dict['value']),
+                id=relation_dict.get("id", None),
+                metadata=Metadata.from_json(metadata_dict)
+            )
+        else:
+            return cls(
+                query=SpanGroup.from_json(span_group_dict=relation_dict['query']),
+                value=SpanGroup.from_json(span_group_dict=relation_dict['value']),
+                id=relation_dict.get("id", None),
+                metadata=Metadata.from_json(metadata_dict)
+            )
