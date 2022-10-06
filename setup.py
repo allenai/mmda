@@ -16,7 +16,6 @@ setup(
         "pydantic",
         "ncls",
         "necessary",
-        "scipy",
     ],
     extras_require={
         "dev": ["pytest"],
@@ -37,6 +36,7 @@ setup(
         ],
         "bibentry_detection_predictor": ["layoutparser", "torch==1.8.0+cu111", "torchvision==0.9.0+cu111"],
         "citation_links": ["numpy", "thefuzz[speedup]", "sklearn", "xgboost"],
+        "figure_table_predictors": ["scipy"],
     },
     include_package_data=True,
     package_data={

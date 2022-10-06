@@ -274,4 +274,7 @@ model_variants:
     # One or more bash commands to execute as part of a RUN step in a Dockerfile.
     # Leave this unset unless your model has special system requirements beyond
     # those in your setup.py.
-    docker_run_commands: ["apt-get update", "apt-get install python3-opencv -y"]
+    docker_run_commands: []
+    # Any additional sets of dependencies required by the model.
+    # These are the 'extras_require' keys in your setup.py.
+    extras_require: ["figure_table_predictors"]
