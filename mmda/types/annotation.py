@@ -21,11 +21,8 @@ if TYPE_CHECKING:
     from mmda.types.document import Document
 
 
-__all__ = ["Annotation", "BoxGroup", "SpanGroup"]
+__all__ = ["Annotation", "BoxGroup", "SpanGroup", "Relation"]
 
-
-def default_factory():
-    return str(uuid4())
 
 
 def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
@@ -39,23 +36,22 @@ def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
     warnings.warn(msg, UserWarning, stacklevel=2)
 
 
-@dataclass
+
 class Annotation:
     """Annotation is intended for storing model predictions for a document."""
 
-    # TODO[kylel] - remove UUID from this class, as you explained to me (luca)
-    # it is about 10% of the wall time in processing a document
-    uuid: str = field(default_factory=default_factory)
-    doc: Optional["Document"] = field(default=None, init=False)
-    metadata: Metadata = field(default_factory=Metadata)
+    def __init__(
+            self,
+            id: Optional[int] = None,
+            doc: Optional['Document'] = None,
+            metadata: Optional[Metadata] = None
+    ):
+        self.id = id
+        self.doc = doc
+        self.metadata = metadata if metadata else Metadata()
 
     @abstractmethod
     def to_json(self) -> Dict:
-        pass
-
-    # TODO[shannon] make this as an abstract method after implementing
-    # get_symbols for BoxGroup
-    def get_symbols(self) -> str:  # type: ignore
         pass
 
     @classmethod
@@ -63,25 +59,19 @@ class Annotation:
     def from_json(cls, annotation_dict: Dict) -> "Annotation":
         pass
 
-    @property
-    def key_prefix(self) -> str:
-        return f"{self.__class__.__name__}|{self.uuid}|"
-
     def attach_doc(self, doc: "Document") -> None:
         if not self.doc:
             self.doc = doc
         else:
-            raise AttributeError(
-                "This annotation already has an attached document"
-            )
+            raise AttributeError("This annotation already has an attached document")
 
     # TODO[kylel] - comment explaining
     def __getattr__(self, field: str) -> List["Annotation"]:
         if self.doc is None:
             raise ValueError("This annotation is not attached to a document")
 
-        if self.key_prefix + field in self.doc.fields:
-            return self.doc.find_overlapping(self, self.key_prefix + field)
+        if field in self.doc.fields:
+            return self.doc.find_overlapping(self, field)
 
         if field in self.doc.fields:
             return self.doc.find_overlapping(self, field)
@@ -95,18 +85,24 @@ class Annotation:
 # useful because it keeps backward compatibility with the old API, while
 # migrating id and type to metadata.
 @store_field_in_metadata("type")
-@store_field_in_metadata("id")
-@dataclass
 class BoxGroup(Annotation):
-    boxes: List[Box] = field(default_factory=list)
-    id: Optional[int] = None
-    type: Optional[str] = None
+    def __init__(
+            self,
+            boxes: List[Box],
+            type: Optional[str] = None,
+            id: Optional[int] = None,
+            doc: Optional['Document'] = None,
+            metadata: Optional[Metadata] = None,
+    ):
+        self.boxes = boxes
+        self.type = type
+        super().__init__(id=id, doc=doc, metadata=metadata)
 
     def to_json(self) -> Dict:
         box_group_dict = dict(
             boxes=[box.to_json() for box in self.boxes],
-            metadata=self.metadata.to_json(),
-            uuid=self.uuid,
+            id=self.id,
+            metadata=self.metadata.to_json()
         )
         return {
             key: value for key, value in box_group_dict.items() if value
@@ -122,7 +118,6 @@ class BoxGroup(Annotation):
             # groups that were create before the metadata migration and
             # therefore have "id", "type" in the root of the json dict instead.
             metadata_dict = {
-                "id": box_group_dict.get("id", None),
                 "type": box_group_dict.get("type", None),
                 "text": box_group_dict.get("text", None)
             }
@@ -134,8 +129,8 @@ class BoxGroup(Annotation):
                 # minimally serialize when running to_json()
                 for box_dict in box_group_dict.get("boxes", [])
             ],
+            id=box_group_dict.get("id", None),
             metadata=Metadata.from_json(metadata_dict),
-            uuid=box_group_dict.get("uuid", str(uuid4())),
         )
 
     def __getitem__(self, key: int):
@@ -146,8 +141,8 @@ class BoxGroup(Annotation):
 
         box_group = BoxGroup(
             boxes=deepcopy(self.boxes, memo),
-            metadata=deepcopy(self.metadata, memo),
-            uuid=self.uuid,
+            id=self.id,
+            metadata=deepcopy(self.metadata, memo)
         )
 
         # Don't copy an attached document
@@ -177,18 +172,22 @@ def _text_span_group_getter(span_group: "SpanGroup") -> str:
 # and use a custom getter to obtain the text from symbols if the text
 # is not explicitly set.
 @store_field_in_metadata("type")
-@store_field_in_metadata("id")
 @store_field_in_metadata("text", getter_fn=_text_span_group_getter)
-@dataclass
 class SpanGroup(Annotation):
-    spans: List[Span] = field(default_factory=list)
 
-    # TODO[kylel] - implement default behavior for box_group
-    box_group: Optional[BoxGroup] = None
-
-    id: Optional[int] = None
-    type: Optional[str] = None
-    text: Optional[str] = None
+    def __init__(
+            self,
+            spans: List[Span],
+            type: Optional[str] = None,
+            text: Optional[str] = None,
+            id: Optional[int] = None,
+            doc: Optional['Document'] = None,
+            metadata: Optional[Metadata] = None,
+    ):
+        self.spans = spans
+        self.type = type
+        self.text = text
+        super().__init__(id=id, doc=doc, metadata=metadata)
 
     @property
     def symbols(self) -> List[str]:
@@ -212,9 +211,9 @@ class SpanGroup(Annotation):
     def to_json(self) -> Dict:
         span_group_dict = dict(
             spans=[span.to_json() for span in self.spans],
+            id=self.id,
             metadata=self.metadata.to_json(),
-            box_group=self.box_group.to_json() if self.box_group else None,
-            uuid=self.uuid,
+            box_group=self.box_group.to_json() if self.box_group else None
         )
         return {
             key: value
@@ -237,7 +236,6 @@ class SpanGroup(Annotation):
             # groups that were create before the metadata migration and
             # therefore have "id", "type" in the root of the json dict instead.
             metadata_dict = {
-                "id": span_group_dict.get("id", None),
                 "type": span_group_dict.get("type", None),
                 "text": span_group_dict.get("text", None)
             }
@@ -247,9 +245,9 @@ class SpanGroup(Annotation):
                 Span.from_json(span_dict=span_dict)
                 for span_dict in span_group_dict["spans"]
             ],
+            id=span_group_dict.get("id", None),
             metadata=Metadata.from_json(metadata_dict),
             box_group=box_group,
-            uuid=span_group_dict.get("uuid", str(uuid4())),
         )
 
     def __getitem__(self, key: int):
@@ -282,12 +280,17 @@ class SpanGroup(Annotation):
 
         span_group = SpanGroup(
             spans=deepcopy(self.spans, memo),
+            id=self.id,
             metadata=deepcopy(self.metadata, memo),
-            box_group=deepcopy(self.box_group, memo),
-            uuid=self.uuid,
+            box_group=deepcopy(self.box_group, memo)
         )
 
         # Don't copy an attached document
         span_group.doc = self.doc
 
         return span_group
+
+
+
+class Relation(Annotation):
+    pass
