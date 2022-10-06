@@ -12,7 +12,7 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
 
 from mmda.types.box import Box
-from mmda.types.metadata import Metadata, store_field_in_metadata
+from mmda.types.metadata import Metadata
 from mmda.types.span import Span
 
 if TYPE_CHECKING:
@@ -77,17 +77,11 @@ class Annotation:
         return self.__getattribute__(field)
 
 
-# NOTE[LucaS]: by using the store_field_in_metadata decorator, we are
-# able to store id and type in the metadata of BoxGroup, while keeping it
-# accessible via SpanGroup.id and SpanGroup.type respectively. This is
-# useful because it keeps backward compatibility with the old API, while
-# migrating id and type to metadata.
-@store_field_in_metadata("type")
+
 class BoxGroup(Annotation):
     def __init__(
             self,
             boxes: List[Box],
-            type: Optional[str] = None,
             id: Optional[int] = None,
             doc: Optional['Document'] = None,
             metadata: Optional[Metadata] = None,
@@ -114,10 +108,9 @@ class BoxGroup(Annotation):
         else:
             # this fallback is necessary to ensure compatibility with box
             # groups that were create before the metadata migration and
-            # therefore have "id", "type" in the root of the json dict instead.
+            # therefore have "type" in the root of the json dict instead.
             metadata_dict = {
-                "type": box_group_dict.get("type", None),
-                "text": box_group_dict.get("text", None)
+                "type": box_group_dict.get("type", None)
             }
 
         return cls(
@@ -148,43 +141,27 @@ class BoxGroup(Annotation):
 
         return box_group
 
+    @property
+    def type(self) -> str:
+        return self.metadata.get("type", None)
 
-def _text_span_group_getter(span_group: "SpanGroup") -> str:
-    """Getter used to obtain a textual representation of a SpanGroup.
-
-    When SpanGroup.text is not set, this function uses the SpanGroup's
-    symbols to generate approximate a text. However, if text is set,
-    this function returns it instead.
-    """
-    maybe_text = span_group.metadata.get("text", None)
-    return maybe_text if maybe_text else " ".join(span_group.symbols)
+    @type.setter
+    def type(self, type: Union[str, None]) -> None:
+        self.metadata.type = type
 
 
-# NOTE[@soldni]: by using the store_field_in_metadata decorator, we are
-# able to store id and type in the metadata of BoxGroup, while keeping it
-# accessible via SpanGroup.id and SpanGroup.type respectively. This is
-# useful because it keeps backward compatibility with the old API, while
-# migrating id and type to metadata.
-#
-# Futhermore, we also store the text of the SpanGroup in the metadata,
-# and use a custom getter to obtain the text from symbols if the text
-# is not explicitly set.
-@store_field_in_metadata("type")
-@store_field_in_metadata("text", getter_fn=_text_span_group_getter)
 class SpanGroup(Annotation):
 
     def __init__(
             self,
             spans: List[Span],
-            type: Optional[str] = None,
-            text: Optional[str] = None,
+            box_group: Optional[BoxGroup] = None,
             id: Optional[int] = None,
             doc: Optional['Document'] = None,
             metadata: Optional[Metadata] = None,
     ):
         self.spans = spans
-        self.type = type
-        self.text = text
+        self.box_group = box_group
         super().__init__(id=id, doc=doc, metadata=metadata)
 
     @property
@@ -202,7 +179,7 @@ class SpanGroup(Annotation):
         if self.doc is None:
             raise ValueError("SpanGroup has no attached document!")
 
-        key_remaps = {self.key_prefix + k: v for k, v in kwargs.items()}
+        key_remaps = {k: v for k, v in kwargs.items()}
 
         self.doc.annotate(is_overwrite=is_overwrite, **key_remaps)
 
@@ -287,6 +264,25 @@ class SpanGroup(Annotation):
         span_group.doc = self.doc
 
         return span_group
+
+    @property
+    def type(self) -> str:
+        return self.metadata.get("type", None)
+
+    @type.setter
+    def type(self, type: Union[str, None]) -> None:
+        self.metadata.type = type
+
+    @property
+    def text(self) -> str:
+        maybe_text = self.metadata.get("text", None)
+        if maybe_text is None:
+            return " ".join(self.symbols)
+        return maybe_text
+
+    @text.setter
+    def text(self, text: Union[str, None]) -> None:
+        self.metadata.text = text
 
 
 
