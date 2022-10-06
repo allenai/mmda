@@ -9,9 +9,7 @@ Iterable of Group-type objects within the Document
 import warnings
 from abc import abstractmethod
 from copy import deepcopy
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
-from uuid import uuid4
 
 from mmda.types.box import Box
 from mmda.types.metadata import Metadata, store_field_in_metadata
