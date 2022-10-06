@@ -266,14 +266,6 @@ model_variants:
 
     integration_test: ai2_internal.figure_table_predictors.integration_test.TestInterfaceIntegration
 
-    # Any additional sets of dependencies required by the model.
-    # These are the 'extras_require' keys in your setup.py.
-    extras_require: ["dev", "vila_predictors"]
-
-    # Full S3 path to tar.gz'ed artifacts archive, nullable
-    # https://huggingface.co/allenai/ivila-row-layoutlm-finetuned-s2vl-v2
-    artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/vila/ivila-row-layoutlm-finetuned-s2vl-v2.tar.gz
-
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
     python_version: 3.8
 
