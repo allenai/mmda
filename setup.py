@@ -3,7 +3,7 @@ from setuptools import find_namespace_packages, setup
 setup(
     name="mmda",
     description="mmda",
-    version="0.0.44",
+    version="0.0.45",
     url="https://www.github.com/allenai/mmda",
     python_requires=">= 3.7",
     packages=find_namespace_packages(include=["mmda*", "ai2_internal*"]),
@@ -47,5 +47,5 @@ setup(
         "ai2_internal.figure_table_predictors.test_fixtures": ["*"],
         "ai2_internal.figure_table_predictors.test_fixtures.images": ["*"],
         "ai2_internal.shared_test_fixtures": ["*"]
-    }
+    },
 )
