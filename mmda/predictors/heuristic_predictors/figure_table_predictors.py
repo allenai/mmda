@@ -128,8 +128,5 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         corresponding to merged boxes of the tokens of the caption. Type is one of ['Figure', 'Table']. BoxGroup stores
         information about the boundaries of figure or table.
         """
-        predictions = []
-        predictions.extend(self._predict(document, caption_type='Figure'))
-        predictions.extend(self._predict(document, caption_type='Table'))
-
-        return predictions
+        return (FigureTablePredictions._predict(document, caption_type='Figure'),
+                FigureTablePredictions._predict(document, caption_type='Table'))
