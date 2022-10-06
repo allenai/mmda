@@ -23,7 +23,8 @@ NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 
 
 def _null_span_group() -> SpanGroup:
-    return SpanGroup(spans=[], text="")
+    sg = SpanGroup(spans=[])
+    return sg
 
 
 def _get_token_spans(text: str, tokens: List[str], offset: int = 0) -> List[int]:
