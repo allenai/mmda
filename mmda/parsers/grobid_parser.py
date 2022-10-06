@@ -109,7 +109,9 @@ class GrobidHeaderParser(Parser):
         tokens = text.split()
         spans = _get_token_spans(text, tokens)
 
-        return SpanGroup(spans=spans, text=text)
+        sg = SpanGroup(spans=spans)
+        sg.text = text
+        return sg
 
     def _get_abstract(self, root: et.Element, offset: int) -> SpanGroup:
         matches = root.findall(".//tei:profileDesc//tei:abstract//", NS)
@@ -122,4 +124,6 @@ class GrobidHeaderParser(Parser):
         tokens = text.split()
         spans = _get_token_spans(text, tokens, offset=offset)
 
-        return SpanGroup(spans=spans, text=text)
+        sg = SpanGroup(spans=spans)
+        sg.text = text
+        return sg
