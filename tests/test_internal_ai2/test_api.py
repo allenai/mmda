@@ -4,6 +4,9 @@ from pydantic.error_wrappers import ValidationError
 
 import ai2_internal.api as mmda_api
 import mmda.types.annotation as mmda_ann
+from mmda.types import Metadata
+from mmda.types.box import Box as mmdaBox
+from mmda.types.span import Span as mmdaSpan
 
 
 class ClassificationAttributes(mmda_api.Attributes):
@@ -70,3 +73,29 @@ class TestApi(unittest.TestCase):
         sg_ann.uuid = sg_ann_2.uuid = 'manually-fix-to-avoid-randomness'
 
         self.assertEqual(sg_ann, sg_ann_2)
+
+    def test_box(self):
+        box = mmda_api.Box(left=0.1, top=0.1, width=0.1, height=0.1, page=0)
+        assert box.to_mmda() == mmdaBox(l=0.1, t=0.1, w=0.1, h=0.1, page=0)
+        assert mmda_api.Box.from_mmda(box.to_mmda()) == box
+
+    def test_span(self):
+        span = mmda_api.Span(start=0, end=1, box=mmda_api.Box(left=0.1, top=0.1, width=0.1, height=0.1, page=0))
+        assert span.to_mmda() == mmdaSpan(start=0, end=1, box=mmdaBox(l=0.1, t=0.1, w=0.1, h=0.1, page=0))
+
+    def test_box_group(self):
+        box_group = mmda_api.BoxGroup(boxes=[mmda_api.Box(left=0.1, top=0.1, width=0.1, height=0.1, page=0)],
+                                      id=0, type='test', attributes={'one': 'Test string'})
+
+        assert box_group.to_mmda() == []
+
+
+    def test_span_group(self):
+        span_group = mmda_api.SpanGroup(spans=[], box_group=mmda_api.BoxGroup(boxes=[mmda_api.Box(left=0.1, top=0.1,
+                                                                                                 width=0.1, height=0.1,
+                                                                                                 page=0)],
+                                       id=0, type='test', attributes={'one': 'Test string'}),
+                                       attributes={'one': 'Test string'}
+                                       )
+
+        assert span_group.to_mmda() == []
