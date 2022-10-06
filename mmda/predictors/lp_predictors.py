@@ -3,10 +3,8 @@ from typing import Union, List, Dict, Any, Optional
 from tqdm import tqdm
 import layoutparser as lp
 
+from mmda.types import Document, Box, BoxGroup, Metadata
 from mmda.types.names import *
-from mmda.types.document import Document
-from mmda.types.box import Box
-from mmda.types.annotation import BoxGroup, Annotation
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
 
@@ -83,7 +81,7 @@ class LayoutParserPredictor(BasePredictor):
                         page_height=page_height,
                     )
                 ],
-                type=block.type,
+                metadata=Metadata(type=block.type)
             )
             for block in model_outputs
         ]

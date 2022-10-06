@@ -29,6 +29,10 @@ class Metadata:
     """An object that contains metadata for an annotation.
     It supports dot access and dict-like access."""
 
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            self.set(k, v)
+
     @overload
     def get(self, key: str) -> Any:
         """Get value with name `key` in metadata;
