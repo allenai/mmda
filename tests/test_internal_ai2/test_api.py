@@ -84,18 +84,43 @@ class TestApi(unittest.TestCase):
         assert span.to_mmda() == mmdaSpan(start=0, end=1, box=mmdaBox(l=0.1, t=0.1, w=0.1, h=0.1, page=0))
 
     def test_box_group(self):
-        box_group = mmda_api.BoxGroup(boxes=[mmda_api.Box(left=0.1, top=0.1, width=0.1, height=0.1, page=0)],
-                                      id=0, type='test', attributes={'one': 'Test string'})
+        box_group = mmda_api.BoxGroup(
+            boxes=[
+                mmda_api.Box(left=0.1, top=0.1, width=0.1, height=0.1, page=0)
+            ],
+            id=0,
+            type='test',
+            # these attributes are going to be discarded because
+            # BoxGroup is using the default Attributes class
+            attributes={'one': 'Test string'}
+        )
 
-        assert box_group.to_mmda() == []
+        self.assertEqual(
+            mmda_api.BoxGroup.from_mmda(box_group.to_mmda()),
+            box_group
+        )
 
 
     def test_span_group(self):
-        span_group = mmda_api.SpanGroup(spans=[], box_group=mmda_api.BoxGroup(boxes=[mmda_api.Box(left=0.1, top=0.1,
-                                                                                                 width=0.1, height=0.1,
-                                                                                                 page=0)],
-                                       id=0, type='test', attributes={'one': 'Test string'}),
-                                       attributes={'one': 'Test string'}
-                                       )
+        box_group = mmda_api.BoxGroup(
+            boxes=[
+                mmda_api.Box(left=0.1, top=0.1, width=0.1, height=0.1, page=0)
+            ],
+            id=0,
+            type='test',
+            attributes={'one': 'Test string'}
+        )
 
-        assert span_group.to_mmda() == []
+        span_group = mmda_api.SpanGroup(
+            spans=[],
+            box_group=box_group,
+            attributes={'one': 'Test string'},
+            id=0,
+            type='test',
+            text='this is a test'
+        )
+
+        self.assertEqual(
+            mmda_api.SpanGroup.from_mmda(span_group.to_mmda()),
+            span_group
+        )
