@@ -22,7 +22,8 @@ class TestApi(unittest.TestCase):
     def test_vanilla_span_group(self) -> None:
         sg_ann = mmda_ann.SpanGroup.from_json({
             'spans': [{'start': 0, 'end': 1}],
-            'metadata': {'text': 'hello', 'id': 1}
+            'id': 1,
+            'metadata': {'text': 'hello', 'id': 999}    # note id not used; it's just in metadata
         })
 
         sg_api = mmda_api.SpanGroup.from_mmda(sg_ann)
