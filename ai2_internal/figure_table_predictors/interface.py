@@ -51,7 +51,8 @@ class Prediction(BaseModel):
     """
     Describes the outcome of inference for one Instance
     """
-    table_figure_caption_list: List[api.SpanGroup]
+    table_figure_list: List[api.SpanGroup]
+    table_caption_list: List[api.SpanGroup]
 
 
 class PredictorConfig(BaseSettings):
