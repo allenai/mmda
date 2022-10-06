@@ -269,7 +269,7 @@ model_variants:
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
     python_version: 3.8
 
-    cuda: True
+    cuda: False
 
     # One or more bash commands to execute as part of a RUN step in a Dockerfile.
     # Leave this unset unless your model has special system requirements beyond
