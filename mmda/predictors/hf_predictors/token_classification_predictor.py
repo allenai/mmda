@@ -106,8 +106,9 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
 
             start = min([ele.start for ele in cur_spans])
             end = max([ele.end for ele in cur_spans])
-            prediction_spans.append(SpanGroup(spans=[Span(start, end)], type=label))
-
+            sg = SpanGroup(spans=[Span(start, end)])
+            sg.type = label
+            prediction_spans.append(sg)
         return prediction_spans
 
 
