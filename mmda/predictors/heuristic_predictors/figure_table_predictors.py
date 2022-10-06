@@ -116,8 +116,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                         box_group=BoxGroup(boxes=[merged_boxes_fig_dict[page][row].box], id=None, type=caption_type),
                         id=None,
                         type=caption_type,
-                        text=doc.symbols[merged_boxes_caption_dict[page][col].start:
-                                         merged_boxes_caption_dict[page][col].end]
+                        text=None
                     ))
         return predictions
 
