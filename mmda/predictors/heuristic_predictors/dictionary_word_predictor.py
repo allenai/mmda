@@ -145,23 +145,16 @@ class DictionaryWordPredictor(BasePredictor):
                 or combined_no_hyphen.lower() in self.dictionary
                 or combined_no_hyphen.lower() in local_dictionary
             ):
-                combined_text = curr_row_last_token_text[:-1] + self._token_text(
-                    next_row_first_token
-                )
-                span_group = SpanGroup(
-                    spans=curr_row_last_token.spans + next_row_first_token.spans,
-                    text=combined_text,
-                )
+                combined_text = curr_row_last_token_text[:-1] + \
+                                self._token_text(next_row_first_token)
             else:
                 # Use the combined, hyphenated word instead (e.g., few-shot)
-                combined_text = curr_row_last_token_text + self._token_text(
-                    next_row_first_token
-                )
-                span_group = SpanGroup(
-                    spans=curr_row_last_token.spans + next_row_first_token.spans,
-                    text=combined_text,
-                )
-
+                combined_text = curr_row_last_token_text + \
+                                self._token_text(next_row_first_token)
+            span_group = SpanGroup(
+                spans=curr_row_last_token.spans + next_row_first_token.spans
+            )
+            span_group.text = combined_text
             words.append(span_group)
 
         # add IDs to each word
@@ -174,7 +167,9 @@ class DictionaryWordPredictor(BasePredictor):
         return "".join(token.symbols)
 
     def _copy_token_with_text(self, token: SpanGroup) -> SpanGroup:
-        return SpanGroup(spans=token.spans, text=self._token_text(token))
+        sg = SpanGroup(spans=token.spans)
+        sg.text = self._token_text(token)
+        return sg
 
     def _row_pairs(self, document):
         for i in range(0, len(document.rows) - 1):
