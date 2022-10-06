@@ -87,7 +87,6 @@ class BoxGroup(Annotation):
             metadata: Optional[Metadata] = None,
     ):
         self.boxes = boxes
-        self.type = type
         super().__init__(id=id, doc=doc, metadata=metadata)
 
     def to_json(self) -> Dict:
