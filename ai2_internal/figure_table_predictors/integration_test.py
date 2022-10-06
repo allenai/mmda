@@ -85,11 +85,9 @@ class TestInterfaceIntegration(unittest.TestCase):
         instances = [get_test_instance()]
         predictions = container.predict_batch(instances)
 
-        prediction = predictions[0]
-        assert isinstance(prediction.table_figure_caption_list[0], SpanGroup)
-        assert prediction.table_figure_caption_list[0].text == (
-            'Fig . 1 . The original multi - modality data ( T1 , T2 and FA ) of\nan infant subject scanned at 6 - '
-            'month old ( isointense phase ) .')
-        assert [pred.type for prediction in predictions for pred in prediction.table_figure_caption_list] == [
-            'Figure', 'Figure', 'Figure', 'Figure', 'Table',
-        ]
+        assert isinstance(predictions[0].table_figure_list[0], SpanGroup)
+        assert isinstance(predictions[0].table_caption_list[0], SpanGroup)
+        assert [span_group.type for prediction in predictions for span_group in prediction.table_figure_list] == [
+            'Figure', 'Figure', 'Figure', 'Figure']
+        assert [span_group.type for prediction in predictions for span_group in prediction.table_caption_list] == [
+            'Table']
