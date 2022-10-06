@@ -74,7 +74,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
         return t_cap - t_fig
 
-    def _predict(self, doc: Document, caption_type: str = 'Figure') -> List[SpanGroup]:
+    @staticmethod
+    def _predict(doc: Document, caption_type: str = 'Figure') -> List[SpanGroup]:
         """
         Merges boxes corresponding to tokens of table, figure captions. For each page each caption/object create cost
         matrix which is distance based on get_object_caption_distance. Using linear_sum_assignment find corresponding
@@ -83,11 +84,11 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         assert doc.layoutparser_span_groups
         assert doc.vila_span_groups
         if caption_type == 'Figure':
-            merged_boxes_fig_dict = self._merge_boxes(doc.layoutparser_span_groups)
-            merged_boxes_caption_dict = self.merge_spans(doc.vila_span_groups)
+            merged_boxes_fig_dict = FigureTablePredictions._merge_boxes(doc.layoutparser_span_groups)
+            merged_boxes_caption_dict = FigureTablePredictions.merge_spans(doc.vila_span_groups)
         else:
-            merged_boxes_fig_dict = self._merge_boxes(doc.layoutparser_span_groups, types=['Table'])
-            merged_boxes_caption_dict = self.merge_spans(doc.vila_span_groups, caption_content='tab')
+            merged_boxes_fig_dict = FigureTablePredictions._merge_boxes(doc.layoutparser_span_groups, types=['Table'])
+            merged_boxes_caption_dict = FigureTablePredictions.merge_spans(doc.vila_span_groups, caption_content='tab')
 
         predictions = []
         for page in range(len(tqdm(doc.images))):
@@ -98,8 +99,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                     for i, caption_box in enumerate(merged_boxes_caption_dict[page]):
                         assert hasattr(fig_box, 'box')
                         assert hasattr(caption_box, 'box')
-                        distance = self._get_object_caption_distance(fig_box.box,
-                                                                     caption_box.box)
+                        distance = FigureTablePredictions._get_object_caption_distance(
+                            fig_box.box, caption_box.box)
 
                         if caption_type == 'Figure':
                             cost_matrix[j][i] = distance if distance > 0 else 900
@@ -120,7 +121,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                     ))
         return predictions
 
-    def predict(self, document: Document) -> List[SpanGroup]:
+    @staticmethod
+    def predict(document: Document) -> Tuple[List[SpanGroup], List[SpanGroup]]:
         """
         Predict figure->caption mapping and, table->caption mapping.
         Return: List[SpanGroup], SpanGroup has start, end corresponding to caption start, end indexes and box
