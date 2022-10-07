@@ -28,15 +28,13 @@ class Box:
     h: float
     page: int
 
-    def to_json(self) -> List:
-        return [self.l, self.t, self.w, self.h, self.page]
-        # return dict(l=self.l, t=self.t, w=self.w, h=self.h, page=self.page)
+    def to_json(self) -> Dict[str, float]:
+        return {'left': self.l, 'top': self.t, 'width': self.w, 'height': self.h, 'page': self.page}
 
     @classmethod
-    def from_json(cls, box_coords: List) -> "Box":
-        l, t, w, h, page = box_coords
+    def from_json(cls, box_dict: Dict[str, float]) -> "Box":
+        l, t, w, h, page = [box_dict[key] for key in ['left', 'top', 'width', 'height', 'page']]
         return Box(l=l, t=t, w=w, h=h, page=page)
-        # return Box(l=box_coords['l'], t=box_coords['t'], w=box_coords['w'], h=box_coords['h'], page=box_coords['page'])
 
     @classmethod
     def from_coordinates(cls, x1: float, y1: float, x2: float, y2: float, page: int):
