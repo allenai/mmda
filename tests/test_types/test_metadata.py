@@ -66,3 +66,7 @@ class TestSpanGroup(unittest.TestCase):
         metadata = Metadata.from_json({'foo': 1, 'bar': 2, 'baz': 3})
         metadata2 = deepcopy(metadata)
         self.assertEqual(metadata, metadata2)
+
+    def test_get_unknown_key(self):
+        metadata = Metadata()
+        self.assertIsNone(metadata.text)
