@@ -92,9 +92,10 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
         predictions = []
         for page in range(len(tqdm(doc.images))):
-            if merged_boxes_caption_dict[page] and merged_boxes_fig_dict[page]:
-                cost_matrix = np.zeros((len(merged_boxes_fig_dict[page]),
-                                        len(merged_boxes_caption_dict[page])))
+            if merged_boxes_caption_dict.get(page) and merged_boxes_fig_dict.get(page):
+                cost_matrix = np.zeros(
+                    (len(merged_boxes_fig_dict[page]),
+                     len(merged_boxes_caption_dict[page])))
                 for j, fig_box in enumerate(merged_boxes_fig_dict[page]):
                     for i, caption_box in enumerate(merged_boxes_caption_dict[page]):
                         assert hasattr(fig_box, 'box')
