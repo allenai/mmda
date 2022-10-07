@@ -71,6 +71,7 @@ class TestApi(unittest.TestCase):
         self.assertDictEqual(sg_ann.to_json(), sg_ann_2.to_json())
         self.assertDictEqual(sg_ann.__dict__, sg_ann_2.__dict__)
 
+
     def test_box(self):
         box = mmda_api.Box(left=0.1, top=0.1, width=0.1, height=0.1, page=0)
         assert box.to_mmda() == mmdaBox(l=0.1, t=0.1, w=0.1, h=0.1, page=0)
@@ -97,7 +98,6 @@ class TestApi(unittest.TestCase):
             box_group
         )
 
-
     def test_span_group(self):
         box_group = mmda_api.BoxGroup(
             boxes=[
@@ -121,4 +121,3 @@ class TestApi(unittest.TestCase):
             mmda_api.SpanGroup.from_mmda(span_group.to_mmda()),
             span_group
         )
-
