@@ -5,9 +5,8 @@
 """
 
 
-from typing import List, Optional, Dict, Tuple, Type
-from abc import abstractmethod
-from dataclasses import dataclass, field
+from typing import List, Dict, Tuple, Union
+from dataclasses import dataclass
 import warnings
 import numpy as np
 
@@ -32,8 +31,9 @@ class Box:
         return {'left': self.l, 'top': self.t, 'width': self.w, 'height': self.h, 'page': self.page}
 
     @classmethod
-    def from_json(cls, box_dict: Dict[str, float]) -> "Box":
-        return Box(l=box_dict['left'], t=box_dict['top'], w=box_dict['width'], h=box_dict['height'], page=box_dict['page'])
+    def from_json(cls, box_dict: Dict[str, Union[float, int]]) -> "Box":
+        return Box(l=box_dict['left'], t=box_dict['top'], w=box_dict['width'], h=box_dict['height'],
+                   page=box_dict['page'])
 
     @classmethod
     def from_coordinates(cls, x1: float, y1: float, x2: float, y2: float, page: int):
