@@ -1,7 +1,7 @@
 from mmda.types.annotation import BoxGroup
 from mmda.types.box import Box
-from mmda.types.metadata import Metadata
 import unittest
+
 
 class TestBoxGroup(unittest.TestCase):
     def setUp(cls) -> None:
