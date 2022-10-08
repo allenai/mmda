@@ -33,8 +33,7 @@ class Box:
 
     @classmethod
     def from_json(cls, box_dict: Dict[str, float]) -> "Box":
-        l, t, w, h, page = [box_dict[key] for key in ['left', 'top', 'width', 'height', 'page']]
-        return Box(l=l, t=t, w=w, h=h, page=page)
+        return Box(l=box_dict['left'], t=box_dict['top'], w=box_dict['width'], h=box_dict['height'], page=box_dict['page'])
 
     @classmethod
     def from_coordinates(cls, x1: float, y1: float, x2: float, y2: float, page: int):
