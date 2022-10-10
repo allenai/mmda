@@ -4,9 +4,8 @@
 
 """
 
-from typing import List, Optional, Dict, Tuple, Type
-from abc import abstractmethod
-from dataclasses import dataclass, field
+from typing import List, Optional, Dict
+from dataclasses import dataclass
 
 from mmda.types.box import Box
 
@@ -27,7 +26,7 @@ class Span:
     def from_json(cls, span_dict) -> "Span":
         box_dict = span_dict.get('box')
         if box_dict:
-            box = Box.from_json(box_coords=span_dict['box'])
+            box = Box.from_json(box_dict=span_dict['box'])
         else:
             box = None
         return Span(start=span_dict['start'], end=span_dict['end'], box=box)
