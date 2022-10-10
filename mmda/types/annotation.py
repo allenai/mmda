@@ -42,11 +42,13 @@ class Annotation:
             self,
             id: Optional[int] = None,
             doc: Optional['Document'] = None,
+            field: Optional[str] = None,
             metadata: Optional[Metadata] = None
     ):
         self.id = id
         self.doc = doc
         self.metadata = metadata if metadata else Metadata()
+        self.field = field
 
     @abstractmethod
     def to_json(self) -> Dict:
@@ -83,10 +85,11 @@ class BoxGroup(Annotation):
             boxes: List[Box],
             id: Optional[int] = None,
             doc: Optional['Document'] = None,
+            field: Optional[str] = None,
             metadata: Optional[Metadata] = None,
     ):
         self.boxes = boxes
-        super().__init__(id=id, doc=doc, metadata=metadata)
+        super().__init__(id=id, doc=doc, field=field, metadata=metadata)
 
     def to_json(self) -> Dict:
         box_group_dict = dict(
@@ -131,6 +134,7 @@ class BoxGroup(Annotation):
         box_group = BoxGroup(
             boxes=deepcopy(self.boxes, memo),
             id=self.id,
+            field=self.field,
             metadata=deepcopy(self.metadata, memo)
         )
 
@@ -155,18 +159,17 @@ class SpanGroup(Annotation):
             box_group: Optional[BoxGroup] = None,
             id: Optional[int] = None,
             doc: Optional['Document'] = None,
+            field: Optional[str] = None,
             metadata: Optional[Metadata] = None,
     ):
         self.spans = spans
         self.box_group = box_group
-        super().__init__(id=id, doc=doc, metadata=metadata)
+        super().__init__(id=id, doc=doc, field=field, metadata=metadata)
 
     @property
     def symbols(self) -> List[str]:
         if self.doc is not None:
-            return [
-                self.doc.symbols[span.start: span.end] for span in self.spans
-            ]
+            return [self.doc.symbols[span.start: span.end] for span in self.spans]
         else:
             return []
 
@@ -243,6 +246,7 @@ class SpanGroup(Annotation):
         span_group = SpanGroup(
             spans=deepcopy(self.spans, memo),
             id=self.id,
+            field=self.field,
             metadata=deepcopy(self.metadata, memo),
             box_group=deepcopy(self.box_group, memo)
         )
@@ -279,6 +283,7 @@ class Relation(Annotation):
             value: SpanGroup,
             id: Optional[int] = None,
             doc: Optional['Document'] = None,
+            field: Optional[str] = None,
             metadata: Optional[Metadata] = None
     ):
         if query.id is None:
@@ -287,13 +292,17 @@ class Relation(Annotation):
             raise ValueError(f'Relation requires the value {value} to have an ID')
         self.query = query
         self.value = value
-        super().__init__(id=id, doc=doc, metadata=metadata)
+        super().__init__(id=id, doc=doc, field=field, metadata=metadata)
+
+    @classmethod
+    def entity_id(cls, entity: SpanGroup) -> str:
+        return f'{entity.field}-{entity.id}'
 
     def to_json(self, is_minimal: Optional[bool] = True) -> Dict:
         if is_minimal:
             relation_dict = dict(
-                query=self.query.id,
-                value=self.value.id,
+                query=Relation.entity_id(self.query),
+                value=Relation.entity_id(self.value),
                 id=self.id,
                 metadata=self.metadata.to_json()
             )

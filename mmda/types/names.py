@@ -1,6 +1,6 @@
 """
 
-Names of fields, as strings
+Names of Annotations, as strings
 
 @kylel
 
@@ -17,8 +17,8 @@ Blocks = 'blocks'
 Tokens = 'tokens'
 Words = 'words'
 Sentences = 'sents'
+Sections = 'secs'
 Paragraphs = 'paras'
-SectionHeadings = 'secs'
 
 Figures = 'figures'
 Tables = 'tables'
@@ -33,4 +33,4 @@ Title = 'title'
 Abstract = 'abstract'
 
 # relations
-SectionParagraphs
+RefersTo = 'refers_to'
