@@ -114,7 +114,7 @@ class BoxGroup(Annotation):
 
         return cls(
             boxes=[
-                Box.from_json(box_coords=box_dict)
+                Box.from_json(box_dict=box_dict)
                 # box_group_dict["boxes"] might not be present since we
                 # minimally serialize when running to_json()
                 for box_dict in box_group_dict.get("boxes", [])
