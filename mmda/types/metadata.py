@@ -2,6 +2,7 @@ from copy import deepcopy
 from dataclasses import MISSING, Field, fields, is_dataclass
 from functools import wraps
 import inspect
+import logging
 
 from typing import (
     Any,
@@ -29,28 +30,31 @@ class Metadata:
     """An object that contains metadata for an annotation.
     It supports dot access and dict-like access."""
 
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            self.set(k, v)
+
     @overload
     def get(self, key: str) -> Any:
-        """Get value with name `key` in metadata;
-        raise `KeyError` if not found"""
+        """Get value with name `key` in metadata"""
         ...
 
     @overload
     def get(self, key: str, default: Any) -> Any:
-        """Get value with name `key` in metadata;
-        return `default` if not found"""
+        """Get value with name `key` in metadata"""
         ...
 
     def get(self, key: str, default: Optional[Any] = _DEFAULT) -> Any:
         """Get value with name `key` in metadata;
         if not found, return `default` if specified,
-        otherwise raise `KeyError`"""
+        otherwise raise `None`"""
         if key in self.__dict__:
             return self.__dict__[key]
         elif default != _DEFAULT:
             return default
         else:
-            raise KeyError(f"{key} not found in metadata")
+            logging.warning(f"{key} not found in metadata")
+            return None
 
     def has(self, key: str) -> bool:
         """Check if metadata contains key `key`; return `True` if so,

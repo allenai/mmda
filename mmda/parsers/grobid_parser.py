@@ -15,7 +15,7 @@ import json
 from mmda.parsers.parser import Parser
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
-from mmda.types.names import Symbols
+from mmda.types.metadata import Metadata
 from mmda.types.span import Span
 
 DEFAULT_API = "http://localhost:8070/api/processHeaderDocument"
@@ -23,7 +23,8 @@ NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 
 
 def _null_span_group() -> SpanGroup:
-    return SpanGroup(spans=[], text="")
+    sg = SpanGroup(spans=[])
+    return sg
 
 
 def _get_token_spans(text: str, tokens: List[str], offset: int = 0) -> List[int]:
@@ -109,7 +110,8 @@ class GrobidHeaderParser(Parser):
         tokens = text.split()
         spans = _get_token_spans(text, tokens)
 
-        return SpanGroup(spans=spans, text=text)
+        sg = SpanGroup(spans=spans, metadata=Metadata(text=text))
+        return sg
 
     def _get_abstract(self, root: et.Element, offset: int) -> SpanGroup:
         matches = root.findall(".//tei:profileDesc//tei:abstract//", NS)
@@ -122,4 +124,5 @@ class GrobidHeaderParser(Parser):
         tokens = text.split()
         spans = _get_token_spans(text, tokens, offset=offset)
 
-        return SpanGroup(spans=spans, text=text)
+        sg = SpanGroup(spans=spans, metadata=Metadata(text=text))
+        return sg

@@ -1,4 +1,6 @@
-import json 
+import json
+import os
+import pathlib
 
 from PIL import Image
 
@@ -11,6 +13,9 @@ from mmda.predictors.hf_predictors.token_classification_predictor import (
     IVILATokenClassificationPredictor,
     HVILATokenClassificationPredictor,
 )
+
+
+os.chdir(pathlib.Path(__file__).parent)
 
 
 DOCBANK_LABEL_MAP = {
@@ -61,8 +66,8 @@ def test_vila_predictors():
     pdfplumber_parser = PDFPlumberParser()
     rasterizer = PDF2ImageRasterizer()
 
-    doc = pdfplumber_parser.parse(input_pdf_path="tests/fixtures/1903.10676.pdf")
-    images = rasterizer.rasterize(input_pdf_path="tests/fixtures/1903.10676.pdf", dpi=72)
+    doc = pdfplumber_parser.parse(input_pdf_path="../fixtures/1903.10676.pdf")
+    images = rasterizer.rasterize(input_pdf_path="../fixtures/1903.10676.pdf", dpi=72)
     doc.annotate_images(images)
 
     layout_regions = layout_predictor.predict(doc)
@@ -124,7 +129,7 @@ def test_vila_predictors():
 
 def test_vila_predictors_with_special_unicode_inputs():
     
-    test_doc_path = "tests/fixtures/unicode-test.json"
+    test_doc_path = "../fixtures/unicode-test.json"
     
     with open(test_doc_path, 'r') as fp:
         res = json.load(fp)
