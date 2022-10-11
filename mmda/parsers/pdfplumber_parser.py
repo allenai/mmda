@@ -99,7 +99,9 @@ class PDFPlumberParser(Parser):
         self.split_at_punctuation = split_at_punctuation
 
     def parse(self, input_pdf_path: str) -> Document:
-        doc = self._load_pdf_as_doc(input_pdf_path)
+        page_to_line_to_tokens = self._load_pdf_tokens(input_pdf_path)
+        doc_json = self._convert_nested_text_to_doc_json(page_to_line_to_tokens)
+        doc = Document.from_json(doc_json)
         return doc
 
     def _load_page_tokens(
@@ -237,12 +239,6 @@ class PDFPlumberParser(Parser):
             Tokens: [token.to_json() for token in token_annos],
             Rows: [row.to_json() for row in row_annos],
         }
-
-    def _load_pdf_as_doc(self, input_pdf_path: str) -> Document:
-        page_to_line_to_tokens = self._load_pdf_tokens(input_pdf_path)
-        doc_json = self._convert_nested_text_to_doc_json(page_to_line_to_tokens)
-        doc = Document.from_json(doc_json)
-        return doc
 
     def _simple_line_detection(
             self,

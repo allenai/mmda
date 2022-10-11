@@ -13,7 +13,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
 
-from mmda.types.names import
+
 from mmda.types.box import Box
 from mmda.types.metadata import Metadata
 from mmda.types.span import Span
