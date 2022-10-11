@@ -16,13 +16,15 @@ PDFFILEPATH = Path(__file__).parent / "../fixtures/1903.10676.pdf"
 
 
 def test_span_group_conversion():
-    sg = SpanGroup(id=3, metadata=Metadata.from_json({"text": "test"}))
+    sg = SpanGroup(spans=[], id=3, metadata=Metadata.from_json({"text": "test"}))
     sg2 = SpanGroup.from_json(sg.to_json())
-    assert sg2 == sg
+    assert sg2.to_json() == sg.to_json()
+    assert sg2.__dict__ == sg.__dict__
 
-    bg = BoxGroup(metadata=Metadata.from_json({"text": "test", "id": 1}))
+    bg = BoxGroup(boxes=[], metadata=Metadata.from_json({"text": "test", "id": 1}))
     bg2 = BoxGroup.from_json(bg.to_json())
-    assert bg2 == bg
+    assert bg2.to_json() == bg.to_json()
+    assert bg2.__dict__ == bg.__dict__
 
 
 def test_doc_conversion():
@@ -54,7 +56,6 @@ def test_doc_conversion():
 
         for orig_sg, new_sg in field_it:
             # for each pair, they should have same metadata (type, id,
-            # and optionally, text), same spans, and same uuid.
+            # and optionally, text) and same spans.
             assert orig_sg.metadata == new_sg.metadata
-            assert orig_sg.uuid == new_sg.uuid
             assert orig_sg.spans == new_sg.spans

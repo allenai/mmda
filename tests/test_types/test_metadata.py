@@ -31,9 +31,7 @@ class TestSpanGroup(unittest.TestCase):
         self.assertEqual(metadata.foo, "bar")
         self.assertEqual(metadata.get("foo"), "bar")
         self.assertTrue(metadata["foo"])
-
-        with self.assertRaises(KeyError):
-            metadata.get("bar")
+        self.assertIsNone(metadata.get("bar"))
 
     def test_json_transform(self):
         metadata = Metadata.from_json({'foo': 'bar'})
@@ -66,3 +64,7 @@ class TestSpanGroup(unittest.TestCase):
         metadata = Metadata.from_json({'foo': 1, 'bar': 2, 'baz': 3})
         metadata2 = deepcopy(metadata)
         self.assertEqual(metadata, metadata2)
+
+    def test_get_unknown_key(self):
+        metadata = Metadata()
+        self.assertIsNone(metadata.text)

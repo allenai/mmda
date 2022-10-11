@@ -22,7 +22,8 @@ class TestApi(unittest.TestCase):
     def test_vanilla_span_group(self) -> None:
         sg_ann = mmda_ann.SpanGroup.from_json({
             'spans': [{'start': 0, 'end': 1}],
-            'metadata': {'text': 'hello', 'id': 1}
+            'id': 1,
+            'metadata': {'text': 'hello', 'id': 999}    # note id not used; it's just in metadata
         })
 
         sg_api = mmda_api.SpanGroup.from_mmda(sg_ann)
@@ -67,12 +68,9 @@ class TestApi(unittest.TestCase):
             'metadata': {'label': 'label', 'score': 0.5}
         })
         sg_ann_2 = ClassificationSpanGroup.from_mmda(sg_ann).to_mmda()
+        self.assertDictEqual(sg_ann.to_json(), sg_ann_2.to_json())
+        self.assertDictEqual(sg_ann.__dict__, sg_ann_2.__dict__)
 
-        # we need to manually set the uuids to be equal
-        # because by default they are randomly generated
-        sg_ann.uuid = sg_ann_2.uuid = 'manually-fix-to-avoid-randomness'
-
-        self.assertEqual(sg_ann, sg_ann_2)
 
     def test_box(self):
         box = mmda_api.Box(left=0.1, top=0.1, width=0.1, height=0.1, page=0)
@@ -99,7 +97,6 @@ class TestApi(unittest.TestCase):
             mmda_api.BoxGroup.from_mmda(box_group.to_mmda()),
             box_group
         )
-
 
     def test_span_group(self):
         box_group = mmda_api.BoxGroup(

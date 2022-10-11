@@ -111,8 +111,31 @@ A key aspect of using this library is understanding how these different fields a
 
 
 
+#### 4. What's in a `SpanGroup`?
 
-#### 4. Adding a new SpanGroup field
+Each `SpanGroup` object stores information about its contents and position:
+
+* `.spans: List[Span]`, A `Span` is a pointer into `Document.symbols` (that is, `Span(start=0, end=5)` corresponds to `symbols[0:5]`) and a single `Box` representing its position & rectangular region on the page.
+
+* `.box_group: BoxGroup`, A `BoxGroup` object stores `.boxes: List[Box]`.  
+
+* `.metadata: Metadata`, A free 
+
+    * **Span-Box Coupling:** Every `Span` is associated with a single `Box`, and not a `BoxGroup`. In this library, we restrict all of our `Span` to be units that can be represented by a single rectangular box. This is instead of allowing *any* (start, end) which would result in spans that can't necessarily be cleanly represented by a single box.
+    * 
+
+**FAQS**
+
+Q. Why do we need `BoxGroup` if we already have `Box` in each `Span`?
+
+A: Let's consider a `SpanGroup` object representing a single sentence in a paper. We know a single `Box` can't properly cover a sentence, because sentences can wrap rows & even cross columns/page:
+
+* One way to represent the visual area of that sentence is to take the Union of all `Box` in every involved `Span` -- This leaves us with many rectangles. 
+* But another way to synthesize all those `Box` into one giant `Box` (which might even overlap other text outside of this sentence). 
+* Finally, a third way is to synthesize all the `Box` of tokens on the same row into one `Box`, but keep `Box` on different rows separate. None of these ways 
+    
+
+#### 5. Adding a new SpanGroup field
 
 Not all Documents will have all segmentations available at creation time. You may need to load new fields to an existing `Document`. This is where `Predictor` comes in:
 
@@ -125,6 +148,8 @@ output = predictor.predict(document=doc)
 
 ```
  
+
+
 
 
 ## Parsers

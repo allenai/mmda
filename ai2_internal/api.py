@@ -97,11 +97,13 @@ class BoxGroup(Annotation):
         )
 
     def to_mmda(self) -> mmda_ann.BoxGroup:
+        metadata = mmda_ann.Metadata.from_json(self.attributes.dict())
+        if self.type:
+            metadata.type=self.type
         return mmda_ann.BoxGroup(
-            metadata=mmda_ann.Metadata.from_json(self.attributes.dict()),
+            metadata=metadata,
             boxes=[box.to_mmda() for box in self.boxes],
             id=self.id,
-            type=self.type
         )
 
 
@@ -125,7 +127,7 @@ class SpanGroup(Annotation):
         ret = cls(
             spans=spans,
             box_group=box_group,
-            id=span_group.metadata.id,
+            id=span_group.id,
             type=span_group.metadata.type,
             text=span_group.metadata.text,
             attributes=metadata,
@@ -135,11 +137,14 @@ class SpanGroup(Annotation):
         return ret
 
     def to_mmda(self) -> mmda_ann.SpanGroup:
+        metadata = mmda_ann.Metadata.from_json(self.attributes.dict())
+        if self.type:
+            metadata.type = self.type
+        if self.text:
+            metadata.text = self.text
         return mmda_ann.SpanGroup(
-            metadata=mmda_ann.Metadata.from_json(self.attributes.dict()),
+            metadata=metadata,
             spans=[span.to_mmda() for span in self.spans],
             box_group=self.box_group.to_mmda()if self.box_group else None,
-            id=self.id,
-            type=self.type,
-            text=self.text
+            id=self.id
         )
