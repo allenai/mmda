@@ -85,9 +85,9 @@ class TestInterfaceIntegration(unittest.TestCase):
         instances = [get_test_instance()]
         predictions = container.predict_batch(instances)
 
-        assert isinstance(predictions[0].table_figure_list[0], SpanGroup)
-        assert isinstance(predictions[0].table_caption_list[0], SpanGroup)
-        assert [span_group.type for prediction in predictions for span_group in prediction.table_figure_list] == [
+        assert isinstance(predictions[0].figure_list[0], SpanGroup)
+        assert isinstance(predictions[0].table_list[0], SpanGroup)
+        assert [span_group.type for prediction in predictions for span_group in prediction.figure_list] == [
             'Figure', 'Figure', 'Figure', 'Figure']
-        assert [span_group.type for prediction in predictions for span_group in prediction.table_caption_list] == [
+        assert [span_group.type for prediction in predictions for span_group in prediction.table_list] == [
             'Table']
