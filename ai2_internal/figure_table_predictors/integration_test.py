@@ -53,11 +53,8 @@ except ImportError as e:
 def resolve(file: str) -> str:
     return os.path.join(os.path.dirname(__file__), 'test_fixtures', file)
 
-def resolve_image(file: str) -> str:
-    return os.path.join(Path(os.path.dirname(__file__)), 'test_fixtures/images', file)
-
 def get_test_instance() -> Instance:
-    doc_file = resolve('test_doc.json')
+    doc_file = resolve('test_doc_sha_d0450478c38dda61f9943f417ab9fcdb2ebeae0a.json')
     with open(doc_file) as f:
         doc = Document.from_json(json.load(f))
 
@@ -67,10 +64,9 @@ def get_test_instance() -> Instance:
     vila_span_groups = [api.SpanGroup.from_mmda(sg) for sg in doc.vila_span_groups]
     layoutparser_span_groups = [api.SpanGroup.from_mmda(sg) for sg in doc.layoutparser_span_groups]
 
-    images = [tobase64(Image.open(resolve_image(f'image{idx}.jpg'))) for idx in range(4)]
     return Instance(
         symbols=doc.symbols,
-        images=images,
+        images=[tobase64(image) for image in doc.images],
         tokens=tokens,
         rows=rows,
         pages=pages,
@@ -84,10 +80,10 @@ class TestInterfaceIntegration(unittest.TestCase):
     def test__predictions(self, container):
         instances = [get_test_instance()]
         predictions = container.predict_batch(instances)
-
         assert isinstance(predictions[0].figure_list[0], SpanGroup)
         assert isinstance(predictions[0].table_list[0], SpanGroup)
         assert [span_group.type for prediction in predictions for span_group in prediction.figure_list] == [
-            'Figure', 'Figure', 'Figure', 'Figure']
+            'Figure', 'Figure', 'Figure', 'Figure', 'Figure']
         assert [span_group.type for prediction in predictions for span_group in prediction.table_list] == [
-            'Table']
+            'Table', 'Table', 'Table', 'Table', 'Table', 'Table',
+        ]
