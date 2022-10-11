@@ -10,7 +10,6 @@ import pathlib
 
 from mmda.predictors.hf_predictors.token_classification_predictor import IVILATokenClassificationPredictor
 from mmda.rasterizers import PDF2ImageRasterizer
-from mmda.types import SpanGroup, BoxGroup
 from mmda.types.box import Box
 from mmda.types.span import Span
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
@@ -18,7 +17,7 @@ from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 os.chdir(pathlib.Path(__file__).parent.parent)
 
 
-class TestDictionaryWordPredictor(unittest.TestCase):
+class TestFigureCaptionPredictor(unittest.TestCase):
     @classmethod
     def setUp(cls):
         cls.doc = (PDFPlumberParser()
