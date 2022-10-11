@@ -1,9 +1,11 @@
-from typing import List, Optional, Type
+from typing import List, Optional, Type, Dict
 
 from pydantic import BaseModel, Extra
 from pydantic.fields import ModelField
 
 import mmda.types.annotation as mmda_ann
+from mmda.types.image import frombase64
+from mmda.types.document import Document
 
 __all__ = ["BoxGroup", "SpanGroup"]
 
@@ -148,3 +150,18 @@ class SpanGroup(Annotation):
             box_group=self.box_group.to_mmda()if self.box_group else None,
             id=self.id
         )
+
+
+def doc_to_mmda(json_data: Dict) -> Document:
+    """
+    Function for converting data from json dictionary to mmda Document
+    """
+    doc = Document(symbols=json_data['symbols'])
+    doc.annotate(tokens=[mmda_ann.SpanGroup.from_json(sg) for sg in json_data['tokens']])
+    doc.annotate(rows=[mmda_ann.SpanGroup.from_json(sg) for sg in json_data['rows']])
+    doc.annotate(pages=[mmda_ann.SpanGroup.from_json(sg) for sg in json_data['pages']])
+    doc.annotate(blocks=[mmda_ann.BoxGroup.from_json(bg) for bg in json_data['blocks']])
+
+    images = [frombase64(img) for img in json_data['images']]
+    doc.annotate_images(images)
+    return doc
