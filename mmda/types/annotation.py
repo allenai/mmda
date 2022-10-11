@@ -116,7 +116,7 @@ class BoxGroup(Annotation):
 
         return cls(
             boxes=[
-                Box.from_json(box_coords=box_dict)
+                Box.from_json(box_dict=box_dict)
                 # box_group_dict["boxes"] might not be present since we
                 # minimally serialize when running to_json()
                 for box_dict in box_group_dict.get("boxes", [])
@@ -153,6 +153,7 @@ class BoxGroup(Annotation):
 
 
 class SpanGroup(Annotation):
+
     def __init__(
             self,
             spans: List[Span],
@@ -172,6 +173,16 @@ class SpanGroup(Annotation):
             return [self.doc.symbols[span.start: span.end] for span in self.spans]
         else:
             return []
+
+    def annotate(
+        self, is_overwrite: bool = False, **kwargs: Iterable["Annotation"]
+    ) -> None:
+        if self.doc is None:
+            raise ValueError("SpanGroup has no attached document!")
+
+        key_remaps = {k: v for k, v in kwargs.items()}
+
+        self.doc.annotate(is_overwrite=is_overwrite, **key_remaps)
 
     def to_json(self) -> Dict:
         span_group_dict = dict(

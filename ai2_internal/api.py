@@ -97,10 +97,14 @@ class BoxGroup(Annotation):
         )
 
     def to_mmda(self) -> mmda_ann.BoxGroup:
-        box_group_dict = self.dict()
-        # we map what's in attributes to a metadata object
-        box_group_dict["metadata"] = box_group_dict.pop("attributes", {})
-        return mmda_ann.BoxGroup.from_json(box_group_dict)
+        metadata = mmda_ann.Metadata.from_json(self.attributes.dict())
+        if self.type:
+            metadata.type=self.type
+        return mmda_ann.BoxGroup(
+            metadata=metadata,
+            boxes=[box.to_mmda() for box in self.boxes],
+            id=self.id,
+        )
 
 
 class SpanGroup(Annotation):
@@ -124,8 +128,8 @@ class SpanGroup(Annotation):
             spans=spans,
             box_group=box_group,
             id=span_group.id,
-            type=span_group.type,
-            text=span_group.text,
+            type=span_group.metadata.type,
+            text=span_group.metadata.text,
             attributes=metadata,
         )
         if span_group.box_group is not None:
@@ -133,7 +137,14 @@ class SpanGroup(Annotation):
         return ret
 
     def to_mmda(self) -> mmda_ann.SpanGroup:
-        span_group_dict = self.dict()
-        # we map what's in attributes to a metadata object
-        span_group_dict["metadata"] = span_group_dict.pop("attributes", {})
-        return mmda_ann.SpanGroup.from_json(span_group_dict)
+        metadata = mmda_ann.Metadata.from_json(self.attributes.dict())
+        if self.type:
+            metadata.type = self.type
+        if self.text:
+            metadata.text = self.text
+        return mmda_ann.SpanGroup(
+            metadata=metadata,
+            spans=[span.to_mmda() for span in self.spans],
+            box_group=self.box_group.to_mmda()if self.box_group else None,
+            id=self.id
+        )
