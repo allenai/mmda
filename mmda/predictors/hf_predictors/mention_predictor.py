@@ -81,7 +81,7 @@ class MentionPredictor:
 
         ret = []
         words: List[str] = ["".join(token.symbols) for token in page.tokens]
-        word_spans: List[List[Span]] = [token.spans for token in page.tokens]
+        word_spans: List[List[Span]] = [[Span.from_json(span_dict=span.to_json()) for span in token.spans] for token in page.tokens]
 
         inputs = self.tokenizer(
             [words],
