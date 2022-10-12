@@ -51,8 +51,8 @@ class Prediction(BaseModel):
     """
     Describes the outcome of inference for one Instance
     """
-    table_figure_list: List[api.SpanGroup]
-    table_caption_list: List[api.SpanGroup]
+    figure_list: List[api.SpanGroup]
+    table_list: List[api.SpanGroup]
 
 
 class PredictorConfig(BaseSettings):
@@ -90,8 +90,8 @@ class Predictor:
         """
         predictions_table_figure_list = self._predictor.predict(inst.to_mmda())
         return Prediction(
-             table_figure_list=[api.SpanGroup.from_mmda(sg) for sg in predictions_table_figure_list[0]],
-             table_caption_list=[api.SpanGroup.from_mmda(sg) for sg in predictions_table_figure_list[1]]
+             figure_list=[api.SpanGroup.from_mmda(sg) for sg in predictions_table_figure_list[0]],
+             table_list=[api.SpanGroup.from_mmda(sg) for sg in predictions_table_figure_list[1]]
         )
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
