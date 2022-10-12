@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from ai2_internal import api
 from mmda.predictors.base_predictors.base_heuristic_predictor import BaseHeuristicPredictor
-from mmda.types import SpanGroup, BoxGroup
+from mmda.types import SpanGroup, BoxGroup, Metadata
 from mmda.types.document import Document
 from mmda.types.span import Span
 from mmda.utils.tools import MergeSpans
@@ -114,10 +114,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                         start=merged_boxes_caption_dict[page][col].start,
                         end=merged_boxes_caption_dict[page][col].end,
                         box=merged_boxes_caption_dict[page][col].box)],
-                        box_group=BoxGroup(boxes=[merged_boxes_fig_dict[page][row].box], id=None, type=caption_type),
-                        id=None,
-                        type=caption_type,
-                        text=None
+                        box_group=BoxGroup(boxes=[merged_boxes_fig_dict[page][row].box]),
+                        metadata=Metadata(type=caption_type)
                     ))
         return predictions
 
