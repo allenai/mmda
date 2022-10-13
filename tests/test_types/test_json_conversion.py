@@ -29,7 +29,7 @@ def test_span_group_conversion():
 
 def test_relation_conversion():
     r = Relation(
-        query=SpanGroup(spans=[], id=3, metadata=Metadata(text='test')),
+        key=SpanGroup(spans=[], id=3, metadata=Metadata(text='test')),
         value=SpanGroup(spans=[], id=3, metadata=Metadata(text='test')),
         id=999,
         metadata=Metadata(type='something')

@@ -8,11 +8,11 @@ Iterable of Group-type objects within the Document
 @kylel, @lucas
 
 """
+import logging
 import warnings
 from abc import abstractmethod
 from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
-
 
 from mmda.types.box import Box
 from mmda.types.metadata import Metadata
@@ -35,6 +35,23 @@ def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
     warnings.warn(msg, UserWarning, stacklevel=2)
 
 
+class AnnotationName:
+    """Stores a name that uniquely identifies this Annotation within a Document"""
+
+    def __init__(self, field: str, id: int):
+        self.field = field
+        self.id = id
+
+    def __str__(self) -> str:
+        return f"{self.field}-{self.id}"
+
+    @classmethod
+    def from_str(cls, s: str) -> 'AnnotationName':
+        field, id = s.split('-')
+        id = int(id)
+        return AnnotationName(field=field, id=id)
+
+
 class Annotation:
     """Annotation is intended for storing model predictions for a document."""
 
@@ -47,35 +64,50 @@ class Annotation:
     ):
         self.id = id
         self.doc = doc
-        self.metadata = metadata if metadata else Metadata()
         self.field = field
+        self.metadata = metadata if metadata else Metadata()
 
     @abstractmethod
     def to_json(self) -> Dict:
-        pass
+        raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def from_json(cls, annotation_dict: Dict) -> "Annotation":
-        pass
+        raise NotImplementedError
 
-    def attach_doc(self, doc: "Document") -> None:
+    @property
+    def name(self) -> Optional[AnnotationName]:
+        if self.field and self.id:
+            return AnnotationName(field=self.field, id=self.id)
+        else:
+            return None
+
+    def _attach_doc(self, doc: "Document", field: str) -> None:
         if not self.doc:
             self.doc = doc
+            self.field = field
         else:
             raise AttributeError("This annotation already has an attached document")
 
-    # TODO[kylel] - comment explaining
+    def _get_siblings(self) -> List['Annotation']:
+        """This method gets all other objects sharing the same field as the current object.
+        Only works after a Document has been attached, which is how objects learn their `field`."""
+        if not self.doc:
+            raise AttributeError("This annotation does not have an attached document")
+        return self.doc.__getattribute__(self.field)
+
     def __getattr__(self, field: str) -> List["Annotation"]:
-        if self.doc is None:
-            raise ValueError("This annotation is not attached to a document")
+        """This method allows jumping from an object of one field to all overlapping
+        objects of another field. For example `page.tokens` jumps from a particular page
+        to all its intersecting tokens."""
+        if not self.doc:
+            raise AttributeError("This annotation does not have an attached document")
 
         if field in self.doc.fields:
             return self.doc.find_overlapping(self, field)
 
-        if field in self.doc.fields:
-            return self.doc.find_overlapping(self, field)
-
+        # TODO[kylel] - when does this ever get called? infinite loop?
         return self.__getattribute__(field)
 
 
@@ -92,6 +124,7 @@ class BoxGroup(Annotation):
         super().__init__(id=id, doc=doc, field=field, metadata=metadata)
 
     def to_json(self) -> Dict:
+        """Note: even if `doc` or `field` are attached, don't include in JSON to avoid bloat"""
         box_group_dict = dict(
             boxes=[box.to_json() for box in self.boxes],
             id=self.id,
@@ -145,15 +178,16 @@ class BoxGroup(Annotation):
 
     @property
     def type(self) -> str:
+        logging.warning(msg='`.type` to be deprecated in future versions. Use `.metadata.type`')
         return self.metadata.get("type", None)
 
     @type.setter
     def type(self, type: Union[str, None]) -> None:
+        logging.warning(msg='`.type` to be deprecated in future versions. Use `.metadata.type`')
         self.metadata.type = type
 
 
 class SpanGroup(Annotation):
-
     def __init__(
             self,
             spans: List[Span],
@@ -174,17 +208,8 @@ class SpanGroup(Annotation):
         else:
             return []
 
-    def annotate(
-        self, is_overwrite: bool = False, **kwargs: Iterable["Annotation"]
-    ) -> None:
-        if self.doc is None:
-            raise ValueError("SpanGroup has no attached document!")
-
-        key_remaps = {k: v for k, v in kwargs.items()}
-
-        self.doc.annotate(is_overwrite=is_overwrite, **key_remaps)
-
     def to_json(self) -> Dict:
+        """Note: even if `doc` or `field` are attached, don't include in JSON to avoid bloat"""
         span_group_dict = dict(
             spans=[span.to_json() for span in self.spans],
             id=self.id,
@@ -210,7 +235,7 @@ class SpanGroup(Annotation):
         else:
             # this fallback is necessary to ensure compatibility with span
             # groups that were create before the metadata migration and
-            # therefore have "id", "type" in the root of the json dict instead.
+            # therefore have "type" in the root of the json dict instead.
             metadata_dict = {
                 "type": span_group_dict.get("type", None),
                 "text": span_group_dict.get("text", None)
@@ -269,10 +294,12 @@ class SpanGroup(Annotation):
 
     @property
     def type(self) -> str:
+        logging.warning(msg='`.type` to be deprecated in future versions. Use `.metadata.type`')
         return self.metadata.get("type", None)
 
     @type.setter
     def type(self, type: Union[str, None]) -> None:
+        logging.warning(msg='`.type` to be deprecated in future versions. Use `.metadata.type`')
         self.metadata.type = type
 
     @property
@@ -290,36 +317,33 @@ class SpanGroup(Annotation):
 class Relation(Annotation):
     def __init__(
             self,
-            query: SpanGroup,
+            key: SpanGroup,
             value: SpanGroup,
             id: Optional[int] = None,
             doc: Optional['Document'] = None,
             field: Optional[str] = None,
             metadata: Optional[Metadata] = None
     ):
-        if query.id is None:
-            raise ValueError(f'Relation requires the query {query} to have an ID')
-        if value.id is None:
-            raise ValueError(f'Relation requires the value {value} to have an ID')
-        self.query = query
+        if key.name is None:
+            raise ValueError(f'Relation requires the key {key} to have a `.name`')
+        if value.name is None:
+            raise ValueError(f'Relation requires the value {value} to have a `.name`')
+        self.key = key
         self.value = value
         super().__init__(id=id, doc=doc, field=field, metadata=metadata)
 
-    @classmethod
-    def entity_id(cls, entity: SpanGroup) -> str:
-        return f'{entity.field}-{entity.id}'
-
     def to_json(self, is_minimal: Optional[bool] = True) -> Dict:
+        """Note: even if `doc` or `field` are attached, don't include in JSON to avoid bloat"""
         if is_minimal:
             relation_dict = dict(
-                query=Relation.entity_id(self.query),
-                value=Relation.entity_id(self.value),
+                key=self.key.name,
+                value=self.value.name,
                 id=self.id,
                 metadata=self.metadata.to_json()
             )
         else:
             relation_dict = dict(
-                query=self.query.to_json(),
+                key=self.key.to_json(),
                 value=self.value.to_json(),
                 id=self.id,
                 metadata=self.metadata.to_json()
@@ -331,19 +355,29 @@ class Relation(Annotation):
         }  # only serialize non-null values
 
     @classmethod
-    def from_json(cls, relation_dict: Dict, is_minimal: Optional[bool] = True) -> "Relation":
-        metadata_dict = relation_dict.get('metadata', {})
+    def from_json(
+            cls,
+            relation_dict: Dict,
+            is_minimal: Optional[bool] = True,
+            doc: Optional['Document'] = None,
+    ) -> "Relation":
         if is_minimal:
+            if not doc:
+                raise ValueError(
+                    f"Creating a Relation from a minimal JSON requires Document `doc` "
+                    f"otherwise, no way to know what the key {relation_dict['key']} "
+                    f"or value {relation_dict['value']}"
+                )
             return cls(
-                query=SpanGroup.from_json(span_group_dict=relation_dict['query']),
-                value=SpanGroup.from_json(span_group_dict=relation_dict['value']),
+                key=doc.locate_annotation(name=AnnotationName.from_str(s=relation_dict['key'])),
+                value=doc.locate_annotation(name=AnnotationName.from_str(s=relation_dict['value'])),
                 id=relation_dict.get("id", None),
-                metadata=Metadata.from_json(metadata_dict)
+                metadata=Metadata.from_json(relation_dict.get('metadata', {}))
             )
         else:
             return cls(
-                query=SpanGroup.from_json(span_group_dict=relation_dict['query']),
+                key=SpanGroup.from_json(span_group_dict=relation_dict['key']),
                 value=SpanGroup.from_json(span_group_dict=relation_dict['value']),
                 id=relation_dict.get("id", None),
-                metadata=Metadata.from_json(metadata_dict)
+                metadata=Metadata.from_json(relation_dict.get('metadata', {}))
             )
