@@ -65,7 +65,7 @@ class Annotation:
         self.id = id
         self.doc = doc
         self.field = field
-        self.metadata = metadata if metadata else Metadata()
+        self.metadata = metadata
 
     @abstractmethod
     def to_json(self) -> Dict:
@@ -128,10 +128,11 @@ class BoxGroup(Annotation):
         box_group_dict = dict(
             boxes=[box.to_json() for box in self.boxes],
             id=self.id,
-            metadata=self.metadata.to_json()
+            metadata=self.metadata.to_json() if self.metadata else None
         )
         return {
-            key: value for key, value in box_group_dict.items() if value
+            key: value for key, value in box_group_dict.items()
+            if value is not None
         }  # only serialize non-null values
 
     @classmethod
@@ -146,6 +147,8 @@ class BoxGroup(Annotation):
             metadata_dict = {
                 "type": box_group_dict.get("type", None)
             }
+        metadata_dict = {key: value for key, value in metadata_dict.items() if value is not None}
+        metadata = Metadata.from_json(metadata_dict) if metadata_dict else None
 
         return cls(
             boxes=[
@@ -155,8 +158,9 @@ class BoxGroup(Annotation):
                 for box_dict in box_group_dict.get("boxes", [])
             ],
             id=box_group_dict.get("id", None),
-            metadata=Metadata.from_json(metadata_dict),
+            metadata=metadata,
         )
+
 
     def __getitem__(self, key: int):
         return self.boxes[key]
@@ -179,12 +183,15 @@ class BoxGroup(Annotation):
     @property
     def type(self) -> str:
         logging.warning(msg='`.type` to be deprecated in future versions. Use `.metadata.type`')
-        return self.metadata.get("type", None)
+        return self.metadata.get("type", None) if self.metadata else None
 
     @type.setter
     def type(self, type: Union[str, None]) -> None:
         logging.warning(msg='`.type` to be deprecated in future versions. Use `.metadata.type`')
-        self.metadata.type = type
+        if self.metadata:
+            self.metadata.type = type
+        else:
+            self.metadata = Metadata(type=type)
 
 
 class SpanGroup(Annotation):
@@ -213,7 +220,7 @@ class SpanGroup(Annotation):
         span_group_dict = dict(
             spans=[span.to_json() for span in self.spans],
             id=self.id,
-            metadata=self.metadata.to_json(),
+            metadata=self.metadata.to_json() if self.metadata else None,
             box_group=self.box_group.to_json() if self.box_group else None
         )
         return {
@@ -240,6 +247,8 @@ class SpanGroup(Annotation):
                 "type": span_group_dict.get("type", None),
                 "text": span_group_dict.get("text", None)
             }
+        metadata_dict = {key: value for key, value in metadata_dict.items() if value is not None}
+        metadata = Metadata.from_json(metadata_dict) if metadata_dict else None
 
         return cls(
             spans=[
@@ -247,7 +256,7 @@ class SpanGroup(Annotation):
                 for span_dict in span_group_dict["spans"]
             ],
             id=span_group_dict.get("id", None),
-            metadata=Metadata.from_json(metadata_dict),
+            metadata=metadata,
             box_group=box_group,
         )
 
@@ -295,23 +304,31 @@ class SpanGroup(Annotation):
     @property
     def type(self) -> str:
         logging.warning(msg='`.type` to be deprecated in future versions. Use `.metadata.type`')
-        return self.metadata.get("type", None)
+        return self.metadata.get("type", None) if self.metadata else None
 
     @type.setter
     def type(self, type: Union[str, None]) -> None:
         logging.warning(msg='`.type` to be deprecated in future versions. Use `.metadata.type`')
-        self.metadata.type = type
+        if self.metadata:
+            self.metadata.type = type
+        else:
+            self.metadata = Metadata(type=type)
 
     @property
     def text(self) -> str:
-        maybe_text = self.metadata.get("text", None)
-        if maybe_text is None:
-            return " ".join(self.symbols)
-        return maybe_text
+        if self.metadata:
+            maybe_text = self.metadata.get("text", None)
+            if maybe_text:
+                return maybe_text
+        # default behavior is convenient
+        return " ".join(self.symbols)
 
     @text.setter
     def text(self, text: Union[str, None]) -> None:
-        self.metadata.text = text
+        if self.metadata:
+            self.metadata.text = text
+        else:
+            self.metadata = Metadata(text=text)
 
 
 class Relation(Annotation):
@@ -338,7 +355,7 @@ class Relation(Annotation):
             key=str(self.key.name),
             value=str(self.value.name),
             id=self.id,
-            metadata=self.metadata.to_json()
+            metadata=self.metadata.to_json() if self.metadata else None
         )
         return {
             key: value

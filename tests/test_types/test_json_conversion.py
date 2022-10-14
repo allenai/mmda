@@ -1,86 +1,168 @@
 '''
 Description: Test whether all properties for an mmda doc are preserved when
              converting to json and back.
-Author:      @soldni
+Author:      @soldni, @kylel
 
 '''
 
+import unittest
 import json
-from pathlib import Path
 
-from mmda.types import BoxGroup, SpanGroup, Document, Metadata, Relation
-from mmda.parsers import PDFPlumberParser
-
-PDFFILEPATH = Path(__file__).parent / "../fixtures/1903.10676.pdf"
+from mmda.types import Span, Box, BoxGroup, SpanGroup, Document, Metadata, Relation
 
 
-def test_span_group_conversion():
-    sg = SpanGroup(spans=[], id=3, metadata=Metadata(text='test'))
-    sg2 = SpanGroup.from_json(sg.to_json())
-    assert sg2.to_json() == sg.to_json()
-    assert sg2.__dict__ == sg.__dict__
+class TestJSONConversion(unittest.TestCase):
+    def setUp(self):
+        self.doc_dict = {'symbols': 'a b c d e f g'}
+        self.sg_dict = {'spans': [{'start': 0, 'end': 2}], 'id': 3}
+        self.sg2_dict = {'spans': [{'start': 4, 'end': 6}], 'id': 5}
+        self.meta_dict = {'foobar': 'test'}
 
-    bg = BoxGroup(boxes=[], metadata=Metadata(text='test'))
-    bg2 = BoxGroup.from_json(bg.to_json())
-    assert bg2.to_json() == bg.to_json()
-    assert bg2.__dict__ == bg.__dict__
+    def test_boxes(self):
+        # minimal span
+        b = Box(l=0.0, t=0.1, w=0.2, h=0.3, page=4)
+        b_dict = {'left': 0.0, 'top': 0.1, 'width': 0.2, 'height': 0.3, 'page': 4}
+        assert b.to_json() == b_dict
+        assert Box.from_json(box_dict=b_dict).to_json() == b_dict
 
+    def test_spans(self):
+        # minimal span
+        s = Span(start=0, end=2)
+        s_dict = {'start': 0, 'end': 2}
+        assert s.to_json() == s_dict
+        assert Span.from_json(span_dict=s_dict).to_json() == s_dict
 
-def test_relation_conversion():
-    r = Relation(
-        key=SpanGroup(spans=[], id=3, metadata=Metadata(foobar='test'), field='abc'),
-        value=SpanGroup(spans=[], id=5, metadata=Metadata(foobar='test'), field='xyz'),
-        id=999,
-        metadata=Metadata(blabla='something')
-    )
+        # contains boxes
+        s = Span(start=0, end=2, box=Box(l=0.0, t=0.1, w=0.2, h=0.3, page=4))
+        s_dict = {'start': 0, 'end': 2,
+                  'box': {'left': 0.0, 'top': 0.1, 'width': 0.2, 'height': 0.3, 'page': 4}}
+        assert s.to_json() == s_dict
+        assert Span.from_json(span_dict=s_dict).to_json() == s_dict
 
-    # to & from JSON
-    r_dict_minimal = {
-        'key': 'abc-3',
-        'value': 'xyz-5',
-        'id': 999,
-        'metadata': {'blabla': 'something'}
-    }
-    assert r.to_json() == r_dict_minimal
+    def test_metadata(self):
+        # empty metadata
+        m = Metadata()
+        m_dict = {}
+        assert m.to_json() == m_dict
+        assert Metadata.from_json(di=m_dict).to_json() == m_dict
 
-    doc = Document.from_json(doc_dict={
-        'symbols': 'asdfasdf',
-        'abc': [{'spans': [], 'id': 3, 'metadata': {'foobar': 'test'}}],
-        'xyz': [{'spans': [], 'id': 5, 'metadata': {'foobar': 'test'}}]
-    })
-    assert r_dict_minimal == r.from_json(r_dict_minimal, doc=doc).to_json()
+        # null-valued metadata
+        m = Metadata(foo=None, bar=None)
+        m_dict = {'foo': None, 'bar': None}
+        assert m.to_json() == m_dict
+        assert Metadata.from_json(di=m_dict).to_json() == m_dict
 
+        # meaningful metadata
+        m = Metadata(foo='xyz', bar='abc')
+        m_dict = {'foo': 'xyz', 'bar': 'abc'}
+        assert m.to_json() == m_dict
+        assert Metadata.from_json(di=m_dict).to_json() == m_dict
 
+    def test_box_groups(self):
+        # minimal box group
+        bg = BoxGroup(boxes=[])
+        bg_dict = {'boxes': []}
+        assert bg.to_json() == bg_dict
+        assert BoxGroup.from_json(box_group_dict=bg_dict).to_json() == bg_dict
 
-def test_doc_conversion():
-    pdfparser = PDFPlumberParser()
+        # slightly more stuff in box group
+        bg = BoxGroup(boxes=[], id=999, doc=Document(symbols='doesnt-matter-what-goes-here'),
+                      field='also-ignored', metadata=Metadata(foo='bar'))
+        bg_dict = {'boxes': [], 'id': 999, 'metadata': {'foo': 'bar'}}
+        assert bg.to_json() == bg_dict
+        assert BoxGroup.from_json(box_group_dict=bg_dict).to_json() == bg_dict
 
-    orig_doc = pdfparser.parse(input_pdf_path=str(PDFFILEPATH))
+        # add boxes to boxgroup
+        bg = BoxGroup(boxes=[Box(l=0.0, t=0.1, w=0.2, h=0.3, page=4),
+                             Box(l=0.5, t=0.6, w=0.7, h=0.8, page=9)])
+        bg_dict = {'boxes': [{'left': 0.0, 'top': 0.1, 'width': 0.2, 'height': 0.3, 'page': 4},
+                             {'left': 0.5, 'top': 0.6, 'width': 0.7, 'height': 0.8, 'page': 9}]}
+        assert bg.to_json() == bg_dict
+        assert BoxGroup.from_json(box_group_dict=bg_dict).to_json() == bg_dict
 
-    json_doc = json.dumps(orig_doc.to_json())
-    new_doc = Document.from_json(json.loads(json_doc))
+    def test_span_groups(self):
+        # minimal span group
+        sg = SpanGroup(spans=[])
+        sg_dict = {'spans': []}
+        assert sg.to_json() == sg_dict
+        assert SpanGroup.from_json(span_group_dict=sg_dict).to_json() == sg_dict
 
-    # We can't just have a `assert new_doc == orig_doc` statement since
-    # internal references to the doc itself (e.g. `doc.tokens[0].doc`)
-    # would make it fail. instead, we compare specific elements of the doc.
+        # slightly more stuff in span group
+        sg = SpanGroup(spans=[], id=999, doc=Document(symbols='doesnt-matter-what-goes-here'),
+                       field='also-ignored', metadata=Metadata(foo='bar'))
+        sg_dict = {'spans': [], 'id': 999, 'metadata': {'foo': 'bar'}}
+        assert sg.to_json() == sg_dict
+        assert SpanGroup.from_json(span_group_dict=sg_dict).to_json() == sg_dict
 
-    # compare just token representation and name of fields
-    assert orig_doc.symbols == new_doc.symbols
-    assert orig_doc.fields == new_doc.fields
+        # add spans to spangroup
+        sg = SpanGroup(spans=[Span(start=0, end=2), Span(start=3, end=4)])
+        sg_dict = {'spans': [{'start': 0, 'end': 2}, {'start': 3, 'end': 4}]}
+        assert sg.to_json() == sg_dict
+        assert SpanGroup.from_json(span_group_dict=sg_dict).to_json() == sg_dict
 
-    for field_name in orig_doc.fields:
-        # this iterates over all span group for this field in both docs
-        field_it = zip(
-            getattr(orig_doc, field_name),
-            getattr(new_doc, field_name)
-        )
+        # contains boxgroup
+        sg = SpanGroup(spans=[], box_group=BoxGroup(boxes=[]))
+        sg_dict = {'spans': [], 'box_group': {'boxes': []}}
+        assert sg.to_json() == sg_dict
+        assert SpanGroup.from_json(span_group_dict=sg_dict).to_json() == sg_dict
 
-        # type annotations to keep mypy quiet
-        orig_sg: SpanGroup
-        new_sg: SpanGroup
+    def test_documents(self):
+        # minimal doc
+        doc = Document(symbols='a b c d e f g')
+        doc_dict = {'symbols': 'a b c d e f g'}
+        assert doc.to_json() == doc_dict
+        assert Document.from_json(doc_dict=doc_dict).to_json() == doc_dict
 
-        for orig_sg, new_sg in field_it:
-            # for each pair, they should have same metadata (type, id,
-            # and optionally, text) and same spans.
-            assert orig_sg.metadata == new_sg.metadata
-            assert orig_sg.spans == new_sg.spans
+        # doc with span group
+        doc_dict = {'symbols': 'a b c d e f g', 'stuff': [{'spans': []}]}
+        doc = Document.from_json(doc_dict)
+        assert doc.fields == ['stuff']  # from_json() should apply .annotation()
+        assert len(doc.stuff) == 1
+        assert doc.stuff[0].to_json() == {'spans': []}
+        assert doc.to_json() == doc_dict
+
+    def test_relations(self):
+        # minimal relation still requires SpanGroup to have names
+        with self.assertRaises(ValueError):
+            Relation(key=SpanGroup(spans=[]), value=SpanGroup(spans=[]))
+
+        # minimal relation working example
+        sg1 = SpanGroup(spans=[], id=123, field='abc')
+        sg2 = SpanGroup(spans=[], id=999, field='xyz')
+        r = Relation(key=sg1, value=sg2)
+        r_dict = {'key': 'abc-123', 'value': 'xyz-999'}
+        assert r.to_json() == r_dict
+
+        # to test `from_json()` we need a Document annotated w the related units
+        doc = Document(symbols='a b c d e f g')
+        sg1 = SpanGroup(spans=[], id=123)
+        sg2 = SpanGroup(spans=[], id=999)
+        doc.annotate(abc=[sg1])
+        doc.annotate(xyz=[sg2])
+        r_dict = {'key': 'abc-123', 'value': 'xyz-999'}
+        assert Relation.from_json(relation_dict=r_dict, doc=doc).to_json() == r_dict
+
+        # `from_json()` should fail if Document isnt coherent with fieldnames
+        doc = Document(symbols='a b c d e f g')
+        sg1 = SpanGroup(spans=[], id=123)
+        sg2 = SpanGroup(spans=[], id=999)
+        doc.annotate(wrongname=[sg1])
+        doc.annotate(alsowrongname=[sg2])
+        r_dict = {'key': 'abc-123', 'value': 'xyz-999'}
+        with self.assertRaises(AttributeError):
+            Relation.from_json(relation_dict=r_dict, doc=doc)
+
+        # relations can have metadata too
+        sg1 = SpanGroup(spans=[], id=123, field='abc')
+        sg2 = SpanGroup(spans=[], id=999, field='xyz')
+        r = Relation(key=sg1, value=sg2, id=40404,
+                     doc=Document(symbols='doesnt-get-used-when-to-json'), field='same-here',
+                     metadata=Metadata(foo='bar'))
+        r_dict = {'key': 'abc-123', 'value': 'xyz-999', 'id': 40404, 'metadata': {'foo': 'bar'}}
+        assert r.to_json() == r_dict
+        doc = Document(symbols='a b c d e f g')
+        sg1 = SpanGroup(spans=[], id=123)
+        sg2 = SpanGroup(spans=[], id=999)
+        doc.annotate(abc=[sg1])
+        doc.annotate(xyz=[sg2])
+        assert Relation.from_json(relation_dict=r_dict, doc=doc).to_json() == r_dict

@@ -9,3 +9,4 @@ class TestDocument(unittest.TestCase):
         annotations = []
         doc.annotate(my_cool_field=annotations)
         self.assertEqual(doc.my_cool_field, [])
+
