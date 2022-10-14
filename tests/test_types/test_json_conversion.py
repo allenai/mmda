@@ -12,11 +12,6 @@ from mmda.types import Span, Box, BoxGroup, SpanGroup, Document, Metadata, Relat
 
 
 class TestJSONConversion(unittest.TestCase):
-    def setUp(self):
-        self.doc_dict = {'symbols': 'a b c d e f g'}
-        self.sg_dict = {'spans': [{'start': 0, 'end': 2}], 'id': 3}
-        self.sg2_dict = {'spans': [{'start': 4, 'end': 6}], 'id': 5}
-        self.meta_dict = {'foobar': 'test'}
 
     def test_boxes(self):
         # minimal span
