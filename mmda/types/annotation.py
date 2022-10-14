@@ -332,22 +332,14 @@ class Relation(Annotation):
         self.value = value
         super().__init__(id=id, doc=doc, field=field, metadata=metadata)
 
-    def to_json(self, is_minimal: Optional[bool] = True) -> Dict:
+    def to_json(self) -> Dict:
         """Note: even if `doc` or `field` are attached, don't include in JSON to avoid bloat"""
-        if is_minimal:
-            relation_dict = dict(
-                key=str(self.key.name),
-                value=str(self.value.name),
-                id=self.id,
-                metadata=self.metadata.to_json()
-            )
-        else:
-            relation_dict = dict(
-                key=self.key.to_json(),
-                value=self.value.to_json(),
-                id=self.id,
-                metadata=self.metadata.to_json()
-            )
+        relation_dict = dict(
+            key=str(self.key.name),
+            value=str(self.value.name),
+            id=self.id,
+            metadata=self.metadata.to_json()
+        )
         return {
             key: value
             for key, value in relation_dict.items()
@@ -358,24 +350,13 @@ class Relation(Annotation):
     def from_json(
             cls,
             relation_dict: Dict,
-            is_minimal: Optional[bool] = True,
-            doc: Optional['Document'] = None,
+            doc: 'Document',
     ) -> "Relation":
-        if is_minimal:
-            if not doc:
-                raise ValueError(
-                    f"Creating a Relation from a minimal JSON requires Document `doc` "
-                    f"otherwise, no way to know what the key {relation_dict['key']} "
-                    f"or value {relation_dict['value']}"
-                )
-            key_name = AnnotationName.from_str(s=relation_dict['key'])
-            value_name = AnnotationName.from_str(s=relation_dict['value'])
-            return cls(
-                key=doc.locate_annotation(name=key_name),
-                value=doc.locate_annotation(name=value_name),
-                id=relation_dict.get("id", None),
-                metadata=Metadata.from_json(relation_dict.get('metadata', {}))
-            )
-        else:
-            raise NotImplementedError(f'Not currently supported. Awkward to build relations'
-                                      f'without an existing Document object that stores fields.')
+        key_name = AnnotationName.from_str(s=relation_dict['key'])
+        value_name = AnnotationName.from_str(s=relation_dict['value'])
+        return cls(
+            key=doc.locate_annotation(name=key_name),
+            value=doc.locate_annotation(name=value_name),
+            id=relation_dict.get("id", None),
+            metadata=Metadata.from_json(relation_dict.get('metadata', {}))
+        )
