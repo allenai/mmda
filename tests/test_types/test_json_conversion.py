@@ -11,7 +11,6 @@ from pathlib import Path
 from mmda.types import BoxGroup, SpanGroup, Document, Metadata, Relation
 from mmda.parsers import PDFPlumberParser
 
-
 PDFFILEPATH = Path(__file__).parent / "../fixtures/1903.10676.pdf"
 
 
@@ -29,12 +28,37 @@ def test_span_group_conversion():
 
 def test_relation_conversion():
     r = Relation(
-        key=SpanGroup(spans=[], id=3, metadata=Metadata(text='test')),
-        value=SpanGroup(spans=[], id=3, metadata=Metadata(text='test')),
+        key=SpanGroup(spans=[], id=3, metadata=Metadata(foobar='test'), field='abc'),
+        value=SpanGroup(spans=[], id=5, metadata=Metadata(foobar='test'), field='xyz'),
         id=999,
-        metadata=Metadata(type='something')
+        metadata=Metadata(blabla='something')
     )
-    r.to_json()
+
+    # minimal to & from JSON (default behavior)
+    r_dict_minimal = {
+        'key': 'abc-3',
+        'value': 'xyz-5',
+        'id': 999,
+        'metadata': {'blabla': 'something'}
+    }
+    assert r.to_json() == r.to_json(is_minimal=True) == r_dict_minimal
+
+    doc = Document.from_json(doc_dict={
+        'symbols': 'asdfasdf',
+        'abc': [{'spans': [], 'id': 3, 'metadata': {'foobar': 'test'}}],
+        'xyz': [{'spans': [], 'id': 5, 'metadata': {'foobar': 'test'}}]
+    })
+    assert r_dict_minimal == r.from_json(r_dict_minimal, is_minimal=True, doc=doc).to_json() == \
+           r.from_json(r_dict_minimal, doc=doc).to_json()
+
+    # full to JSON
+    r_dict_full = {
+        'key': {'spans': [], 'id': 3, 'metadata': {'foobar': 'test'}},
+        'value': {'spans': [], 'id': 5, 'metadata': {'foobar': 'test'}},
+        'id': 999,
+        'metadata': {'blabla': 'something'}
+    }
+    assert r.to_json(is_minimal=False) == r_dict_full
 
 
 def test_doc_conversion():
