@@ -250,3 +250,31 @@ model_variants:
     # Any additional sets of dependencies required by the model.
     # These are the 'extras_require' keys in your setup.py.
     extras_require: [ "bibentry_detection_predictor" ]
+
+  figure_table_predictors:
+    # Class path to pydantic Instance implementation in <model_package_name>==<model_package_version>
+    instance: ai2_internal.figure_table_predictors.interface.Instance
+
+    # Class path to pydantic Prediction implementation in <model_package_name>==<model_package_version>
+    prediction: ai2_internal.figure_table_predictors.interface.Prediction
+
+    # Class path to Predictor implementation in <model_package_name>==<model_package_version>
+    predictor: ai2_internal.figure_table_predictors.interface.Predictor
+
+    # Class path to pydantic PredictorConfig implementation in <model_package_name>==<model_package_version>
+    predictor_config: ai2_internal.figure_table_predictors.interface.PredictorConfig
+
+    integration_test: ai2_internal.figure_table_predictors.integration_test.TestInterfaceIntegration
+
+    # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
+    python_version: 3.8
+
+    cuda: False
+
+    # One or more bash commands to execute as part of a RUN step in a Dockerfile.
+    # Leave this unset unless your model has special system requirements beyond
+    # those in your setup.py.
+    docker_run_commands: []
+    # Any additional sets of dependencies required by the model.
+    # These are the 'extras_require' keys in your setup.py.
+    extras_require: ["figure_table_predictors"]

@@ -1,9 +1,3 @@
-from abc import abstractmethod
-from mmda.types.annotation import Annotation
-from typing import Union, List, Dict, Any
-
-from mmda.types.document import Document
-from mmda.types.annotation import Annotation
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
 
