@@ -143,72 +143,87 @@ class PDFPlumberParser(Parser):
         doc = Document.from_json(doc_json)
         return doc
 
-    def _convert_nested_text_to_doc_json(self, page_to_row_to_tokens: Dict) -> Dict:
-        """Copied from sscraper._convert_nested_text_to_doc_json"""
-        text = ""
-        page_annos: List[SpanGroup] = []
-        token_annos: List[SpanGroup] = []
+    def _convert_nested_text_to_doc_json(
+            self,
+            token_dicts: List[Dict],
+            word_ids: List[int],
+            row_ids: List[int]
+    ) -> Dict:
+        """For a single page worth of text"""
+        symbols = ""
         row_annos: List[SpanGroup] = []
+        token_annos: List[SpanGroup] = []
         start = 0
-        for page, row_to_tokens in page_to_row_to_tokens.items():
-            page_rows: List[SpanGroup] = []
-            for row, tokens in row_to_tokens.items():
-                # process tokens in this row
-                row_tokens: List[SpanGroup] = []
-                for k, token in enumerate(tokens):
-                    text += token["text"]
-                    end = start + len(token["text"])
-                    # make token
-                    token = SpanGroup(
-                        spans=[Span(start=start, end=end, box=token["bbox"])]
-                    )
-                    row_tokens.append(token)
-                    token_annos.append(token)
-                    if k < len(tokens) - 1:
-                        text += " "
-                    else:
-                        text += "\n"  # start newline at end of row
+
+        current_rows_tokens = []
+        for i in range(len(token_dicts) - 1):
+
+            token_dict = token_dicts[i]
+            current_word_id = word_ids[i]
+            next_word_id = word_ids[i + 1]
+            current_row_id = row_ids[i]
+            next_row_id = row_ids[i + 1]
+
+            # 1) add to symbols
+            symbols += token_dict["text"]
+
+            # 2) make Token
+            end = start + len(token_dict["text"])
+            token = SpanGroup(spans=[Span(start=start, end=end, box=token_dict["bbox"])])
+            token_annos.append(token)
+
+            # 3) increment whitespace based on Row & Word membership. and build Rows.
+            if next_row_id == current_row_id:
+                current_rows_tokens.append(token)
+                if next_word_id == current_word_id:
+                    start = end
+                else:
+                    symbols += " "
                     start = end + 1
-                # make row
+            else:
+                # new row
+                symbols += "\n"
+                start = end + 1
                 row = SpanGroup(
                     spans=[
                         Span(
-                            start=row_tokens[0][0].start,
-                            end=row_tokens[-1][0].end,
+                            start=current_rows_tokens[0][0].start,
+                            end=current_rows_tokens[-1][0].end,
                             box=Box.small_boxes_to_big_box(
-                                boxes=[span.box for t in row_tokens for span in t]
+                                boxes=[span.box for t in current_rows_tokens for span in t]
                             ),
                         )
                     ]
                 )
-                page_rows.append(row)
                 row_annos.append(row)
-            # make page
-            if page_rows:
-                page = SpanGroup(
-                    spans=[
-                        Span(
-                            start=page_rows[0][0].start,
-                            end=page_rows[-1][0].end,
-                            box=Box.small_boxes_to_big_box(
-                                boxes=[span.box for r in page_rows for span in r]
-                            ),
-                        )
-                    ]
+                current_rows_tokens = []
+
+        # handle remaining
+        symbols += token_dicts[-1]["text"]
+        end = start + len(token_dicts[-1]["text"])
+        token = SpanGroup(spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])])
+        token_annos.append(token)
+        current_rows_tokens.append(token)
+        row = SpanGroup(
+            spans=[
+                Span(
+                    start=current_rows_tokens[0][0].start,
+                    end=current_rows_tokens[-1][0].end,
+                    box=Box.small_boxes_to_big_box(
+                        boxes=[span.box for t in current_rows_tokens for span in t]
+                    ),
                 )
-            else:
-                page = SpanGroup(spans=[])
-            page_annos.append(page)
+            ]
+        )
+        row_annos.append(row)
+
         # add IDs
-        for i, page in enumerate(page_annos):
-            page.id = i
-        for j, row in enumerate(row_annos):
-            row.id = j
-        for k, token in enumerate(token_annos):
-            token.id = k
+        for i, row in enumerate(row_annos):
+            row.id = i
+        for j, token in enumerate(token_annos):
+            token.id = j
         return {
-            Symbols: text,
-            Pages: [page.to_json() for page in page_annos],
+            Symbols: symbols,
             Tokens: [token.to_json() for token in token_annos],
             Rows: [row.to_json() for row in row_annos],
         }
@@ -218,7 +233,7 @@ class PDFPlumberParser(Parser):
             page_tokens: List[Dict],
             x_tolerance: int = 10,
             y_tolerance: int = 10
-    ) -> Dict[int, List]:
+    ) -> List[int]:
         """Get text lines from the page_tokens.
         It will automatically add new lines for 1) line breaks (i.e., the current token
         has a larger y_difference between the previous one than the y_tolerance) or
@@ -226,13 +241,14 @@ class PDFPlumberParser(Parser):
         the previous one than the x_tolerance)
 
         Adapted from https://github.com/allenai/VILA/blob/e6d16afbd1832f44a430074855fbb4c3d3604f4a/src/vila/pdftools/pdfplumber_extractor.py#L24
+
+        Modified Oct 2022 (kylel): Changed return value to be List[int]
         """
         prev_y = None
         prev_x = None
 
-        lines = dict()
+        lines = []
         cur_line_id = 0
-        token_in_this_line = []
         n = 0
 
         for token in page_tokens:
@@ -245,7 +261,7 @@ class PDFPlumberParser(Parser):
 
             if abs(cur_y - prev_y) <= y_tolerance and cur_x - prev_x <= x_tolerance:
 
-                token_in_this_line.append(token)
+                lines.append(cur_line_id)
                 if n == 0:
                     prev_y = cur_y
                 else:
@@ -254,17 +270,13 @@ class PDFPlumberParser(Parser):
 
             else:
 
-                lines[cur_line_id] = token_in_this_line
                 cur_line_id += 1
 
-                token_in_this_line = [token]
+                lines.append(cur_line_id)
                 n = 1
                 prev_y = cur_y
 
             prev_x = token["bbox"].coordinates[2]
-
-        if token_in_this_line:
-            lines[cur_line_id] = token_in_this_line
 
         return lines
 
@@ -307,3 +319,4 @@ class PDFPlumberParser(Parser):
                 coarse_id += 1
 
         return out
+
