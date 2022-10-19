@@ -99,60 +99,13 @@ class PDFPlumberParser(Parser):
         self.split_at_punctuation = split_at_punctuation
 
     def parse(self, input_pdf_path: str) -> Document:
-        doc = self._load_pdf_as_doc(input_pdf_path)
-        return doc
-
-    def _load_page_tokens(
-        self,
-        page: pdfplumber.page.Page,
-        page_index: int,
-        x_tolerance: int = 1.5,
-        y_tolerance: int = 2,
-        keep_blank_chars: bool = False,
-        use_text_flow: bool = True,
-        horizontal_ltr: bool = True,
-        vertical_ttb: bool = True,
-        extra_attrs: Optional[List[str]] = None,
-        split_at_punctuation: Optional[Union[str, bool]] = None,
-    ):
-        token_data = page.extract_words(
-            x_tolerance=x_tolerance,
-            y_tolerance=y_tolerance,
-            keep_blank_chars=keep_blank_chars,
-            use_text_flow=use_text_flow,
-            horizontal_ltr=horizontal_ltr,
-            vertical_ttb=vertical_ttb,
-            extra_attrs=extra_attrs,
-            split_at_punctuation=split_at_punctuation
-        )
-        page_tokens = [
-            {
-                "text": token["text"],
-                "bbox": Box.from_pdf_coordinates(
-                    x1=float(token["x0"]),
-                    y1=float(token["top"]),
-                    x2=float(token["x1"]),
-                    y2=float(token["bottom"]),
-                    page_width=float(page.width), 
-                    page_height=float(page.height),
-                    page=int(page_index)
-                ).get_relative(
-                    page_width=float(page.width), page_height=float(page.height)
-                ),
-            }
-            for token in token_data
-        ]
-
-        return page_tokens
-
-    def _load_pdf_tokens(self, input_pdf_path: str) -> Dict:
+        # pdfplumber
         plumber_pdf_object = pdfplumber.open(input_pdf_path)
+        # organize into tokens & lines
         page_to_line_to_tokens = {}
         for page_id in range(len(plumber_pdf_object.pages)):
-            cur_page = plumber_pdf_object.pages[page_id]
-            page_tokens = self._load_page_tokens(
-                page=cur_page,
-                page_index=page_id,
+            page = plumber_pdf_object.pages[page_id]
+            token_data = page.extract_words(
                 x_tolerance=self.token_x_tolerance,
                 y_tolerance=self.token_y_tolerance,
                 keep_blank_chars=self.keep_blank_chars,
@@ -162,13 +115,33 @@ class PDFPlumberParser(Parser):
                 extra_attrs=self.extra_attrs,
                 split_at_punctuation=self.split_at_punctuation
             )
+            page_tokens = [
+                {
+                    "text": token["text"],
+                    "bbox": Box.from_pdf_coordinates(
+                        x1=float(token["x0"]),
+                        y1=float(token["top"]),
+                        x2=float(token["x1"]),
+                        y2=float(token["bottom"]),
+                        page_width=float(page.width),
+                        page_height=float(page.height),
+                        page=int(page_id)
+                    ).get_relative(
+                        page_width=float(page.width), page_height=float(page.height)
+                    ),
+                }
+                for token in token_data
+            ]
+
             line_to_tokens = self._simple_line_detection(
                 page_tokens=page_tokens,
-                x_tolerance=self.line_x_tolerance/cur_page.width,
-                y_tolerance=self.line_y_tolerance/cur_page.height,
+                x_tolerance=self.line_x_tolerance/page.width,
+                y_tolerance=self.line_y_tolerance/page.height,
             )
             page_to_line_to_tokens[page_id] = line_to_tokens
-        return page_to_line_to_tokens
+        doc_json = self._convert_nested_text_to_doc_json(page_to_line_to_tokens)
+        doc = Document.from_json(doc_json)
+        return doc
 
     def _convert_nested_text_to_doc_json(self, page_to_row_to_tokens: Dict) -> Dict:
         """Copied from sscraper._convert_nested_text_to_doc_json"""
@@ -239,12 +212,6 @@ class PDFPlumberParser(Parser):
             Tokens: [token.to_json() for token in token_annos],
             Rows: [row.to_json() for row in row_annos],
         }
-
-    def _load_pdf_as_doc(self, input_pdf_path: str) -> Document:
-        page_to_line_to_tokens = self._load_pdf_tokens(input_pdf_path)
-        doc_json = self._convert_nested_text_to_doc_json(page_to_line_to_tokens)
-        doc = Document.from_json(doc_json)
-        return doc
 
     def _simple_line_detection(
             self,
