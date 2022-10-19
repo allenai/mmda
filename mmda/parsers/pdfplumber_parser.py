@@ -113,6 +113,7 @@ class PDFPlumberParser(Parser):
         horizontal_ltr: bool = True,
         vertical_ttb: bool = True,
         extra_attrs: Optional[List[str]] = None,
+        split_at_punctuation: Optional[Union[str, bool]] = None,
     ):
         token_data = page.extract_words(
             x_tolerance=x_tolerance,
@@ -122,7 +123,7 @@ class PDFPlumberParser(Parser):
             horizontal_ltr=horizontal_ltr,
             vertical_ttb=vertical_ttb,
             extra_attrs=extra_attrs,
-            split_at_punctuation=self.split_at_punctuation
+            split_at_punctuation=split_at_punctuation
         )
         page_tokens = [
             {
@@ -159,6 +160,7 @@ class PDFPlumberParser(Parser):
                 horizontal_ltr=self.horizontal_ltr,
                 vertical_ttb=self.vertical_ttb,
                 extra_attrs=self.extra_attrs,
+                split_at_punctuation=self.split_at_punctuation
             )
             line_to_tokens = self._simple_line_detection(
                 page_tokens=page_tokens,
@@ -298,3 +300,43 @@ class PDFPlumberParser(Parser):
             lines[cur_line_id] = token_in_this_line
 
         return lines
+
+    def _align_coarse_and_fine_tokens(
+            self,
+            coarse_tokens: List[str],
+            fine_tokens: List[str]
+    ) -> List[int]:
+        """Returns a list of length len(fine_tokens) where elements of the list are
+        integer indices into coarse_tokens elements."""
+        assert len(coarse_tokens) <= len(fine_tokens), \
+            f"This method requires |coarse| <= |fine|"
+        assert ''.join(coarse_tokens) == ''.join(fine_tokens), \
+            f"This method requires the chars(coarse) == chars(fine)"
+
+        coarse_start_ends = []
+        start = 0
+        for token in coarse_tokens:
+            end = start + len(token)
+            coarse_start_ends.append((start, end))
+            start = end
+
+        fine_start_ends = []
+        start = 0
+        for token in fine_tokens:
+            end = start + len(token)
+            fine_start_ends.append((start, end))
+            start = end
+
+        fine_id = 0
+        coarse_id = 0
+        out = []
+        while fine_id < len(fine_start_ends) and coarse_id < len(coarse_start_ends):
+            fine_start, fine_end = fine_start_ends[fine_id]
+            coarse_start, coarse_end = coarse_start_ends[coarse_id]
+            if coarse_start <= fine_start and fine_end <= coarse_end:
+                out.append(coarse_id)
+                fine_id += 1
+            else:
+                coarse_id += 1
+
+        return out

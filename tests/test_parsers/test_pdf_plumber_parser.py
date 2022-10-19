@@ -1,3 +1,8 @@
+"""
+
+@kylel
+"""
+
 import os
 import pathlib
 import unittest
@@ -6,6 +11,7 @@ from mmda.types import Document
 from mmda.parsers import PDFPlumberParser
 
 import re
+
 
 os.chdir(pathlib.Path(__file__).parent)
 
@@ -49,3 +55,51 @@ class TestPDFPlumberParser(unittest.TestCase):
 
         assert len(no_split_tokens_with_numbers) < len(custom_split_tokens_with_numbers) < len(default_split_tokens_with_numbers)
 
+
+    def test_align_coarse_and_fine_tokens(self):
+        parser = PDFPlumberParser()
+
+        # example
+        coarse_tokens = ['abc', 'def']
+        fine_tokens = ['ab', 'c', 'd', 'ef']
+        out = parser._align_coarse_and_fine_tokens(
+            coarse_tokens=coarse_tokens,
+            fine_tokens=fine_tokens
+        )
+        assert out == [0, 0, 1, 1]
+
+        # minimal case
+        coarse_tokens = []
+        fine_tokens = []
+        out = parser._align_coarse_and_fine_tokens(
+            coarse_tokens=coarse_tokens,
+            fine_tokens=fine_tokens
+        )
+        assert out == []
+
+        # identical case
+        coarse_tokens = ['a', 'b', 'c']
+        fine_tokens = ['a', 'b', 'c']
+        out = parser._align_coarse_and_fine_tokens(
+            coarse_tokens=coarse_tokens,
+            fine_tokens=fine_tokens
+        )
+        assert out == [0, 1, 2]
+
+        # misaligned case
+        with self.assertRaises(AssertionError):
+            coarse_tokens = ['a', 'b']
+            fine_tokens = ['ab']
+            parser._align_coarse_and_fine_tokens(
+                coarse_tokens=coarse_tokens,
+                fine_tokens=fine_tokens
+            )
+
+        # same num of chars, but chars mismatch case
+        with self.assertRaises(AssertionError):
+            coarse_tokens = ['ab']
+            fine_tokens = ['a', 'c']
+            parser._align_coarse_and_fine_tokens(
+                coarse_tokens=coarse_tokens,
+                fine_tokens=fine_tokens
+            )
