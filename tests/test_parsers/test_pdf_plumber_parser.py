@@ -7,11 +7,11 @@ from mmda.parsers import PDFPlumberParser
 
 import re
 
-os.chdir(pathlib.Path(__file__).parent)
-
 
 class TestPDFPlumberParser(unittest.TestCase):
-    
+    def setUp(self) -> None:
+        os.chdir(pathlib.Path(__file__).parent)
+
     def test_parse(self):
         parser = PDFPlumberParser()
         doc = parser.parse(input_pdf_path="../fixtures/1903.10676.pdf")
