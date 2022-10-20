@@ -1,5 +1,11 @@
 from setuptools import find_namespace_packages, setup
 
+test_deps = [
+    'coverage',
+    'pytest',
+    'pytest-xdist',
+]
+
 setup(
     name="mmda",
     description="mmda",
@@ -37,6 +43,7 @@ setup(
         "bibentry_detection_predictor": ["layoutparser", "torch==1.8.0+cu111", "torchvision==0.9.0+cu111"],
         "citation_links": ["numpy", "thefuzz[speedup]", "sklearn", "xgboost"],
         "figure_table_predictors": ["scipy"],
+        'test': test_deps,
     },
     include_package_data=True,
     package_data={
