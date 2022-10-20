@@ -19,10 +19,12 @@ from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 class TestFigureCaptionPredictor(unittest.TestCase):
     @classmethod
     def setUp(cls):
-        os.chdir(pathlib.Path(__file__).parent.parent)
+        cls.fixture_path = pathlib.Path(__file__).parent.parent
         cls.doc = (PDFPlumberParser()
-                   .parse(input_pdf_path='fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf'))
-        cls.images = PDF2ImageRasterizer().rasterize(input_pdf_path='fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf',
+                   .parse(input_pdf_path=os.path.join(cls.fixture_path,
+                                                      'fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf')))
+        cls.images = PDF2ImageRasterizer().rasterize(input_pdf_path=os.path.join(
+            cls.fixture_path, 'fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf'),
                                                      dpi=72)
         assert cls.doc.pages
         assert cls.doc.tokens

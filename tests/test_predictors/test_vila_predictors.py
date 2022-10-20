@@ -19,7 +19,8 @@ from mmda.predictors.hf_predictors.token_classification_predictor import (
 class TestFigureVilaPredictors(unittest.TestCase):
     @classmethod
     def setUp(cls):
-        os.chdir(pathlib.Path(__file__).parent.parent)
+        cls.fixture_path = os.path.join(pathlib.Path(__file__).parent.parent, 'fixtures')
+
         cls.DOCBANK_LABEL_MAP = {
             "0": "paragraph",
             "1": "title",
@@ -66,8 +67,8 @@ class TestFigureVilaPredictors(unittest.TestCase):
         pdfplumber_parser = PDFPlumberParser()
         rasterizer = PDF2ImageRasterizer()
 
-        doc = pdfplumber_parser.parse(input_pdf_path="fixtures/1903.10676.pdf")
-        images = rasterizer.rasterize(input_pdf_path="fixtures/1903.10676.pdf", dpi=72)
+        doc = pdfplumber_parser.parse(input_pdf_path=os.path.join(self.fixture_path, "1903.10676.pdf"))
+        images = rasterizer.rasterize(input_pdf_path=os.path.join(self.fixture_path, "1903.10676.pdf"), dpi=72)
         doc.annotate_images(images)
 
         layout_regions = layout_predictor.predict(doc)
@@ -129,7 +130,7 @@ class TestFigureVilaPredictors(unittest.TestCase):
 
     def test_vila_predictors_with_special_unicode_inputs(self):
 
-        test_doc_path = "./fixtures/unicode-test.json"
+        test_doc_path = os.path.join(self.fixture_path, "unicode-test.json")
 
         with open(test_doc_path, 'r') as fp:
             res = json.load(fp)
