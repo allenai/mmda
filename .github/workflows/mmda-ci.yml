@@ -23,7 +23,7 @@ jobs:
 
       - name: Test with Python ${{ matrix.python-version }}
         run: |
-          pip install -e .[dev,pysbd_predictors,hf_predictors]
+          pip install -e .[dev,test,pysbd_predictors,hf_predictors]
           pytest tests --ignore=tests/test_predictors/test_vila_predictors.py --ignore=tests/test_predictors/test_figure_table_predictors.py
 
   test_vila_predictors:
@@ -39,7 +39,7 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install poppler-utils
       - run: |
-          pip install -e .[dev]
+          pip install -e .[dev,test]
           pip install -e .[vila_predictors]
           pytest tests/test_predictors/test_vila_predictors.py
           pytest tests/test_predictors/test_figure_table_predictors.py
