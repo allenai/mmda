@@ -15,11 +15,11 @@ pytest ./tests
 ```
 for latest failed test
 ```bash
-pytest ./tests --lf
+pytest --lf
 ```
 for specific test name of class name
 ```bash
-pytest ./tests -k <'name_of_class_or_unit_test'>
+pytest -k 'TestFigureCaptionPredictor'
 ```
 
 ## Quickstart guide
