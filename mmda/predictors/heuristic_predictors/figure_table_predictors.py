@@ -51,7 +51,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return merged_boxes_list
 
     @staticmethod
-    def _merge_boxes(layoutparser_span_groups: List[api.SpanGroup], types: List[str] = ['Figure']):
+    def _merge_boxes(layoutparser_span_groups: List[api.SpanGroup], merged_boxes_caption_dict: Dict[int, List[api.Box]],
+                     types: List[str] = ['Figure']) -> Dict[int, List[api.Box]]:
         """
         Merges overlapping boxes. If number of merged boxes is less than the number of captions on the page, do not
         merge overlapping figure boxes. Vila caption predictions is more consistent than layout parser prediction, thus
@@ -65,6 +66,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         Returns: Dictionary of the merged figure boxes.
 
         """
+        merged_boxes_map = {}
         span_map = defaultdict(list)
         for span in layoutparser_span_groups:
             if span.box_group.type in types:
@@ -74,12 +76,14 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                     span_map[box.page].append(api.Span(start=int(box_api.left * 1000),
                                                        end=int(box_api.left * 1000 + 10),
                                                        box=box_api).to_mmda())
-
-        return {page: MergeSpans(span_map[page], w=0, h=0).merge_neighbor_spans_by_box_coordinate() for page in
-                span_map.keys()}
+        for page in span_map.keys():
+            merged_boxes_map[page] = MergeSpans(span_map[page], w=0, h=0).merge_neighbor_spans_by_box_coordinate()
+            if len(merged_boxes_map[page]) < len(merged_boxes_caption_dict[page]):
+                merged_boxes_map[page] = span_map[page]
+        return merged_boxes_map
 
     @staticmethod
-    def _get_object_caption_distance(figure_box, caption_box) -> float:
+    def _get_object_caption_distance(figure_box: api.Box, caption_box: api.Box) -> float:
         """
         Return 900.0 if left point of figure, caption is offset more than 10%
         Otherwise returns distance between top of the figure box and cap box
@@ -112,11 +116,13 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         assert doc.layoutparser_span_groups
         assert doc.vila_span_groups
         if caption_type == 'Figure':
-            merged_boxes_fig_dict = FigureTablePredictions._merge_boxes(doc.layoutparser_span_groups)
             merged_boxes_caption_dict = FigureTablePredictions.merge_spans(doc.vila_span_groups)
+            merged_boxes_fig_dict = FigureTablePredictions._merge_boxes(doc.layoutparser_span_groups,
+                                                                        merged_boxes_caption_dict)
         else:
-            merged_boxes_fig_dict = FigureTablePredictions._merge_boxes(doc.layoutparser_span_groups, types=['Table'])
             merged_boxes_caption_dict = FigureTablePredictions.merge_spans(doc.vila_span_groups, caption_content='tab')
+            merged_boxes_fig_dict = FigureTablePredictions._merge_boxes(doc.layoutparser_span_groups,
+                                                                        merged_boxes_caption_dict, types=['Table'])
 
         predictions = []
         for page in range(len(tqdm(doc.images))):
@@ -131,10 +137,9 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                         distance = FigureTablePredictions._get_object_caption_distance(
                             fig_box.box, caption_box.box)
 
+                        cost_matrix[j][i] = distance
                         if caption_type == 'Figure':
                             cost_matrix[j][i] = distance if distance > 0 else 900
-                        else:
-                            cost_matrix[j][i] = distance if distance < 0 else 900
 
                 row_ind, col_ind = linear_sum_assignment(cost_matrix)
                 for row, col in zip(row_ind, col_ind):
