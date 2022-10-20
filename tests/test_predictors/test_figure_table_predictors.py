@@ -1,4 +1,5 @@
 import unittest
+from collections import defaultdict
 
 import pytest
 
@@ -38,7 +39,7 @@ class TestFigureCaptionPredictor(unittest.TestCase):
         cls.doc.annotate(vila_span_groups=vila_span_groups)
 
     def test_merge_boxes(self):
-        result = FigureTablePredictions._merge_boxes(self.doc.layoutparser_span_groups)
+        result = FigureTablePredictions._merge_boxes(self.doc.layoutparser_span_groups, defaultdict(list))
         assert isinstance(result, dict)
         assert list(result.keys()) == [0, 2, 3, 7]
         assert isinstance(result[0][0], Span)
