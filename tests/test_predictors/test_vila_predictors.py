@@ -67,7 +67,7 @@ class TestFigureVilaPredictors(unittest.TestCase):
         pdfplumber_parser = PDFPlumberParser()
         rasterizer = PDF2ImageRasterizer()
 
-        doc = pdfplumber_parser.parse(input_pdf_path=os.path.join(self.fixture_path, "1903.10676.pdf"))
+        doc = pdfplumber_parser.parse(input_pdf_path=self.fixture_path / "1903.10676.pdf")
         images = rasterizer.rasterize(input_pdf_path=self.fixture_path / "1903.10676.pdf", dpi=72)
         doc.annotate_images(images)
 
