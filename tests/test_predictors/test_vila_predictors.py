@@ -19,7 +19,7 @@ from mmda.predictors.hf_predictors.token_classification_predictor import (
 class TestFigureVilaPredictors(unittest.TestCase):
     @classmethod
     def setUp(cls):
-        cls.fixture_path = os.path.join(pathlib.Path(__file__).parent.parent, 'fixtures')
+        cls.fixture_path = pathlib.Path(__file__).parent.parent / 'fixtures'
 
         cls.DOCBANK_LABEL_MAP = {
             "0": "paragraph",
