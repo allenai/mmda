@@ -1,7 +1,0 @@
-[run]
-include =
-    mmda/*
-omit =
-    *__init__*
-    *Test*
-    tests/fixtures/*
