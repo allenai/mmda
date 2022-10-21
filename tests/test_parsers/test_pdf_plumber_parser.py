@@ -28,7 +28,7 @@ class TestPDFPlumberParser(unittest.TestCase):
 
     def test_split_punctuation(self):
         no_split_parser = PDFPlumberParser(split_at_punctuation=False)
-        no_split_doc = no_split_parser.parse(input_pdf_path=os.path.join(self.fixture_path, '2107.07170.pdf'))
+        no_split_doc = no_split_parser.parse(input_pdf_path=self.fixture_path / '2107.07170.pdf')
         no_split_tokens_with_numbers = [token.text for token in no_split_doc.tokens if re.search(r'[0-9]', token.text)]
         assert '[1-5]' in no_split_tokens_with_numbers
         assert 'GPT-3[10]' in no_split_tokens_with_numbers
