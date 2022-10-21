@@ -1,9 +1,9 @@
 from setuptools import find_namespace_packages, setup
 
 test_deps = [
-    'coverage',
     'pytest',
     'pytest-xdist',
+    'pytest-cov',
 ]
 
 setup(
