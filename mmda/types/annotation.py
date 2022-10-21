@@ -95,7 +95,7 @@ class Annotation:
         Only works after a Document has been attached, which is how objects learn their `field`."""
         if not self.doc:
             raise AttributeError("This annotation does not have an attached document")
-        return self.doc.__getattribute__(self.field)
+        return self.doc.__getattr__(self.field)
 
     def __getattr__(self, field: str) -> List["Annotation"]:
         """This method allows jumping from an object of one field to all overlapping
@@ -108,7 +108,7 @@ class Annotation:
             return self.doc.find_overlapping(self, field)
 
         # TODO[kylel] - when does this ever get called? infinite loop?
-        return self.__getattribute__(field)
+        return self.__getattr__(field)
 
 
 class BoxGroup(Annotation):
