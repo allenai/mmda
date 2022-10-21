@@ -10,8 +10,10 @@ pip install -e '.[dev,<extras_require section from setup.py>]'
 ```
 
 ## Unit testing
+Note that pytest is running coverage, which checks the unit test coverage of the code.
+The percent coverage can be found in setup.cfg file.
 ```bash
-pytest ./tests
+pytest
 ```
 for latest failed test
 ```bash
