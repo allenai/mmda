@@ -14,7 +14,7 @@ class TestPDFPlumberParser(unittest.TestCase):
 
     def test_parse(self):
         parser = PDFPlumberParser()
-        doc = parser.parse(input_pdf_path=os.path.join(self.fixture_path, '1903.10676.pdf'))
+        doc = parser.parse(input_pdf_path=self.fixture_path / '1903.10676.pdf')
         # right output type
         assert isinstance(doc, Document)
         # the right fields
