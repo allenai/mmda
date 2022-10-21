@@ -24,7 +24,7 @@ setup(
         "necessary",
     ],
     extras_require={
-        "dev": ["pytest"],
+        "dev": test_deps,
         "spacy_predictors": ["spacy"],
         "pysbd_predictors": ["pysbd"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
