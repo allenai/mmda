@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Union
 import string
 import pdfplumber
 
+import itertools
 from mmda.types.span import Span
 from mmda.types.box import Box
 from mmda.types.annotation import SpanGroup
@@ -99,61 +100,16 @@ class PDFPlumberParser(Parser):
         self.split_at_punctuation = split_at_punctuation
 
     def parse(self, input_pdf_path: str) -> Document:
-        page_to_line_to_tokens = self._load_pdf_tokens(input_pdf_path)
-        doc_json = self._convert_nested_text_to_doc_json(page_to_line_to_tokens)
-        doc = Document.from_json(doc_json)
-        return doc
-
-    def _load_page_tokens(
-        self,
-        page: pdfplumber.page.Page,
-        page_index: int,
-        x_tolerance: int = 1.5,
-        y_tolerance: int = 2,
-        keep_blank_chars: bool = False,
-        use_text_flow: bool = True,
-        horizontal_ltr: bool = True,
-        vertical_ttb: bool = True,
-        extra_attrs: Optional[List[str]] = None,
-    ):
-        token_data = page.extract_words(
-            x_tolerance=x_tolerance,
-            y_tolerance=y_tolerance,
-            keep_blank_chars=keep_blank_chars,
-            use_text_flow=use_text_flow,
-            horizontal_ltr=horizontal_ltr,
-            vertical_ttb=vertical_ttb,
-            extra_attrs=extra_attrs,
-            split_at_punctuation=self.split_at_punctuation
-        )
-        page_tokens = [
-            {
-                "text": token["text"],
-                "bbox": Box.from_pdf_coordinates(
-                    x1=float(token["x0"]),
-                    y1=float(token["top"]),
-                    x2=float(token["x1"]),
-                    y2=float(token["bottom"]),
-                    page_width=float(page.width), 
-                    page_height=float(page.height),
-                    page=int(page_index)
-                ).get_relative(
-                    page_width=float(page.width), page_height=float(page.height)
-                ),
-            }
-            for token in token_data
-        ]
-
-        return page_tokens
-
-    def _load_pdf_tokens(self, input_pdf_path: str) -> Dict:
         plumber_pdf_object = pdfplumber.open(input_pdf_path)
-        page_to_line_to_tokens = {}
-        for page_id in range(len(plumber_pdf_object.pages)):
-            cur_page = plumber_pdf_object.pages[page_id]
-            page_tokens = self._load_page_tokens(
-                page=cur_page,
-                page_index=page_id,
+        all_tokens = []
+        all_word_ids = []
+        last_word_id = -1
+        all_row_ids = []
+        last_row_id = -1
+        all_page_ids = []
+        for page_id, page in enumerate(plumber_pdf_object.pages):
+            # 1) tokens we use for Document.symbols
+            coarse_tokens = page.extract_words(
                 x_tolerance=self.token_x_tolerance,
                 y_tolerance=self.token_y_tolerance,
                 keep_blank_chars=self.keep_blank_chars,
@@ -161,83 +117,160 @@ class PDFPlumberParser(Parser):
                 horizontal_ltr=self.horizontal_ltr,
                 vertical_ttb=self.vertical_ttb,
                 extra_attrs=self.extra_attrs,
+                split_at_punctuation=None
             )
-            line_to_tokens = self._simple_line_detection(
-                page_tokens=page_tokens,
-                x_tolerance=self.line_x_tolerance/cur_page.width,
-                y_tolerance=self.line_y_tolerance/cur_page.height,
+            # 2) tokens we use for Document.tokens
+            fine_tokens = page.extract_words(
+                x_tolerance=self.token_x_tolerance,
+                y_tolerance=self.token_y_tolerance,
+                keep_blank_chars=self.keep_blank_chars,
+                use_text_flow=self.use_text_flow,
+                horizontal_ltr=self.horizontal_ltr,
+                vertical_ttb=self.vertical_ttb,
+                extra_attrs=self.extra_attrs,
+                split_at_punctuation=self.split_at_punctuation
             )
-            page_to_line_to_tokens[page_id] = line_to_tokens
-        return page_to_line_to_tokens
+            # 3) align fine tokens with coarse tokens
+            word_ids_of_fine_tokens = self._align_coarse_and_fine_tokens(
+                coarse_tokens=[c['text'] for c in coarse_tokens],
+                fine_tokens=[f['text'] for f in fine_tokens]
+            )
+            assert len(word_ids_of_fine_tokens) == len(fine_tokens)
+            # 4) normalize / clean tokens & boxes
+            fine_tokens = [
+                {
+                    "text": token["text"],
+                    "bbox": Box.from_pdf_coordinates(
+                        x1=float(token["x0"]),
+                        y1=float(token["top"]),
+                        x2=float(token["x1"]),
+                        y2=float(token["bottom"]),
+                        page_width=float(page.width),
+                        page_height=float(page.height),
+                        page=int(page_id)
+                    ).get_relative(
+                        page_width=float(page.width), page_height=float(page.height)
+                    ),
+                }
+                for token in fine_tokens
+            ]
+            # 5) group tokens into lines
+            # TODO - doesnt belong in parser; should be own predictor
+            line_ids_of_fine_tokens = self._simple_line_detection(
+                page_tokens=fine_tokens,
+                x_tolerance=self.line_x_tolerance / page.width,
+                y_tolerance=self.line_y_tolerance / page.height,
+            )
+            assert len(line_ids_of_fine_tokens) == len(fine_tokens)
+            # 6) accumulate
+            all_tokens.extend(fine_tokens)
+            all_row_ids.extend([i + last_row_id + 1 for i in line_ids_of_fine_tokens])
+            last_row_id = all_row_ids[-1]
+            all_word_ids.extend([i + last_word_id + 1 for i in word_ids_of_fine_tokens])
+            last_word_id = all_word_ids[-1]
+            for _ in fine_tokens:
+                all_page_ids.append(page_id)
+        # now turn into a beautiful document!
+        doc_json = self._convert_nested_text_to_doc_json(
+            token_dicts=all_tokens,
+            word_ids=all_word_ids,
+            row_ids=all_row_ids,
+            page_ids=all_page_ids
+        )
+        doc = Document.from_json(doc_json)
+        return doc
 
-    def _convert_nested_text_to_doc_json(self, page_to_row_to_tokens: Dict) -> Dict:
-        """Copied from sscraper._convert_nested_text_to_doc_json"""
-        text = ""
-        page_annos: List[SpanGroup] = []
+    def _convert_nested_text_to_doc_json(
+            self,
+            token_dicts: List[Dict],
+            word_ids: List[int],
+            row_ids: List[int],
+            page_ids: List[int]
+    ) -> Dict:
+        """For a single page worth of text"""
+
+        # 1) build tokens & symbols
+        symbols = ""
         token_annos: List[SpanGroup] = []
-        row_annos: List[SpanGroup] = []
         start = 0
-        for page, row_to_tokens in page_to_row_to_tokens.items():
-            page_rows: List[SpanGroup] = []
-            for row, tokens in row_to_tokens.items():
-                # process tokens in this row
-                row_tokens: List[SpanGroup] = []
-                for k, token in enumerate(tokens):
-                    text += token["text"]
-                    end = start + len(token["text"])
-                    # make token
-                    token = SpanGroup(
-                        spans=[Span(start=start, end=end, box=token["bbox"])]
-                    )
-                    row_tokens.append(token)
-                    token_annos.append(token)
-                    if k < len(tokens) - 1:
-                        text += " "
-                    else:
-                        text += "\n"  # start newline at end of row
+        for token_id in range(len(token_dicts) - 1):
+
+            token_dict = token_dicts[token_id]
+            current_word_id = word_ids[token_id]
+            next_word_id = word_ids[token_id + 1]
+            current_row_id = row_ids[token_id]
+            next_row_id = row_ids[token_id + 1]
+
+            # 1) add to symbols
+            symbols += token_dict["text"]
+
+            # 2) make Token
+            end = start + len(token_dict["text"])
+            token = SpanGroup(spans=[Span(start=start, end=end, box=token_dict["bbox"])],
+                              id=token_id)
+            token_annos.append(token)
+
+            # 3) increment whitespace based on Row & Word membership. and build Rows.
+            if next_row_id == current_row_id:
+                if next_word_id == current_word_id:
+                    start = end
+                else:
+                    symbols += " "
                     start = end + 1
-                # make row
-                row = SpanGroup(
-                    spans=[
-                        Span(
-                            start=row_tokens[0][0].start,
-                            end=row_tokens[-1][0].end,
-                            box=Box.small_boxes_to_big_box(
-                                boxes=[span.box for t in row_tokens for span in t]
-                            ),
-                        )
-                    ]
-                )
-                page_rows.append(row)
-                row_annos.append(row)
-            # make page
-            if page_rows:
-                page = SpanGroup(
-                    spans=[
-                        Span(
-                            start=page_rows[0][0].start,
-                            end=page_rows[-1][0].end,
-                            box=Box.small_boxes_to_big_box(
-                                boxes=[span.box for r in page_rows for span in r]
-                            ),
-                        )
-                    ]
-                )
             else:
-                page = SpanGroup(spans=[])
+                # new row
+                symbols += "\n"
+                start = end + 1
+        # handle last token
+        symbols += token_dicts[-1]["text"]
+        end = start + len(token_dicts[-1]["text"])
+        token = SpanGroup(spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
+                          id=len(token_dicts) - 1)
+        token_annos.append(token)
+
+        # 2) build rows
+        tokens_with_group_ids = [
+            (token, row_id, page_id)
+            for token, row_id, page_id in zip(token_annos, row_ids, page_ids)
+        ]
+        row_annos: List[SpanGroup] = []
+        for row_id, tups in itertools.groupby(iterable=tokens_with_group_ids, key=lambda tup: tup[1]):
+            row_tokens = [token for token, _, _ in tups]
+            row = SpanGroup(
+                spans=[
+                    Span(
+                        start=row_tokens[0][0].start,
+                        end=row_tokens[-1][0].end,
+                        box=Box.small_boxes_to_big_box(
+                            boxes=[span.box for t in row_tokens for span in t]
+                        ),
+                    )
+                ]
+            )
+            row_annos.append(row)
+
+        # 3) build pages
+        page_annos: List[SpanGroup] = []
+        for page_id, tups in itertools.groupby(iterable=tokens_with_group_ids, key=lambda tup: tup[2]):
+            page_tokens = [token for token, _, _ in tups]
+            page = SpanGroup(
+                spans=[
+                    Span(
+                        start=page_tokens[0][0].start,
+                        end=page_tokens[-1][0].end,
+                        box=Box.small_boxes_to_big_box(
+                            boxes=[span.box for t in page_tokens for span in t]
+                        ),
+                    )
+                ]
+            )
             page_annos.append(page)
-        # add IDs
-        for i, page in enumerate(page_annos):
-            page.id = i
-        for j, row in enumerate(row_annos):
-            row.id = j
-        for k, token in enumerate(token_annos):
-            token.id = k
+
         return {
-            Symbols: text,
-            Pages: [page.to_json() for page in page_annos],
+            Symbols: symbols,
             Tokens: [token.to_json() for token in token_annos],
             Rows: [row.to_json() for row in row_annos],
+            Pages: [page.to_json() for page in page_annos]
         }
 
     def _simple_line_detection(
@@ -245,7 +278,7 @@ class PDFPlumberParser(Parser):
             page_tokens: List[Dict],
             x_tolerance: int = 10,
             y_tolerance: int = 10
-    ) -> Dict[int, List]:
+    ) -> List[int]:
         """Get text lines from the page_tokens.
         It will automatically add new lines for 1) line breaks (i.e., the current token
         has a larger y_difference between the previous one than the y_tolerance) or
@@ -253,13 +286,14 @@ class PDFPlumberParser(Parser):
         the previous one than the x_tolerance)
 
         Adapted from https://github.com/allenai/VILA/blob/e6d16afbd1832f44a430074855fbb4c3d3604f4a/src/vila/pdftools/pdfplumber_extractor.py#L24
+
+        Modified Oct 2022 (kylel): Changed return value to be List[int]
         """
         prev_y = None
         prev_x = None
 
-        lines = dict()
+        lines = []
         cur_line_id = 0
-        token_in_this_line = []
         n = 0
 
         for token in page_tokens:
@@ -272,7 +306,7 @@ class PDFPlumberParser(Parser):
 
             if abs(cur_y - prev_y) <= y_tolerance and cur_x - prev_x <= x_tolerance:
 
-                token_in_this_line.append(token)
+                lines.append(cur_line_id)
                 if n == 0:
                     prev_y = cur_y
                 else:
@@ -281,16 +315,53 @@ class PDFPlumberParser(Parser):
 
             else:
 
-                lines[cur_line_id] = token_in_this_line
                 cur_line_id += 1
 
-                token_in_this_line = [token]
+                lines.append(cur_line_id)
                 n = 1
                 prev_y = cur_y
 
             prev_x = token["bbox"].coordinates[2]
 
-        if token_in_this_line:
-            lines[cur_line_id] = token_in_this_line
-
         return lines
+
+    def _align_coarse_and_fine_tokens(
+            self,
+            coarse_tokens: List[str],
+            fine_tokens: List[str]
+    ) -> List[int]:
+        """Returns a list of length len(fine_tokens) where elements of the list are
+        integer indices into coarse_tokens elements."""
+        assert len(coarse_tokens) <= len(fine_tokens), \
+            f"This method requires |coarse| <= |fine|"
+        assert ''.join(coarse_tokens) == ''.join(fine_tokens), \
+            f"This method requires the chars(coarse) == chars(fine)"
+
+        coarse_start_ends = []
+        start = 0
+        for token in coarse_tokens:
+            end = start + len(token)
+            coarse_start_ends.append((start, end))
+            start = end
+
+        fine_start_ends = []
+        start = 0
+        for token in fine_tokens:
+            end = start + len(token)
+            fine_start_ends.append((start, end))
+            start = end
+
+        fine_id = 0
+        coarse_id = 0
+        out = []
+        while fine_id < len(fine_start_ends) and coarse_id < len(coarse_start_ends):
+            fine_start, fine_end = fine_start_ends[fine_id]
+            coarse_start, coarse_end = coarse_start_ends[coarse_id]
+            if coarse_start <= fine_start and fine_end <= coarse_end:
+                out.append(coarse_id)
+                fine_id += 1
+            else:
+                coarse_id += 1
+
+        return out
+
