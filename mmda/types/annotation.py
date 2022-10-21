@@ -106,9 +106,8 @@ class Annotation:
 
         if field in self.doc.fields:
             return self.doc.find_overlapping(self, field)
-
-        # TODO[kylel] - when does this ever get called? infinite loop?
-        return self.__getattr__(field)
+        else:
+            return []
 
 
 class BoxGroup(Annotation):
