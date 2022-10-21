@@ -130,7 +130,7 @@ class TestFigureVilaPredictors(unittest.TestCase):
 
     def test_vila_predictors_with_special_unicode_inputs(self):
 
-        test_doc_path = os.path.join(self.fixture_path, "unicode-test.json")
+        test_doc_path = self.fixture_path / "unicode-test.json"
 
         with open(test_doc_path, 'r') as fp:
             res = json.load(fp)
