@@ -10,7 +10,7 @@ import re
 
 class TestPDFPlumberParser(unittest.TestCase):
     def setUp(cls) -> None:
-        cls.fixture_path = os.path.join(pathlib.Path(__file__).parent.parent, 'fixtures')
+        cls.fixture_path = pathlib.Path(__file__).parent.parent / 'fixtures'
 
     def test_parse(self):
         parser = PDFPlumberParser()
