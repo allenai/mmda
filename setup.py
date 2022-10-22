@@ -1,9 +1,15 @@
 from setuptools import find_namespace_packages, setup
 
+test_deps = [
+    'pytest',
+    'pytest-xdist',
+    'pytest-cov',
+]
+
 setup(
     name="mmda",
     description="mmda",
-    version="0.0.48",
+    version="0.1.0",
     url="https://www.github.com/allenai/mmda",
     python_requires=">= 3.7",
     packages=find_namespace_packages(include=["mmda*", "ai2_internal*"]),
@@ -18,7 +24,7 @@ setup(
         "necessary",
     ],
     extras_require={
-        "dev": ["pytest"],
+        "dev": test_deps,
         "spacy_predictors": ["spacy"],
         "pysbd_predictors": ["pysbd"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
