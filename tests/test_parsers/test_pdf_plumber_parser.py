@@ -13,14 +13,13 @@ from mmda.parsers import PDFPlumberParser
 import re
 
 
-os.chdir(pathlib.Path(__file__).parent)
-
-
 class TestPDFPlumberParser(unittest.TestCase):
-    
+    def setUp(cls) -> None:
+        cls.fixture_path = pathlib.Path(__file__).parent.parent / 'fixtures'
+
     def test_parse(self):
         parser = PDFPlumberParser()
-        doc = parser.parse(input_pdf_path="../fixtures/1903.10676.pdf")
+        doc = parser.parse(input_pdf_path=self.fixture_path / '1903.10676.pdf')
         # right output type
         assert isinstance(doc, Document)
         # the right fields
@@ -34,22 +33,27 @@ class TestPDFPlumberParser(unittest.TestCase):
 
     def test_split_punctuation(self):
         no_split_parser = PDFPlumberParser(split_at_punctuation=False)
-        no_split_doc = no_split_parser.parse(input_pdf_path="../fixtures/2107.07170.pdf")
+        no_split_doc = no_split_parser.parse(input_pdf_path=self.fixture_path / '2107.07170.pdf')
         no_split_tokens_with_numbers = [token.text for token in no_split_doc.tokens if re.search(r'[0-9]', token.text)]
         assert '[1-5]' in no_split_tokens_with_numbers
         assert 'GPT-3[10]' in no_split_tokens_with_numbers
 
         custom_split_parser = PDFPlumberParser(split_at_punctuation=',.[]:')
-        custom_split_doc = custom_split_parser.parse(input_pdf_path="../fixtures/2107.07170.pdf")
-        custom_split_tokens_with_numbers = [token.text for token in custom_split_doc.tokens if re.search(r'[0-9]', token.text)]
+        custom_split_doc = custom_split_parser.parse(
+            input_pdf_path=self.fixture_path / '2107.07170.pdf'
+        )
+        custom_split_tokens_with_numbers = [token.text for token in custom_split_doc.tokens if re.search(r'[0-9]',
+                                                                                                         token.text)]
         assert '[1-5]' not in custom_split_tokens_with_numbers
         assert '1-5' in custom_split_tokens_with_numbers
         assert 'GPT-3[10]' not in custom_split_tokens_with_numbers
         assert 'GPT-3' in custom_split_tokens_with_numbers
 
         default_split_parser = PDFPlumberParser(split_at_punctuation=True)
-        default_split_doc = default_split_parser.parse(input_pdf_path="../fixtures/2107.07170.pdf")
-        default_split_tokens_with_numbers = [token.text for token in default_split_doc.tokens if re.search(r'[0-9]', token.text)]
+        default_split_doc = default_split_parser.parse(input_pdf_path=os.path.join(self.fixture_path,
+                                                                                   '2107.07170.pdf'))
+        default_split_tokens_with_numbers = [token.text for token in default_split_doc.tokens if re.search(r'[0-9]',
+                                                                                                           token.text)]
         assert '1-5' not in default_split_tokens_with_numbers
         assert 'GPT-3' not in default_split_tokens_with_numbers
 

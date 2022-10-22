@@ -14,16 +14,16 @@ from mmda.types.box import Box
 from mmda.types.span import Span
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 
-os.chdir(pathlib.Path(__file__).parent.parent)
 
 
 class TestFigureCaptionPredictor(unittest.TestCase):
     @classmethod
     def setUp(cls):
+        cls.fixture_path = pathlib.Path(__file__).parent.parent
         cls.doc = (PDFPlumberParser()
-                   .parse(input_pdf_path='fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf'))
-        cls.images = PDF2ImageRasterizer().rasterize(input_pdf_path='fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf',
-                                                     dpi=72)
+                   .parse(input_pdf_path=(cls.fixture_path / 'fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf')))
+        cls.images = PDF2ImageRasterizer().rasterize(input_pdf_path=(
+                cls.fixture_path / 'fixtures/0c027af0ee9c1901c57f6579d903aedee7f4.pdf'), dpi=72)
         assert cls.doc.pages
         assert cls.doc.tokens
         cls.doc.annotate_images(images=cls.images)

@@ -1,5 +1,11 @@
 from setuptools import find_namespace_packages, setup
 
+test_deps = [
+    'pytest',
+    'pytest-xdist',
+    'pytest-cov',
+]
+
 setup(
     name="mmda",
     description="mmda",
@@ -18,7 +24,7 @@ setup(
         "necessary",
     ],
     extras_require={
-        "dev": ["pytest"],
+        "dev": test_deps,
         "spacy_predictors": ["spacy"],
         "pysbd_predictors": ["pysbd"],
         "lp_predictors": ["layoutparser", "torch", "torchvision", "effdet"],
