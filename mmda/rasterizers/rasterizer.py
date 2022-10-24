@@ -23,6 +23,7 @@ class Rasterizer(Protocol):
         """
         raise NotImplementedError
 
+
 class PDF2ImageRasterizer(Rasterizer):
     def rasterize(self, input_pdf_path: str, dpi: int, **kwargs) -> Iterable[PILImage]:
         images = pdf2image.convert_from_path(pdf_path=input_pdf_path, dpi=dpi)

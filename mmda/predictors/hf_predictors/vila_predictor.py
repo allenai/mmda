@@ -2,7 +2,7 @@
 # https://github.com/allenai/VILA/blob/dd242d2fcbc5fdcf05013174acadb2dc896a28c3/src/vila/predictors.py#L1
 # to reduce the dependency on the VILA package.
 
-from typing import List, Union, Dict, Any, Tuple
+from typing import List, Union, Dict, Any
 from abc import abstractmethod
 from dataclasses import dataclass
 import inspect
@@ -17,7 +17,6 @@ from vila.models.hierarchical_model import (
 )
 from vila.dataset.preprocessors import instantiate_dataset_preprocessor
 
-from mmda.types.names import *
 from mmda.types.annotation import Annotation, Span, SpanGroup
 from mmda.types.metadata import Metadata
 from mmda.types.document import Document
@@ -31,6 +30,8 @@ from mmda.predictors.hf_predictors.base_hf_predictor import BaseHFPredictor
 # Two constants for the constraining the size of the page for
 # inputs to the model.
 # TODO: Move this to somewhere else.
+from mmda.types.names import Pages, Tokens, Rows
+
 MAX_PAGE_WIDTH = 1000
 MAX_PAGE_HEIGHT = 1000
 
@@ -48,8 +49,8 @@ class VILAPreprocessorConfig:
     group_bbox_agg: str = "first"
     added_special_sepration_token: str = "[SEP]"
 
-    # This is introduced to support the updates in the 
-    # vila 0.4.0 which fixes the typo. 
+    # This is introduced to support the updates in the
+    # vila 0.4.0 which fixes the typo.
     @property
     def added_special_separation_token(self):
         return self.added_special_sepration_token
@@ -197,7 +198,7 @@ class BaseVILAPredictor(BaseHFPredictor):
         return page_prediction_results
 
     ############################################
-    ###### Some other auxiliary functions ######
+    # Some other auxiliary functions ###########
     ############################################
 
     def get_category_prediction(self, model_outputs):
@@ -226,7 +227,7 @@ class SimpleVILAPredictor(BaseVILAPredictor):
         encoded_labels = model_inputs["labels"]
 
         true_predictions = [
-            [(p, l) for (p, l) in zip(prediction, label) if l != -100]
+            [(pred, label) for (pred, label) in zip(prediction, label) if label != -100]
             for prediction, label in zip(model_predictions, encoded_labels)
         ]
 
@@ -298,7 +299,7 @@ class HVILAPredictor(BaseVILAPredictor):
         encoded_labels = model_inputs["labels"]
 
         true_predictions = [
-            [(p, l) for (p, l) in zip(prediction, label) if l != -100]
+            [(pred, label) for (pred, label) in zip(prediction, label) if label != -100]
             for prediction, label in zip(model_predictions, encoded_labels)
         ]
 

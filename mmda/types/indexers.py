@@ -7,7 +7,7 @@ Indexes for Annotations
 from typing import List
 
 from abc import abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from mmda.types.annotation import SpanGroup, Annotation
 from ncls import NCLS
@@ -76,7 +76,7 @@ class SpanGroupIndexer(Indexer):
 
     def find(self, query: SpanGroup) -> List[SpanGroup]:
         if not isinstance(query, SpanGroup):
-            raise ValueError(f'SpanGroupIndexer only works with `query` that is SpanGroup type')
+            raise ValueError('SpanGroupIndexer only works with `query` that is SpanGroup type')
 
         if not query.spans:
             return []
@@ -93,5 +93,3 @@ class SpanGroupIndexer(Indexer):
         # TODO: provide option to return matched span groups in same order as self._sgs
         #   (the span groups the index was built with originally)
         return sorted(list(matched_span_groups))
-
-

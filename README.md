@@ -9,6 +9,15 @@ conda create -n mmda python=3.8
 pip install -e '.[dev,<extras_require section from setup.py>]'
 ```
 
+## PEP 8 - Style guid for python code
+https://peps.python.org/pep-0008/
+
+We propose to follow PEP8 style guide. To test the code run
+
+```bash
+flake8
+```
+
 ## Unit testing
 Note that pytest is running coverage, which checks the unit test coverage of the code.
 The percent coverage can be found in setup.cfg file.

@@ -1,8 +1,9 @@
 from functools import reduce
 import itertools
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Iterator, List
 
 import layoutparser as lp
+from PIL.Image import Image
 
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 from mmda.types.annotation import BoxGroup
@@ -81,7 +82,7 @@ class BibEntryDetectionPredictor(BasePredictor):
                     model_outputs: lp.Layout,
                     page_tokens: List[Span],
                     page_index: int,
-                    image: "PIL.Image",
+                    image: Image,
                     id_counter: Iterator[int]) -> (List[BoxGroup], List[BoxGroup]):
         """Convert the model outputs for a single page image into the mmda format
 

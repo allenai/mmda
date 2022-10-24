@@ -6,7 +6,6 @@ Dataclass for creating token streams from a document via SymbolScraper
 
 """
 import os
-import json
 import logging
 import math
 import re
@@ -21,8 +20,7 @@ from mmda.types.box import Box
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.parsers.parser import Parser
-from mmda.types.names import *
-
+from mmda.types.names import Symbols, Pages, Tokens, Rows
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +107,8 @@ class SymbolScraperParser(Parser):
         return None
 
     def _parse_row_head_tag(self, row_tag: str) -> Dict:
-        # TODO - not sure why line bboxes are useful; skip for now.  they dont quite make sense (e.g. bbox[1] == bbox[3])
+        # TODO - not sure why line bboxes are useful; skip for now.  they dont quite make sense
+        #  (e.g. bbox[1] == bbox[3])
         match = re.match(pattern=r'<Line id=\"([0-9]+)\" BBOX=\"(.+)\">', string=row_tag)
         return {'id': int(match.group(1)), 'bbox': match.group(2)}
 
@@ -132,14 +131,19 @@ class SymbolScraperParser(Parser):
         pagemetrics = xml_lines[start:end]
 
         page_to_metrics = {}
-        for start, end in self._split_list_by_start_end_tags(my_list=pagemetrics, start_tag='<page>', end_tag='</page>'):
+        for start, end in self._split_list_by_start_end_tags(
+                my_list=pagemetrics, start_tag='<page>', end_tag='</page>'):
             partition = pagemetrics[start:end]
             page_num = int(self._find_one_and_extract(my_list=partition, start_tag='<no>', end_tag='</no>'))
-            page_width = float(self._find_one_and_extract(my_list=partition, start_tag='<pagewidth>', end_tag='</pagewidth>'))
-            page_height = float(self._find_one_and_extract(my_list=partition, start_tag='<pageheight>', end_tag='</pageheight>'))
+            page_width = float(self._find_one_and_extract(
+                my_list=partition, start_tag='<pagewidth>', end_tag='</pagewidth>'))
+            page_height = float(self._find_one_and_extract(
+                my_list=partition, start_tag='<pageheight>', end_tag='</pageheight>'))
             page_num_rows = int(self._find_one_and_extract(my_list=partition, start_tag='<lines>', end_tag='</lines>'))
-            page_num_tokens = int(self._find_one_and_extract(my_list=partition, start_tag='<words>', end_tag='</words>'))
-            page_num_chars = int(self._find_one_and_extract(my_list=partition, start_tag='<characters>', end_tag='</characters>'))
+            page_num_tokens = int(self._find_one_and_extract(
+                my_list=partition, start_tag='<words>', end_tag='</words>'))
+            page_num_chars = int(self._find_one_and_extract(
+                my_list=partition, start_tag='<characters>', end_tag='</characters>'))
             page_to_metrics[page_num] = {
                 'height': page_height,
                 'width': page_width,
@@ -163,10 +167,9 @@ class SymbolScraperParser(Parser):
                 row_info = self._parse_row_head_tag(row_tag=row_lines[0])  # first line is the head tag
                 row_id = row_info['id']
                 for token_start, token_end in self._split_list_by_start_end_tags(my_list=row_lines,
-                                                                               start_tag='<Word',
-                                                                               end_tag='</Word>'):
+                                                                                 start_tag='<Word',
+                                                                                 end_tag='</Word>'):
                     token_lines = row_lines[token_start:token_end]
-                    token_info = self._parse_token_head_tag(token_tag=token_lines[0])  # first line is the head tag
                     char_bboxes: List[Box] = []
                     token = ''
                     for char_tag in [t for t in token_lines if t.startswith('<Char') and t.endswith('</Char>')]:
@@ -216,7 +219,7 @@ class SymbolScraperParser(Parser):
                     if k < len(tokens) - 1:
                         text += ' '
                     else:
-                        text += '\n'    # start newline at end of row
+                        text += '\n'  # start newline at end of row
                     start = end + 1
                 # make row
                 row = SpanGroup(spans=[
@@ -265,8 +268,10 @@ class SymbolScraperParser(Parser):
         # get page metrics
         page_to_metrics = self._parse_page_to_metrics(xml_lines=xml_lines)
         logger.info(f'\tNum pages: {len(page_to_metrics)}')
-        logger.info(f"\tAvg tokens: {sum([metric['tokens'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
-        logger.info(f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        logger.info(
+            f"\tAvg tokens: {sum([metric['tokens'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
+        logger.info(
+            f"\tAvg rows: {sum([metric['rows'] for metric in page_to_metrics.values()]) / len(page_to_metrics)}")
 
         # get token stream (grouped by page & row)
         page_to_row_to_tokens = self._parse_page_to_row_to_tokens(xml_lines=xml_lines, page_to_metrics=page_to_metrics)
@@ -277,5 +282,3 @@ class SymbolScraperParser(Parser):
         # build Document
         doc = Document.from_json(doc_dict=doc_dict)
         return doc
-
-

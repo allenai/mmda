@@ -22,7 +22,6 @@ if TYPE_CHECKING:
 __all__ = ["Annotation", "BoxGroup", "SpanGroup", "Relation"]
 
 
-
 def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
     """Warns when a deepcopy is performed on an Annotation."""
 
@@ -32,7 +31,6 @@ def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
         "expensive; consider using references instead."
     )
     warnings.warn(msg, UserWarning, stacklevel=2)
-
 
 
 class Annotation:
@@ -75,7 +73,6 @@ class Annotation:
             return self.doc.find_overlapping(self, field)
 
         return self.__getattribute__(field)
-
 
 
 class BoxGroup(Annotation):
@@ -282,7 +279,6 @@ class SpanGroup(Annotation):
     @text.setter
     def text(self, text: Union[str, None]) -> None:
         self.metadata.text = text
-
 
 
 class Relation(Annotation):

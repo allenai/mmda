@@ -5,17 +5,10 @@
 """
 
 import io
-import os
 import xml.etree.ElementTree as et
-from typing import List, Optional, Text
+from typing import Optional
 
 import requests
-from mmda.parsers.parser import Parser
-from mmda.predictors.base_predictors.base_predictor import BasePredictor
-from mmda.types.annotation import SpanGroup
-from mmda.types.document import Document
-from mmda.types.names import Symbols
-from mmda.types.span import Span
 
 # processCitationList available in Grobid 0.7.1-SNAPSHOT and later
 DEFAULT_API = "http://localhost:8070/api/processCitation"

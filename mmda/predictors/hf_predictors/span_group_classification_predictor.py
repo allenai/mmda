@@ -4,7 +4,7 @@
 
 """
 
-from typing import List, Any, Tuple, Optional, Sequence
+from typing import List, Any, Tuple, Optional
 
 from collections import defaultdict
 import numpy as np
@@ -20,7 +20,7 @@ from smashed.interfaces.simple import (
 )
 
 from mmda.types.metadata import Metadata
-from mmda.types.annotation import Annotation, Span, SpanGroup
+from mmda.types.annotation import Annotation, SpanGroup
 from mmda.types.document import Document
 from mmda.predictors.hf_predictors.base_hf_predictor import BaseHFPredictor
 
@@ -34,11 +34,11 @@ class SpanGroupClassificationBatch:
             context_id: List[int]
     ):
         assert len(input_ids) == len(attention_mask) == len(span_group_ids) == len(context_id), \
-            f"Inputs to batch arent same length"
+            "Inputs to batch arent same length"
         self.batch_size = len(input_ids)
         assert [len(example) for example in input_ids] == \
                [len(example) for example in attention_mask] == \
-               [len(example) for example in span_group_ids], f"Examples in batch arent same length"
+               [len(example) for example in span_group_ids], "Examples in batch arent same length"
         self.input_ids = input_ids
         self.attention_mask = attention_mask
         self.span_group_ids = span_group_ids
@@ -147,9 +147,9 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
             device=device
         )
         # combining everything
-        self.preprocess_mapper = self.tokenizer_mapper >> \
-                                 self.unpacking_mapper >> \
-                                 self.batch_size_mapper
+        self.preprocess_mapper = (self.tokenizer_mapper >>
+                                  self.unpacking_mapper >>
+                                  self.batch_size_mapper)
 
     @classmethod
     def from_pretrained(

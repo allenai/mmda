@@ -7,10 +7,8 @@
 import os
 import io
 import xml.etree.ElementTree as et
-from typing import List, Optional, Text
+from typing import List, Optional
 import requests
-import tempfile
-import json
 
 from mmda.parsers.parser import Parser
 from mmda.types.annotation import SpanGroup
@@ -53,6 +51,7 @@ def _post_document(url: str, input_pdf_path: str) -> str:
         raise RuntimeError(f"Unable to process document: {input_pdf_path}!")
 
     return req.text
+
 
 class GrobidHeaderParser(Parser):
     """Grobid parser that uses header API methods to get title and abstract only. The

@@ -10,7 +10,6 @@ from typing import List, Optional
 
 import json
 
-
 from mmda.types.span import Span
 from mmda.types.boundingbox import BoundingBox
 
@@ -21,7 +20,6 @@ class Annotation:
 
     def __repr__(self):
         return json.dumps(self.to_json())
-
 
 
 class SpanAnnotation(Annotation):
@@ -43,7 +41,6 @@ class BoundingBoxAnnotation(Annotation):
 
     def to_json(self):
         return {'bbox': self.bbox.to_json(), 'label': self.label}
-
 
 
 if __name__ == '__main__':

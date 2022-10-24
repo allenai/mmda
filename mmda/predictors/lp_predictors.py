@@ -1,11 +1,12 @@
-from typing import Union, List, Dict, Any, Optional
+from typing import List, Dict, Optional
 
+from PIL.Image import Image
 from tqdm import tqdm
 import layoutparser as lp
 
 from mmda.types import Document, Box, BoxGroup, Metadata
-from mmda.types.names import *
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
+from mmda.types.names import Pages, Images
 
 
 class LayoutParserPredictor(BasePredictor):
@@ -41,25 +42,25 @@ class LayoutParserPredictor(BasePredictor):
 
         return cls(model)
 
-    def postprocess(self, 
-        model_outputs: lp.Layout, 
-        page_index: int,
-        image: "PIL.Image") -> List[BoxGroup]:
+    def postprocess(self,
+                    model_outputs: lp.Layout,
+                    page_index: int,
+                    image: Image) -> List[BoxGroup]:
         """Convert the model outputs into the mmda format
 
         Args:
-            model_outputs (lp.Layout): 
-                The layout detection results from layoutparser for 
+            model_outputs (lp.Layout):
+                The layout detection results from layoutparser for
                 a page image
-            page_index (int): 
-                The index of the current page, used for creating the 
+            page_index (int):
+                The index of the current page, used for creating the
                 `Box` object
-            image (PIL.Image): 
+            image (PIL.Image):
                 The image of the current page, used for converting
                 to relative coordinates for the box objects
 
         Returns:
-            List[BoxGroup]: 
+            List[BoxGroup]:
             The detected layout stored in the BoxGroup format.
         """
 
@@ -90,11 +91,11 @@ class LayoutParserPredictor(BasePredictor):
         """Returns a list of Boxgroups for the detected layouts for all pages
 
         Args:
-            document (Document): 
-                The input document object 
+            document (Document):
+                The input document object
 
         Returns:
-            List[BoxGroup]: 
+            List[BoxGroup]:
                 The returned Boxgroups for the detected layouts for all pages
         """
         document_prediction = []
