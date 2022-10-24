@@ -3,7 +3,8 @@ from typing import List
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.types.span import Span
-from mmda.predictors.hf_predictors.bibentry_predictor.types import BibEntryPredictionWithSpan, BibEntryStructureSpanGroups
+from mmda.predictors.hf_predictors.bibentry_predictor.types import (BibEntryPredictionWithSpan,
+                                                                    BibEntryStructureSpanGroups)
 
 
 _SPAN_JOINER = " "
@@ -83,4 +84,3 @@ def map_raw_predictions_to_mmda(
         map_raw_span(prediction.bib_entry_url, raw_pred.url)
 
     return prediction
-

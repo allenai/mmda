@@ -10,6 +10,9 @@ from typing import List, Optional, Dict
 from abc import abstractmethod
 from dataclasses import dataclass, field
 
+from mmda.types import Document
+from mmda.types.annotation import Annotation
+
 
 @dataclass
 class DocumentElement:
@@ -25,7 +28,7 @@ class DocumentElement:
     # TODO: unclear if should be `annotations` or `annotation`
     @abstractmethod
     @classmethod
-    def load(cls, field_name: str, annotations: List["Annotation"], document: Optional["Document"] = None):
+    def load(cls, field_name: str, annotations: List[Annotation], document: Optional[Document] = None):
         pass
 
 

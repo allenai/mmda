@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from optimum.onnxruntime import ORTModelForTokenClassification
 import torch
@@ -19,7 +19,6 @@ from mmda.types.document import Document
 
 
 class BibEntryPredictor(BasePredictor):
-
     REQUIRED_BACKENDS = ["transformers", "torch"]
     REQUIRED_DOCUMENT_FIELDS = ["tokens", "pages", "bib_entry_boxes"]
 
@@ -97,9 +96,13 @@ class BibEntryPredictor(BasePredictor):
             if word_id is not None and word_id != prev_word_id:
                 # Tokenization process removes empty string and skips word id, so we're adding it back here
                 # For example:
-                # input string list: [' Anon ', '1934', ' ', 'University and Educational Intelligence', ' ', 'Nature', ' ', '133', ' ', '805–805']
-                # tokenization removes empty string: ['[CLS]', 'an', '##on', '1934', 'university', 'and', 'educational', 'intelligence', 'nature', '133', '80', '##5', '–', '80', '##5', '[SEP]']
-                # skipping empty string results in skipping word id: [None, 0, 0, 1, 3, 3, 3, 3, 5, 7, 9, 9, 9, 9, 9, None]
+                # input string list: [' Anon ', '1934', ' ', 'University and Educational Intelligence', ' ', 'Nature',
+                # ' ', '133', ' ', '805–805']
+                # tokenization removes empty string: ['[CLS]', 'an', '##on', '1934', 'university', 'and',
+                # 'educational',
+                # 'intelligence', 'nature', '133', '80', '##5', '–', '80', '##5', '[SEP]']
+                # skipping empty string results in skipping word id: [None, 0, 0, 1, 3, 3, 3, 3, 5, 7, 9, 9, 9, 9,
+                # 9, None]
                 # predictions: [0, 9, 9, 0, 8, 9, 8, 8, 9, 0, 13, 13, 13, 13, 13, 4]
                 if prev_word_id is not None:
                     for i in range(word_id - (prev_word_id + 1)):
@@ -111,21 +114,25 @@ class BibEntryPredictor(BasePredictor):
 
     @staticmethod
     def _aggregate_token_level_prediction(input: str, spans, label_ids: List[int]) -> BibEntryPredictionWithSpan:
-        citation_number = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids,
-                                                                                              BibEntryLabel.CITATION_NUMBER)
+        citation_number = BibEntryPredictor._extract_first_contiguous_label_group_token_level(
+            input, spans, label_ids, BibEntryLabel.CITATION_NUMBER)
 
         authors = BibEntryPredictor._extract_author_token(input, spans, label_ids)
-        title = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, BibEntryLabel.TITLE)
+        title = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids,
+                                                                                    BibEntryLabel.TITLE)
 
         journal = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids,
                                                                                       BibEntryLabel.JOURNAL)
-        event = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, BibEntryLabel.EVENT)
+        event = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids,
+                                                                                    BibEntryLabel.EVENT)
         journal_venue_or_event = journal if journal else event
 
         year = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids,
                                                                                    BibEntryLabel.ISSUED_YEAR)
-        doi = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, BibEntryLabel.DOI)
-        url = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids, BibEntryLabel.URL)
+        doi = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids,
+                                                                                  BibEntryLabel.DOI)
+        url = BibEntryPredictor._extract_first_contiguous_label_group_token_level(input, spans, label_ids,
+                                                                                  BibEntryLabel.URL)
 
         return BibEntryPredictionWithSpan(
             citation_number=citation_number,
@@ -148,12 +155,14 @@ class BibEntryPredictor(BasePredictor):
                 author_span = spans[word_index]
             # Middle of current author
             elif (
-                    label_id == BibEntryLabel.AUTHOR_START.value or label_id == BibEntryLabel.AUTHOR_MIDDLE.value or label_id == BibEntryLabel.AUTHOR_END.value) and author_span:
+                    label_id == BibEntryLabel.AUTHOR_START.value or label_id == BibEntryLabel.AUTHOR_MIDDLE.value or
+                    label_id == BibEntryLabel.AUTHOR_END.value) and author_span:
                 current_span = spans[word_index]
                 author_span = author_span._replace(end=current_span.end)
             # End of current author. Close current author span and reset.
             elif (
-                    label_id != BibEntryLabel.AUTHOR_START.value and label_id != BibEntryLabel.AUTHOR_MIDDLE.value and label_id != BibEntryLabel.AUTHOR_END.value) and author_span:
+                    label_id != BibEntryLabel.AUTHOR_START.value and label_id != BibEntryLabel.AUTHOR_MIDDLE.value and
+                    label_id != BibEntryLabel.AUTHOR_END.value) and author_span:
                 res.append(StringWithSpan(
                     content=input[author_span.start:author_span.end],
                     start=author_span.start,
@@ -197,7 +206,7 @@ class BibEntryPredictor(BasePredictor):
     @staticmethod
     def _clean_str(s: str) -> Optional[str]:
         without_diacritics = unidecode(s.strip())
-        subbed = re.sub("-\s+", "", without_diacritics)
+        subbed = re.sub(r'-\s+', '', without_diacritics)
         if subbed:
             return subbed
         else:
@@ -207,6 +216,6 @@ class BibEntryPredictor(BasePredictor):
     def _clean_doi(doi: str) -> Optional[str]:
         lower_trimmed = doi.strip().lower()
         if lower_trimmed.startswith("10."):
-            return re.sub("\s", "", lower_trimmed)
+            return re.sub(r'\s', '', lower_trimmed)
         else:
             return None

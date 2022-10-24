@@ -1,4 +1,4 @@
-from typing import List, Union, Dict, Any, Tuple, Optional, Sequence
+from typing import List, Dict, Optional
 from abc import abstractmethod
 
 from tqdm import tqdm
@@ -9,7 +9,6 @@ from vila.predictors import (
 )
 
 
-from mmda.types.names import *
 from mmda.types.annotation import Annotation, Span, SpanGroup
 from mmda.types.document import Document
 from mmda.types.metadata import Metadata
@@ -18,6 +17,7 @@ from mmda.predictors.hf_predictors.utils import (
     convert_sequence_tagging_to_spans,
 )
 from mmda.predictors.hf_predictors.base_hf_predictor import BaseHFPredictor
+from mmda.types.names import Blocks, Rows, Pages, Tokens
 
 
 class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
@@ -80,7 +80,8 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
                 )
 
                 assert len(model_predictions) == len(
-                    page.tokens), f"Model predictions and tokens are not the same length ({len(model_predictions)} != {len(page.tokens)}) for page {page_id}"
+                    page.tokens), (f"Model predictions and tokens are not the same length"
+                                   f"({len(model_predictions)} != {len(page.tokens)}) for page {page_id}")
 
                 page_prediction_results.extend(
                     self.postprocess(page, model_predictions)
@@ -142,4 +143,3 @@ class HVILATokenClassificationPredictor(BaseSinglePageTokenClassificationPredict
         elif self.predictor.preprocessor.config.agg_level == "block":
             base_reqs.append(Blocks)
         return base_reqs
-

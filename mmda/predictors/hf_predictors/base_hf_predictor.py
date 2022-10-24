@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Union, List, Dict, Any
+from typing import Dict, Any
 
 from transformers import AutoTokenizer, AutoConfig, AutoModel
 
