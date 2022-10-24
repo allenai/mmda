@@ -9,7 +9,7 @@ from mmda.types.box import Box
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.parsers.parser import Parser
-from mmda.types.names import *
+from mmda.types.names import Symbols, Pages, Tokens, Rows
 
 
 class PDFPlumberParser(Parser):
@@ -288,7 +288,7 @@ class PDFPlumberParser(Parser):
         Adapted from https://github.com/allenai/VILA/blob/e6d16afbd1832f44a430074855fbb4c3d3604f4a/src/vila/pdftools/pdfplumber_extractor.py#L24
 
         Modified Oct 2022 (kylel): Changed return value to be List[int]
-        """
+        """ # noqa
         prev_y = None
         prev_x = None
 
@@ -333,9 +333,9 @@ class PDFPlumberParser(Parser):
         """Returns a list of length len(fine_tokens) where elements of the list are
         integer indices into coarse_tokens elements."""
         assert len(coarse_tokens) <= len(fine_tokens), \
-            f"This method requires |coarse| <= |fine|"
+            "This method requires |coarse| <= |fine|"
         assert ''.join(coarse_tokens) == ''.join(fine_tokens), \
-            f"This method requires the chars(coarse) == chars(fine)"
+            "This method requires the chars(coarse) == chars(fine)"
 
         coarse_start_ends = []
         start = 0
@@ -366,19 +366,7 @@ class PDFPlumberParser(Parser):
         return out
 
 
-
-
-
-
-
-
-
 """
-
-            
-            
-
-                
                 row_annos.append(row)
                 current_rows_tokens = []
 
@@ -400,4 +388,4 @@ class PDFPlumberParser(Parser):
                     page_annos.append(page)
                     current_pages_tokens = []
 
-"""
+""" # noqa

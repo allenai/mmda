@@ -6,7 +6,6 @@
 
 import itertools
 import warnings
-from copy import deepcopy
 from typing import Dict, Iterable, List, Optional
 
 from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
@@ -35,7 +34,7 @@ class Document:
     def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
         if not isinstance(query, SpanGroup):
             raise NotImplementedError(
-                f"Currently only supports query of type SpanGroup"
+                "Currently only supports query of type SpanGroup"
             )
         return self.__indexers[field_name].find(query=query)
 

@@ -10,6 +10,7 @@ from typing import List, Dict
 
 import json
 
+
 class BoundingBox:
     def __init__(self, l: float, t: float, w: float, h: float, page: int):
         """Assumes x=0.0 and y=0.0 is the top-left of the page, and
@@ -19,9 +20,9 @@ class BoundingBox:
         if t < 0.0 or t > 1.0:
             raise ValueError(f't={t} is not within 0.0~1.0')
         if l + w < 0.0 or l + w > 1.0:
-            raise ValueError(f'l+w={l+w} is not within 0.0~1.0')
+            raise ValueError(f'l+w={l + w} is not within 0.0~1.0')
         if t + h < 0.0 or t + h > 1.0:
-            raise ValueError(f't+h={t+h} is not within 0.0~1.0')
+            raise ValueError(f't+h={t + h} is not within 0.0~1.0')
         self.l = l
         self.t = t
         self.w = w

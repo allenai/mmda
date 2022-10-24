@@ -78,7 +78,7 @@ def read_labels(labels_json_path: str) -> list[LabeledDoc]:
         list[LabeledDoc]: List of labeled documents
     """
     with open(labels_json_path, encoding="utf-8") as f:
-        labels = [LabeledDoc(**l) for l in json.loads(f.read())]
+        labels = [LabeledDoc(**line) for line in json.loads(f.read())]
 
     return labels
 

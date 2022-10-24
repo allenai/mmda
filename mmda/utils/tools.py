@@ -1,8 +1,8 @@
-from typing import List, Union, Dict, Any, Tuple, Optional
 from collections import defaultdict
+from typing import List, Tuple
 
-from mmda.types.span import Span
 from mmda.types.box import Box
+from mmda.types.span import Span
 
 
 def allocate_overlapping_tokens_for_box(
@@ -134,4 +134,3 @@ class MergeSpans:
                 merged_spans.append(Span(start=min([span.start for span in nodes_in_comp[comp]]),
                                          end=max([span.end for span in nodes_in_comp[comp]]), box=merged_box))
         return merged_spans
-

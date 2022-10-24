@@ -66,7 +66,8 @@ class Box:
             _y2 = _y1
         if (_x1, _y1, _x2, _y2) != (x1, y1, x2, y2):
             warnings.warn(
-                f"The coordinates ({x1}, {y1}, {x2}, {y2}) are not valid and converted to ({_x1}, {_y1}, {_x2}, {_y2})."
+                f"The coordinates ({x1}, {y1}, {x2}, {y2}) are not valid and converted to"
+                f"({_x1}, {_y1}, {_x2}, {_y2})."
             )
 
         return cls(_x1, _y1, _x2 - _x1, _y2 - _y1, page)

@@ -7,7 +7,7 @@ Dataclass for creating token streams from a document
 """
 
 from abc import abstractmethod
-from typing import List, Optional, Protocol, Union
+from typing import Protocol
 
 from mmda.types.document import Document
 

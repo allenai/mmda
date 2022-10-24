@@ -1,6 +1,6 @@
 from functools import reduce
 import itertools
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Iterator, List
 
 import layoutparser as lp
 

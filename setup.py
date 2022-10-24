@@ -4,6 +4,7 @@ test_deps = [
     'pytest',
     'pytest-xdist',
     'pytest-cov',
+    'flake8',
 ]
 
 setup(

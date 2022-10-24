@@ -27,6 +27,6 @@ def frombase64(img_str):
     return img
 
 
-PILImage.tobase64 = tobase64 # This is the method applied to individual Image classes
-PILImage.to_json = tobase64 # Use the same API as the others
-PILImage.frombase64 = frombase64 # This is bind to the module, used for loading the images
+PILImage.tobase64 = tobase64  # This is the method applied to individual Image classes
+PILImage.to_json = tobase64  # Use the same API as the others
+PILImage.frombase64 = frombase64  # This is bind to the module, used for loading the images

@@ -6,11 +6,9 @@
 # TODO[kylel] not sure this class needs to exist; seems extra boilerplate for no benefit
 
 
-
-from typing import List, Optional, Dict, Tuple, Type
+from typing import List, Optional, Dict
 from abc import abstractmethod
 from dataclasses import dataclass, field
-
 
 
 @dataclass

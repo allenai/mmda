@@ -8,14 +8,13 @@ import string
 from typing import Optional, Set, List
 
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
-from mmda.types.metadata import Metadata
-from mmda.types.annotation import Annotation, Span, SpanGroup
+from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
+from mmda.types.metadata import Metadata
 from mmda.types.names import Rows, Tokens
 
 
 class DictionaryWordPredictor(BasePredictor):
-
     REQUIRED_BACKENDS = None
     REQUIRED_DOCUMENT_FIELDS = [Rows, Tokens]
 
@@ -127,10 +126,10 @@ class DictionaryWordPredictor(BasePredictor):
 
             # Remove optional pluralization at end of token
             for plural_suffix in ["(s)", "(s"]:
-                if next_row_first_token_text[-len(plural_suffix) :] == plural_suffix:
+                if next_row_first_token_text[-len(plural_suffix):] == plural_suffix:
                     next_row_first_token_text = next_row_first_token_text[
-                        : -len(plural_suffix)
-                    ]
+                                                : -len(plural_suffix)
+                                                ]
 
             # Combined word is in dictionary without hyphen (JOIN)
             combined_no_hyphen = "".join(
@@ -142,9 +141,9 @@ class DictionaryWordPredictor(BasePredictor):
 
             # Restore original text without any punctuation stripping
             if (
-                combined_no_hyphen in self.dictionary
-                or combined_no_hyphen.lower() in self.dictionary
-                or combined_no_hyphen.lower() in local_dictionary
+                    combined_no_hyphen in self.dictionary
+                    or combined_no_hyphen.lower() in self.dictionary
+                    or combined_no_hyphen.lower() in local_dictionary
             ):
                 combined_text = curr_row_last_token_text[:-1] + \
                                 self._token_text(next_row_first_token)

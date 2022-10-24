@@ -1,6 +1,5 @@
-from dataclasses import dataclass
 from abc import abstractmethod
-from typing import Union, List, Dict, Any
+from typing import List
 
 from mmda.types.annotation import Annotation
 from mmda.types.document import Document
@@ -9,7 +8,7 @@ from mmda.types.document import Document
 class BasePredictor:
 
     ###################################################################
-    ##################### Necessary Model Variables ###################
+    # Necessary Model Variables #
     ###################################################################
 
     # TODO[Shannon] Add the check for required backends in the future.
@@ -34,14 +33,14 @@ class BasePredictor:
         return None
 
     ###################################################################
-    ######################### Core Methods ############################
+    # Core Methods #
     ###################################################################
 
     def _doc_field_checker(self, document: Document) -> None:
         if self.REQUIRED_DOCUMENT_FIELDS is not None:
             for field in self.REQUIRED_DOCUMENT_FIELDS:
                 assert (
-                    field in document.fields
+                        field in document.fields
                 ), f"The input Document object {document} doesn't contain the required field {field}"
 
     # TODO[Shannon] Allow for some preprocessed document intput
