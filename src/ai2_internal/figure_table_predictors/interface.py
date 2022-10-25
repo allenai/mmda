@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, BaseSettings
 
 from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureTablePredictions
 from mmda.types.document import Document
-from src.mmda.types.image import frombase64
+from mmda.types.image import frombase64
 
 from ai2_internal import api
 

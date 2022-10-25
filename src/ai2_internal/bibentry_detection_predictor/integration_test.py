@@ -33,7 +33,7 @@ import pathlib
 import sys
 import unittest
 
-from ai2_internal import api
+from .. import api
 from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from src.mmda.types.image import tobase64

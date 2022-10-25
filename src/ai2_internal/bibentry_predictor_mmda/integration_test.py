@@ -35,7 +35,7 @@ import pathlib
 import sys
 import unittest
 
-from ai2_internal import api
+from .. import api
 from mmda.types.document import Document
 from .interface import Instance
 

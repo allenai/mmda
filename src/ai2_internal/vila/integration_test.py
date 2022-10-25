@@ -35,7 +35,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from ai2_internal import api
+from .. import api
 from mmda.types.document import Document
 from src.mmda.types.image import tobase64
 from .interface import Instance
