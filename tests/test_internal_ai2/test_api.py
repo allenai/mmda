@@ -2,7 +2,7 @@ import unittest
 
 from pydantic.error_wrappers import ValidationError
 
-import ai2_internal.api as mmda_api
+import src.ai2_internal.api as mmda_api
 import mmda.types.annotation as mmda_ann
 from mmda.types import Metadata
 from mmda.types.box import Box as mmdaBox

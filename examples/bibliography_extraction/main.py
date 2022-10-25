@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Iterable, List, Optional
 
 from mmda.eval.metrics import box_overlap
-from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.predictors.heuristic_predictors.grobid_citation_predictor import (
     get_title,
 )

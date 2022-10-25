@@ -1,7 +1,7 @@
 import pathlib
 import sys
 
-from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.predictors.heuristic_predictors.dictionary_word_predictor import DictionaryWordPredictor
 from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor
