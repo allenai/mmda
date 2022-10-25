@@ -213,7 +213,7 @@ with open('...json', 'w') as f_out:
 You can create a Document from its saved output.
 
 ```python
-from src.mmda.types.image import PILImage, pilimage
+from mmda.types.image import PILImage, pilimage
 
 # directly from a JSON.  This should handle also the case where `images` were serialized as base64 strings.
 with open('...json') as f_in:
