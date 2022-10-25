@@ -12,7 +12,7 @@ from intervaltree import IntervalTree
 
 from mmda.types.boundingbox import BoundingBox
 from mmda.types.annotations import Annotation, SpanAnnotation, BoundingBoxAnnotation
-from src.mmda.types.image import Image
+from mmda.types.image import Image
 from mmda.types.span import Span
 
 

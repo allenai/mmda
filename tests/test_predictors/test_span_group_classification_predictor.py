@@ -8,7 +8,7 @@ import unittest
 
 from mmda.types.annotation import Span, SpanGroup
 from mmda.types.document import Document
-from src.mmda.predictors.hf_predictors.span_group_classification_predictor import (
+from mmda.predictors.hf_predictors.span_group_classification_predictor import (
     SpanGroupClassificationPredictor
 )
 

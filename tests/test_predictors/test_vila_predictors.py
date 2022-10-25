@@ -5,7 +5,7 @@ import unittest
 from PIL import Image
 
 from mmda.types.document import Document
-from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor, HVILAPredictor

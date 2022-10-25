@@ -17,7 +17,7 @@ from mmda.predictors.hf_predictors.token_classification_predictor import (
     IVILATokenClassificationPredictor,
 )
 from mmda.types.document import Document, SpanGroup
-from src.mmda.types.image import frombase64
+from mmda.types.image import frombase64
 
 logger = logging.getLogger(__name__)
 

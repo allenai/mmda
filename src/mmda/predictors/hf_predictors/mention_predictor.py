@@ -9,7 +9,7 @@ from transformers import AutoModelForTokenClassification, AutoTokenizer
 from mmda.types.annotation import Annotation, SpanGroup
 from mmda.types.document import Document
 from mmda.types.span import Span
-from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 
 
 class Labels:

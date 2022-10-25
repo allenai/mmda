@@ -12,7 +12,7 @@ from pydantic import BaseModel, BaseSettings, Field
 
 from ai2_internal import api
 from mmda.predictors.d2_predictors.bibentry_detection_predictor import BibEntryDetectionPredictor
-from src.mmda.types import image
+from mmda.types import image
 from mmda.types.document import Document
 
 

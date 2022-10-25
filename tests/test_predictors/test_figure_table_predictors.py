@@ -11,7 +11,7 @@ from mmda.predictors.hf_predictors.token_classification_predictor import IVILATo
 from mmda.rasterizers import PDF2ImageRasterizer
 from mmda.types.box import Box
 from mmda.types.span import Span
-from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 
 
 

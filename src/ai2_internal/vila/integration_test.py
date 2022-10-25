@@ -37,7 +37,7 @@ from PIL import Image
 
 from .. import api
 from mmda.types.document import Document
-from src.mmda.types.image import tobase64
+from mmda.types.image import tobase64
 from .interface import Instance
 
 FIXTURE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_fixtures")

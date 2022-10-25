@@ -34,9 +34,9 @@ import sys
 import unittest
 
 from .. import api
-from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
-from src.mmda.types.image import tobase64
+from mmda.types.image import tobase64
 from .interface import Instance
 
 try:
