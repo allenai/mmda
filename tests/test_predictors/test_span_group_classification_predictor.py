@@ -6,6 +6,8 @@
 
 import unittest
 
+import json
+
 from mmda.types.annotation import Span, SpanGroup
 from mmda.types.document import Document
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
