@@ -6,7 +6,7 @@ import os
 from tqdm import tqdm
 import layoutparser as lp
 
-from mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from mmda.types.annotation import SpanGroup
 from mmda.predictors.lp_predictors import LayoutParserPredictor

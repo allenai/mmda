@@ -25,7 +25,7 @@ from pathlib import Path
 
 import os.path
 
-from mmda.types.image import tobase64
+from src.mmda.types.image import tobase64
 
 try:
     from timo_interface import with_timo_container

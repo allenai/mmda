@@ -3,16 +3,14 @@ from dataclasses import dataclass
 from typing import Iterable, List, Optional
 
 from mmda.eval.metrics import box_overlap
-from mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.predictors.heuristic_predictors.grobid_citation_predictor import (
-    DEFAULT_API,
     get_title,
 )
 from mmda.predictors.hf_predictors.vila_predictor import HVILAPredictor
 from mmda.predictors.tesseract_predictors import TesseractBlockPredictor
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from mmda.types.annotation import BoxGroup, SpanGroup
-from mmda.types.box import Box
 from mmda.types.document import Document
 
 PDF_PATH = "resources/maml.pdf"

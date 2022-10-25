@@ -14,7 +14,7 @@ from pydantic import BaseModel, BaseSettings, Field
 
 from ai2_internal.api import BoxGroup
 from mmda.predictors.lp_predictors import LayoutParserPredictor
-from mmda.types import image
+from src.mmda.types import image
 from mmda.types.document import Document
 
 logger = logging.getLogger(__name__)

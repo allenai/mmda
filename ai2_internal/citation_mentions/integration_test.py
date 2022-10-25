@@ -14,7 +14,7 @@ import unittest
 
 from ai2_internal import api
 from ai2_internal.citation_mentions.interface import Instance
-from mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
 
 try:
     from timo_interface import with_timo_container

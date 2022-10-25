@@ -1,7 +1,6 @@
 import numpy as np
 import os
-import pandas as pd
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 import xgboost as xgb
 
 from mmda.types.document import Document

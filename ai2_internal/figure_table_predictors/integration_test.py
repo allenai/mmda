@@ -37,7 +37,7 @@ from PIL import Image
 
 from ai2_internal import api
 from mmda.types.document import Document
-from mmda.types.image import tobase64
+from src.mmda.types.image import tobase64
 from .interface import Instance
 from ..api import SpanGroup
 

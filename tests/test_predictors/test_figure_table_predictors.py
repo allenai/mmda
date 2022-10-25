@@ -5,14 +5,13 @@ import pytest
 from mmda.predictors import LayoutParserPredictor
 from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureTablePredictions
 
-import os
 import pathlib
 
 from mmda.predictors.hf_predictors.token_classification_predictor import IVILATokenClassificationPredictor
 from mmda.rasterizers import PDF2ImageRasterizer
 from mmda.types.box import Box
 from mmda.types.span import Span
-from mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
 
 
 

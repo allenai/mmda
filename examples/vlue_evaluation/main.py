@@ -10,7 +10,7 @@ from typing import Callable, Dict, List
 from mmda.eval.vlue import (LabeledDoc, PredictedDoc, grobid_prediction,
                             read_labels, s2_prediction, score)
 from mmda.parsers.grobid_parser import GrobidHeaderParser
-from mmda.parsers.pdfplumber_parser import PDFPlumberParser
+from src.mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.parsers.symbol_scraper_parser import SymbolScraperParser
 from mmda.predictors.hf_predictors.vila_predictor import (BaseVILAPredictor,
                                                           HVILAPredictor,
