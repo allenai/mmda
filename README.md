@@ -213,20 +213,25 @@ with open('...json', 'w') as f_out:
 You can create a Document from its saved output.
 
 ```python
+import json
+import os
+
+from mmda.document import Document
+from typing import List
 from mmda.types.image import PILImage, pilimage
 
 # directly from a JSON.  This should handle also the case where `images` were serialized as base64 strings.
 with open('...json') as f_in:
-  doc_dict = json.load(f_in)
-  doc = Document.from_json(doc_dict=doc_dict)
+    doc_dict = json.load(f_in)
+    doc = Document.from_json(doc_dict=doc_dict)
 
 # if you saved your images separately, then you'll want to reconstruct them & re-attach
 images: List[PILImage] = []
 for i, page in enumerate(doc.pages):
-  image_path = os.path.join(outdir, f'{i}.png')
-  assert os.path.exists(image_path), f'Missing file for page {i}'
-  image = pilimage.open(image_path)
-  images.append(image)
+    image_path = os.path.join(outdir, f'{i}.png')
+    assert os.path.exists(image_path), f'Missing file for page {i}'
+    image = pilimage.open(image_path)
+    images.append(image)
 doc.annotate_images(images=images)
 ```  
 
