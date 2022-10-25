@@ -5,6 +5,7 @@ import pytest
 from mmda.predictors import LayoutParserPredictor
 from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureTablePredictions
 
+import os
 import pathlib
 
 from mmda.predictors.hf_predictors.token_classification_predictor import IVILATokenClassificationPredictor

@@ -1,5 +1,6 @@
 import itertools
 import os.path
+import string
 from typing import Dict, Iterator, List, Optional
 
 from optimum.onnxruntime import ORTModelForTokenClassification

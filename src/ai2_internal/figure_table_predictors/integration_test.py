@@ -33,6 +33,7 @@ import sys
 import unittest
 from pathlib import Path
 
+from PIL import Image
 from .. import api
 from mmda.types.document import Document
 from mmda.types.image import tobase64
