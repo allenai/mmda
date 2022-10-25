@@ -116,13 +116,22 @@ figure_table_predictors = [
 ]
 
 [tool.pytest.ini_options]
-addopts = [-n auto --cov=mmda]
+addopts = '-n auto --cov=mmda'
 testpaths = ['tests/']
 pythonpath = [
-  ".", "src",
+  '.', 'src',
 ]
 python_classes = ['Test*', '*Test']
 log_format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
 log_level = 'DEBUG'
 markers = []
 filterwarnings = []
+
+[tool.coverage.run]
+omit = [
+    '*__init__*',
+    '*Test*',
+    'tests/fixtures/*',
+]
+[tool.coverage.report]
+fail_under = 53
