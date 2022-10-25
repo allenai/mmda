@@ -32,14 +32,18 @@ class WhitespacePredictor(BasePredictor):
         ws_tokens: List[Tuple] = self.whitespace_tokenizer.pre_tokenize_str(document.symbols)
 
         # 2) filter to just the chunks that are greater than 1 token. Reformat.
+        # chunks = []
+        # for text, (start, end) in ws_tokens:
+        #     overlapping_tokens = document.find_overlapping(
+        #         query=SpanGroup(spans=[Span(start=start, end=end)]),
+        #         field_name=Tokens
+        #     )
+        #     if len(overlapping_tokens) > 1:
+        #         chunk = SpanGroup(spans=[Span(start=start, end=end)], metadata=Metadata(text=text))
+        #         chunks.append(chunk)
         chunks = []
         for text, (start, end) in ws_tokens:
-            overlapping_tokens = document.find_overlapping(
-                query=SpanGroup(spans=[Span(start=start, end=end)]),
-                field_name=Tokens
-            )
-            if len(overlapping_tokens) > 1:
-                chunk = SpanGroup(spans=[Span(start=start, end=end)], metadata=Metadata(text=text))
-                chunks.append(chunk)
+            chunk = SpanGroup(spans=[Span(start=start, end=end)], metadata=Metadata(text=text))
+            chunks.append(chunk)
         return chunks
 

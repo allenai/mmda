@@ -5,9 +5,7 @@
 
 """
 
-import tempfile
 import unittest
-from typing import List, Optional, Set
 
 from mmda.predictors import WhitespacePredictor
 from mmda.types import Document, SpanGroup, Span
@@ -49,9 +47,15 @@ class TestWhitespacePredictor(unittest.TestCase):
         predictor = WhitespacePredictor()
         ws_chunks = predictor.predict(doc)
 
-        self.assertEqual("meta-learning", ws_chunks[0].text)
-        self.assertEqual("vari&ety", ws_chunks[1].text)
+        # self.assertEqual("meta-learning", ws_chunks[0].text)
+        # self.assertEqual("vari&ety", ws_chunks[1].text)
 
         doc.annotate(ws_chunks=ws_chunks)
-        self.assertEqual([t.text for t in doc.ws_chunks[0].tokens], ['meta', '-', 'learning'])
-        self.assertEqual([t.text for t in doc.ws_chunks[1].tokens], ['vari&', 'ety'])
+        # self.assertEqual([t.text for t in doc.ws_chunks[0].tokens], ['meta', '-', 'learning'])
+        # self.assertEqual([t.text for t in doc.ws_chunks[1].tokens], ['vari&', 'ety'])
+
+        self.assertEqual([c.text for c in doc.ws_chunks],
+                         ['The', 'goal', 'of', 'meta-learning', 'is', 'to', 'train', 'a', 'model',
+                          'on', 'a', 'vari&ety', 'of', 'learning', 'tasks'])
+        self.assertEqual(' '.join([c.text for c in doc.ws_chunks]),
+                         doc.symbols)
