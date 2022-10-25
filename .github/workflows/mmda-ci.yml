@@ -24,7 +24,7 @@ jobs:
       - name: Test with Python ${{ matrix.python-version }}
         run: |
           pip install -e .[dev,pysbd_predictors,hf_predictors]
-          pytest tests --ignore=tests/test_predictors/test_vila_predictors.py --ignore=tests/test_predictors/test_figure_table_predictors.py
+          pytest --cov-fail-under=42 --ignore=tests/test_predictors/test_vila_predictors.py --ignore=tests/test_predictors/test_figure_table_predictors.py
 
   test_vila_predictors:
     runs-on: ubuntu-latest
@@ -41,5 +41,5 @@ jobs:
       - run: |
           pip install -e .[dev]
           pip install -e .[vila_predictors]
-          pytest tests/test_predictors/test_vila_predictors.py
-          pytest tests/test_predictors/test_figure_table_predictors.py
+          pytest tests/test_predictors/test_vila_predictors.py --no-cov
+          pytest tests/test_predictors/test_figure_table_predictors.py --no-cov
