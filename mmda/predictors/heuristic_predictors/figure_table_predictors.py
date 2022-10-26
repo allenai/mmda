@@ -86,7 +86,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
     def _get_object_caption_distance(figure_box: api.Box, caption_box: api.Box) -> float:
         """
         Return 900.0 if left point of figure, caption is offset more than 10%
-        Otherwise returns distance between top of the figure box and cap box
+        Otherwise returns distance middle of the figure box and caption box
         Args:
             figure_box (api.Box): Box corresponding to figure
             caption_box (api.Box): Box corresponding to caption
@@ -155,7 +155,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
     @staticmethod
     def predict(document: Document) -> Tuple[List[SpanGroup], List[SpanGroup]]:
         """
-        Makes a map caption -> figure, caption -> table
+        Return tuple caption -> figure, caption -> table
         Args:
             document ():
 
