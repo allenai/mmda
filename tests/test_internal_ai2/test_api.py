@@ -121,3 +121,4 @@ class TestApi(unittest.TestCase):
             mmda_api.SpanGroup.from_mmda(span_group.to_mmda()),
             span_group
         )
+

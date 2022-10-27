@@ -1,5 +1,5 @@
 from mmda.types.document import Document
-from mmda.types.annotation import SpanGroup, BoxGroup
+from mmda.types.annotation import SpanGroup, BoxGroup, Relation
 from mmda.types.span import Span
 from mmda.types.box import Box
 from mmda.types.image import PILImage
@@ -12,5 +12,6 @@ __all__ = [
     'Span',
     'Box',
     'PILImage',
-    'Metadata'
+    'Metadata',
+    "Relation"
 ]

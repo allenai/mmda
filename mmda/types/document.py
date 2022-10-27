@@ -9,7 +9,7 @@ import warnings
 from copy import deepcopy
 from typing import Dict, Iterable, List, Optional
 
-from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
+from mmda.types.annotation import Annotation, BoxGroup, SpanGroup, AnnotationName
 from mmda.types.image import PILImage
 from mmda.types.indexers import Indexer, SpanGroupIndexer
 from mmda.types.names import Images, Symbols
@@ -17,7 +17,6 @@ from mmda.utils.tools import allocate_overlapping_tokens_for_box, MergeSpans
 
 
 class Document:
-
     SPECIAL_FIELDS = [Symbols, Images]
     UNALLOWED_FIELD_NAMES = ["fields"]
 
@@ -32,35 +31,35 @@ class Document:
         return self.__fields
 
     # TODO: extend implementation to support DocBoxGroup
-    def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
+    def find_overlapping(self, query: Annotation, field: str) -> List[Annotation]:
         if not isinstance(query, SpanGroup):
             raise NotImplementedError(
                 f"Currently only supports query of type SpanGroup"
             )
-        return self.__indexers[field_name].find(query=query)
+        return self.__indexers[field].find(query=query)
 
     def annotate(
-        self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
+            self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
     ) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
         """
         # 1) check validity of field names
-        for field_name in kwargs.keys():
+        for field in kwargs.keys():
             assert (
-                field_name not in self.SPECIAL_FIELDS
-            ), f"The field_name {field_name} should not be in {self.SPECIAL_FIELDS}."
+                field not in self.SPECIAL_FIELDS
+            ), f"The field {field} should not be in {self.SPECIAL_FIELDS}."
 
-            if field_name in self.fields:
+            if field in self.fields:
                 # already existing field, check if ok overriding
                 if not is_overwrite:
                     raise AssertionError(
-                        f"This field name {field_name} already exists. To override, set `is_overwrite=True`"
+                        f"This field name {field} already exists. To override, set `is_overwrite=True`"
                     )
-            elif field_name in dir(self):
+            elif field in dir(self):
                 # not an existing field, but a reserved class method name
                 raise AssertionError(
-                    f"The field_name {field_name} should not conflict with existing class properties"
+                    f"The field {field} should not conflict with existing class properties"
                 )
 
         # Kyle's preserved comment:
@@ -68,39 +67,39 @@ class Document:
         # overhead on large documents.
 
         # 2) register fields into Document
-        for field_name, annotations in kwargs.items():
+        for field, annotations in kwargs.items():
             if len(annotations) == 0:
-                warnings.warn(f"The annotations is empty for the field {field_name}")
-                setattr(self, field_name, [])
-                self.__fields.append(field_name)
+                warnings.warn(f"The annotations is empty for the field {field}")
+                setattr(self, field, [])
+                self.__fields.append(field)
                 continue
 
             annotation_types = {type(a) for a in annotations}
             assert (
                 len(annotation_types) == 1
-            ), f"Annotations in field_name {field_name} more than 1 type: {annotation_types}"
+            ), f"Annotations in field {field} more than 1 type: {annotation_types}"
             annotation_type = annotation_types.pop()
 
             if annotation_type == SpanGroup:
                 span_groups = self._annotate_span_group(
-                    span_groups=annotations, field_name=field_name
+                    span_groups=annotations, field=field
                 )
             elif annotation_type == BoxGroup:
                 # TODO: not good. BoxGroups should be stored on their own, not auto-generating SpanGroups.
                 span_groups = self._annotate_box_group(
-                    box_groups=annotations, field_name=field_name
+                    box_groups=annotations, field=field
                 )
             else:
                 raise NotImplementedError(
-                    f"Unsupported annotation type {annotation_type} for {field_name}"
+                    f"Unsupported annotation type {annotation_type} for {field}"
                 )
 
             # register fields
-            setattr(self, field_name, span_groups)
-            self.__fields.append(field_name)
+            setattr(self, field, span_groups)
+            self.__fields.append(field)
 
     def annotate_images(
-        self, images: Iterable[PILImage], is_overwrite: bool = False
+            self, images: Iterable[PILImage], is_overwrite: bool = False
     ) -> None:
         if not is_overwrite and len(self.images) > 0:
             raise AssertionError(
@@ -122,7 +121,7 @@ class Document:
         self.images = images
 
     def _annotate_span_group(
-        self, span_groups: List[SpanGroup], field_name: str
+            self, span_groups: List[SpanGroup], field: str
     ) -> List[SpanGroup]:
         """Annotate the Document using a bunch of span groups.
         It will associate the annotations with the document symbols.
@@ -131,15 +130,15 @@ class Document:
 
         # 1) add Document to each SpanGroup
         for span_group in span_groups:
-            span_group.attach_doc(doc=self)
+            span_group._attach_doc(doc=self, field=field)
 
         # 2) Build fast overlap lookup index
-        self.__indexers[field_name] = SpanGroupIndexer(span_groups)
+        self.__indexers[field] = SpanGroupIndexer(span_groups)
 
         return span_groups
 
     def _annotate_box_group(
-        self, box_groups: List[BoxGroup], field_name: str
+            self, box_groups: List[BoxGroup], field: str
     ) -> List[SpanGroup]:
         """Annotate the Document using a bunch of box groups.
         It will associate the annotations with the document symbols.
@@ -177,7 +176,7 @@ class Document:
             derived_span_groups.append(
                 SpanGroup(
                     spans=MergeSpans(list_of_spans=all_token_spans_with_box_group, index_distance=1)
-                    .merge_neighbor_spans_by_symbol_distance(), box_group=box_group,
+                        .merge_neighbor_spans_by_symbol_distance(), box_group=box_group,
                     # id = box_id,
                 )
                 # TODO Right now we cannot assign the box id, or otherwise running doc.blocks will
@@ -195,7 +194,7 @@ class Document:
             span_group.id = box_id
 
         return self._annotate_span_group(
-            span_groups=derived_span_groups, field_name=field_name
+            span_groups=derived_span_groups, field=field
         )
 
     #
@@ -245,16 +244,23 @@ class Document:
             )
 
         # 2) convert span group dicts to span gropus
-        field_name_to_span_groups = {}
-        for field_name, span_group_dicts in doc_dict.items():
-            if field_name not in doc.SPECIAL_FIELDS:
+        field_to_span_groups = {}
+        for field, span_group_dicts in doc_dict.items():
+            if field not in doc.SPECIAL_FIELDS:
                 span_groups = [
                     SpanGroup.from_json(span_group_dict=span_group_dict)
                     for span_group_dict in span_group_dicts
                 ]
-                field_name_to_span_groups[field_name] = span_groups
+                field_to_span_groups[field] = span_groups
 
         # 3) load annotations for each field
-        doc.annotate(**field_name_to_span_groups)
+        doc.annotate(**field_to_span_groups)
 
         return doc
+
+    def locate_annotation(self, name: AnnotationName) -> Annotation:
+        candidates = self.__getattribute__(name.field)
+        matched_annotations = [c for c in candidates if c.id == name.id]
+        assert len(matched_annotations) <= 1, \
+            f"Multiple annotations in field {name.field} with same ID {name.id}"
+        return matched_annotations[0]

@@ -8,23 +8,48 @@ Author:      @soldni
 import json
 from pathlib import Path
 
-from mmda.types import BoxGroup, SpanGroup, Document, Metadata
+from mmda.types import BoxGroup, SpanGroup, Document, Metadata, Relation
 from mmda.parsers import PDFPlumberParser
-
 
 PDFFILEPATH = Path(__file__).parent / "../fixtures/1903.10676.pdf"
 
 
 def test_span_group_conversion():
-    sg = SpanGroup(spans=[], id=3, metadata=Metadata.from_json({"text": "test"}))
+    sg = SpanGroup(spans=[], id=3, metadata=Metadata(text='test'))
     sg2 = SpanGroup.from_json(sg.to_json())
     assert sg2.to_json() == sg.to_json()
     assert sg2.__dict__ == sg.__dict__
 
-    bg = BoxGroup(boxes=[], metadata=Metadata.from_json({"text": "test", "id": 1}))
+    bg = BoxGroup(boxes=[], metadata=Metadata(text='test'))
     bg2 = BoxGroup.from_json(bg.to_json())
     assert bg2.to_json() == bg.to_json()
     assert bg2.__dict__ == bg.__dict__
+
+
+def test_relation_conversion():
+    r = Relation(
+        key=SpanGroup(spans=[], id=3, metadata=Metadata(foobar='test'), field='abc'),
+        value=SpanGroup(spans=[], id=5, metadata=Metadata(foobar='test'), field='xyz'),
+        id=999,
+        metadata=Metadata(blabla='something')
+    )
+
+    # to & from JSON
+    r_dict_minimal = {
+        'key': 'abc-3',
+        'value': 'xyz-5',
+        'id': 999,
+        'metadata': {'blabla': 'something'}
+    }
+    assert r.to_json() == r_dict_minimal
+
+    doc = Document.from_json(doc_dict={
+        'symbols': 'asdfasdf',
+        'abc': [{'spans': [], 'id': 3, 'metadata': {'foobar': 'test'}}],
+        'xyz': [{'spans': [], 'id': 5, 'metadata': {'foobar': 'test'}}]
+    })
+    assert r_dict_minimal == r.from_json(r_dict_minimal, doc=doc).to_json()
+
 
 
 def test_doc_conversion():
