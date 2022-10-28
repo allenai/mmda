@@ -17,11 +17,11 @@ pytest
 ```
 for latest failed test
 ```bash
-pytest --lf
+pytest --lf --no-cov -n0
 ```
 for specific test name of class name
 ```bash
-pytest -k 'TestFigureCaptionPredictor'
+pytest -k 'TestFigureCaptionPredictor' --no-cov -n0
 ```
 
 ## Quickstart guide
