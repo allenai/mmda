@@ -116,7 +116,7 @@ figure_table_predictors = [
 ]
 
 [tool.pytest.ini_options]
-addopts = '-n auto --cov=mmda'
+addopts = '-n auto --cov=src/mmda'
 testpaths = ['tests/']
 pythonpath = [
   '.', 'src',
