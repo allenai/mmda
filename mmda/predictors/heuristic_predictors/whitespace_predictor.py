@@ -16,7 +16,6 @@ from mmda.types.names import Tokens
 
 
 class WhitespacePredictor(BasePredictor):
-
     REQUIRED_BACKENDS = None
     REQUIRED_DOCUMENT_FIELDS = [Tokens]
 
@@ -42,8 +41,9 @@ class WhitespacePredictor(BasePredictor):
         #         chunk = SpanGroup(spans=[Span(start=start, end=end)], metadata=Metadata(text=text))
         #         chunks.append(chunk)
         chunks = []
-        for text, (start, end) in ws_tokens:
-            chunk = SpanGroup(spans=[Span(start=start, end=end)], metadata=Metadata(text=text))
+        for i, (text, (start, end)) in enumerate(ws_tokens):
+            chunk = SpanGroup(spans=[Span(start=start, end=end)],
+                              metadata=Metadata(text=text),
+                              id=i)
             chunks.append(chunk)
         return chunks
-
