@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.2.0'
+version = '0.2.1'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -64,6 +64,9 @@ spacy_predictors = [
 ]
 pysbd_predictors = [
     'pysbd',
+]
+heuristic_predictors = [
+    'tokenizers'
 ]
 lp_predictors = [
     'layoutparser',
