@@ -123,3 +123,4 @@ output/
 docs/
 .devcontainer/
 SymbolScraper/
+.coverage.*

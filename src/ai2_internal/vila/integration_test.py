@@ -35,11 +35,13 @@ from pathlib import Path
 
 from PIL import Image
 
-from ai2_internal import api
+from .. import api
 from mmda.types.document import Document
 from mmda.types.image import tobase64
 from .interface import Instance
-from ..api import SpanGroup
+
+FIXTURE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_fixtures")
+
 
 try:
     from timo_interface import with_timo_container
@@ -50,28 +52,34 @@ except ImportError as e:
     """)
     sys.exit(0)
 
+
 def resolve(file: str) -> str:
-    return os.path.join(os.path.dirname(__file__), 'test_fixtures', file)
+    return os.path.join(os.path.dirname(__file__), "test_fixtures", file)
+
+def resolve_image(file: str) -> str:
+    return os.path.join(Path(os.path.dirname(__file__)).parent, "shared_test_fixtures", file)
 
 def get_test_instance() -> Instance:
-    doc_file = resolve('test_doc_sha_d0450478c38dda61f9943f417ab9fcdb2ebeae0a.json')
+    doc_file = resolve("test_doc.json")
     with open(doc_file) as f:
         doc = Document.from_json(json.load(f))
 
     tokens = [api.SpanGroup.from_mmda(sg) for sg in doc.tokens]
     rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
     pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
-    vila_span_groups = [api.SpanGroup.from_mmda(sg) for sg in doc.vila_span_groups]
-    layoutparser_span_groups = [api.SpanGroup.from_mmda(sg) for sg in doc.layoutparser_span_groups]
+
+    with open(resolve("test_blocks.json")) as f:
+        blocks = [api.BoxGroup(**bg) for bg in json.load(f)["groups"]]
+
+    images = [tobase64(Image.open(resolve_image("page0.png")))]
 
     return Instance(
         symbols=doc.symbols,
-        images=[tobase64(image) for image in doc.images],
+        images=images,
         tokens=tokens,
         rows=rows,
         pages=pages,
-        vila_span_groups=vila_span_groups,
-        layoutparser_span_groups=layoutparser_span_groups,
+        blocks=blocks,
     )
 
 
@@ -80,10 +88,8 @@ class TestInterfaceIntegration(unittest.TestCase):
     def test__predictions(self, container):
         instances = [get_test_instance()]
         predictions = container.predict_batch(instances)
-        assert isinstance(predictions[0].figure_list[0], SpanGroup)
-        assert isinstance(predictions[0].table_list[0], SpanGroup)
-        assert [span_group.type for prediction in predictions for span_group in prediction.figure_list] == [
-            'Figure', 'Figure', 'Figure', 'Figure', 'Figure']
-        assert [span_group.type for prediction in predictions for span_group in prediction.table_list] == [
-            'Table', 'Table', 'Table', 'Table', 'Table', 'Table',
-        ]
+
+        prediction = predictions[0]
+
+        annotation_types = set(a.type for a in prediction.groups)
+        self.assertEqual({"Title", "Paragraph"}, annotation_types)
