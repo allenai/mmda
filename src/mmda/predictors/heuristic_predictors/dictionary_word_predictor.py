@@ -125,14 +125,19 @@ class DictionaryWordPredictor(BasePredictor):
         """
         self._doc_field_checker(document)
 
-        # TODO: precompute links between start & end token_ids
-        # 1) precompute features
-        token_id_to_ws_token_id, ws_token_id_to_token_ids, token_id_to_token_ids, \
+        # 1) whitespace tokenize document & compute 'adjacent' token_ids
+        token_id_to_token_ids = self._precompute_whitespace_tokens(document=document)
+
+        # 2) precompute features about each token specific to whether it's
+        #    start/end of a row, or whether it corresponds to punctuation
         row_start_after_hyphen_token_ids, row_end_with_hyphen_token_ids, \
         max_row_end_token_id_to_min_row_start_token_id, punct_strip_candidate_token_ids = \
-            self._precompute_token_features(document=document)
+            self._precompute_token_features(
+                document=document,
+                token_id_to_token_ids=token_id_to_token_ids
+            )
 
-        # 2) build dictionary
+        # 3) build dictionary
         internal_dictionary = self._build_internal_dictionary(
             document=document,
             token_id_to_token_ids=token_id_to_token_ids,
@@ -140,7 +145,7 @@ class DictionaryWordPredictor(BasePredictor):
             row_end_with_hyphen_token_ids=row_end_with_hyphen_token_ids
         )
 
-        # 3) predict words for using token features
+        # 4) predict words for using token features
         token_id_to_word_id, word_id_to_text = self._predict_tokens(
             document=document,
             internal_dictionary=internal_dictionary,
@@ -151,30 +156,21 @@ class DictionaryWordPredictor(BasePredictor):
             punct_strip_candidate_token_ids=punct_strip_candidate_token_ids
         )
 
-        # 4) transformation
+        # 5) transformation
         words: List[SpanGroup] = self._convert_to_words(
             document=document,
             token_id_to_word_id=token_id_to_word_id,
             word_id_to_text=word_id_to_text
         )
 
-        # 5) cleanup
+        # 6) cleanup
         document.remove(field_name='_ws_tokens')
         return words
 
-    def _precompute_token_features(self, document: Document) -> Tuple:
+    def _precompute_whitespace_tokens(self, document: Document) -> Dict:
         """
-        Compute stuff necessary for dictionary-building and/or merging tokens into words.
-
-        1. `whitespace_tokenization` is necessary because lack of whitespace is an indicator that
-           adjacent tokens belong in a word together.
-
-        2. `beginning|end_of_row|page` is necessary because row transitions are often where tokens
-           should be merged into a word. Knowing this also helps with determining what are "safe"
-           words to add to dictionary.
-
-        3. `punctuation` in `start_of_row` tokens is necessary because we may need to keep them
-        as separate tokens even if there is a word merge (e.g. the semicolon "fine-tuning;")
+        `whitespace_tokenization` is necessary because lack of whitespace is an indicator that
+        adjacent tokens belong in a word together.
         """
         _ws_tokens: List[SpanGroup] = self.whitespace_predictor.predict(document=document)
         document.annotate(_ws_tokens=_ws_tokens)
@@ -194,6 +190,24 @@ class DictionaryWordPredictor(BasePredictor):
         for token_id, ws_token_id in token_id_to_ws_token_id.items():
             candidate_token_ids = [i for i in ws_token_id_to_tokens[ws_token_id]]
             token_id_to_token_ids[token_id] = candidate_token_ids
+
+        return token_id_to_token_ids
+
+    def _precompute_token_features(
+            self,
+            document: Document,
+            token_id_to_token_ids
+    ) -> Tuple:
+        """
+        Compute stuff necessary for dictionary-building and/or merging tokens into words.
+
+        1. `beginning|end_of_row|page` is necessary because row transitions are often where tokens
+           should be merged into a word. Knowing this also helps with determining what are "safe"
+           words to add to dictionary.
+
+        2. `punctuation` in `start_of_row` tokens is necessary because we may need to keep them
+            as separate tokens even if there is a word merge (e.g. the semicolon "fine-tuning;")
+        """
 
         # beginning/end of row w/ hyphen
         # TODO: add pages too
@@ -228,10 +242,7 @@ class DictionaryWordPredictor(BasePredictor):
                     else:
                         break
 
-        return token_id_to_ws_token_id, \
-               ws_token_id_to_tokens, \
-               token_id_to_token_ids, \
-               row_start_after_hyphen_token_ids, \
+        return row_start_after_hyphen_token_ids, \
                row_end_with_hyphen_token_ids, \
                max_row_end_token_id_to_min_row_start_token_id, \
                punct_strip_candidate_token_ids
