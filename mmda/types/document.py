@@ -99,6 +99,12 @@ class Document:
             setattr(self, field_name, span_groups)
             self.__fields.append(field_name)
 
+    def remove(self, field_name: str):
+        delattr(self, field_name)
+        self.__fields = [f for f in self.__fields if f != field_name]
+        del self.__indexers[field_name]
+
+
     def annotate_images(
         self, images: Iterable[PILImage], is_overwrite: bool = False
     ) -> None:
