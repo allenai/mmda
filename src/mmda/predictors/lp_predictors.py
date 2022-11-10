@@ -4,7 +4,7 @@ from tqdm import tqdm
 import layoutparser as lp
 
 from mmda.types import Document, Box, BoxGroup, Metadata
-from mmda.types.names import *
+from mmda.types.names import Images, Pages
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
 

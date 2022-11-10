@@ -21,7 +21,7 @@ from mmda.types.box import Box
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.parsers.parser import Parser
-from mmda.types.names import *
+from mmda.types.names import Pages, Rows, Symbols, Tokens
 
 
 logger = logging.getLogger(__name__)

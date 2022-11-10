@@ -3,7 +3,7 @@ from typing import List, Tuple, Dict
 import itertools
 
 from mmda.types.document import Document
-from mmda.types.names import *
+from mmda.types.names import Blocks, Rows
 
 
 def normalize_bbox(

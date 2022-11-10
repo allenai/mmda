@@ -9,10 +9,10 @@ from vila.predictors import (
 )
 
 
-from mmda.types.names import *
+from mmda.types.metadata import Metadata as MetadataDict
+from mmda.types.names import Blocks, Pages, Rows, Tokens
 from mmda.types.annotation import Annotation, Span, SpanGroup
 from mmda.types.document import Document
-from mmda.types.metadata import Metadata
 from mmda.predictors.hf_predictors.utils import (
     convert_document_page_to_pdf_dict,
     convert_sequence_tagging_to_spans,
@@ -107,7 +107,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
 
             start = min([ele.start for ele in cur_spans])
             end = max([ele.end for ele in cur_spans])
-            sg = SpanGroup(spans=[Span(start, end)], metadata=Metadata(type=label))
+            sg = SpanGroup(spans=[Span(start, end)], metadata=MetadataDict(type=label))
             prediction_spans.append(sg)
         return prediction_spans
 

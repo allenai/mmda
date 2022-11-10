@@ -17,9 +17,9 @@ from vila.models.hierarchical_model import (
 )
 from vila.dataset.preprocessors import instantiate_dataset_preprocessor
 
-from mmda.types.names import *
+from mmda.types.metadata import Metadata as MetadataDict
+from mmda.types.names import Pages, Rows, Tokens
 from mmda.types.annotation import Annotation, Span, SpanGroup
-from mmda.types.metadata import Metadata
 from mmda.types.document import Document
 from mmda.predictors.hf_predictors.utils import (
     convert_document_page_to_pdf_dict,
@@ -168,7 +168,7 @@ class BaseVILAPredictor(BaseHFPredictor):
 
             start = min([ele.start for ele in cur_spans])
             end = max([ele.end for ele in cur_spans])
-            sg = SpanGroup(spans=[Span(start, end)], metadata=Metadata(type=label))
+            sg = SpanGroup(spans=[Span(start, end)], metadata=MetadataDict(type=label))
             prediction_spans.append(sg)
 
         return prediction_spans

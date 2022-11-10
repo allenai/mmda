@@ -21,12 +21,12 @@ class Document:
     SPECIAL_FIELDS = [Symbols, Images, Metadata]
     UNALLOWED_FIELD_NAMES = ["fields"]
 
-    def __init__(self, symbols: str):
+    def __init__(self, symbols: str, metadata: Optional[MetadataDict] = None):
         self.symbols = symbols
         self.images = []
         self.__fields = []
         self.__indexers: Dict[str, Indexer] = {}
-        self.metadata = MetadataDict()
+        self.metadata = metadata if metadata else MetadataDict()
 
     @property
     def fields(self) -> List[str]:
@@ -245,7 +245,7 @@ class Document:
     def from_json(cls, doc_dict: Dict) -> "Document":
         # 1) instantiate basic Document
         symbols = doc_dict[Symbols]
-        doc = cls(symbols=symbols)
+        doc = cls(symbols=symbols, metadata=MetadataDict(**doc_dict.get(Metadata, {})))
 
         if Metadata in doc_dict:
             doc.add_metadata(**doc_dict[Metadata])
