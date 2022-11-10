@@ -11,22 +11,22 @@ from typing import Dict, Iterable, List, Optional
 from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
 from mmda.types.image import PILImage
 from mmda.types.indexers import Indexer, SpanGroupIndexer
-from mmda.types.metadata import Metadata as MetadataDict
-from mmda.types.names import Images, Metadata, Symbols
+from mmda.types.metadata import Metadata
+from mmda.types.names import ImagesField, MetadataField, SymbolsField
 from mmda.utils.tools import MergeSpans, allocate_overlapping_tokens_for_box
 
 
 class Document:
 
-    SPECIAL_FIELDS = [Symbols, Images, Metadata]
+    SPECIAL_FIELDS = [SymbolsField, ImagesField, MetadataField]
     UNALLOWED_FIELD_NAMES = ["fields"]
 
-    def __init__(self, symbols: str, metadata: Optional[MetadataDict] = None):
+    def __init__(self, symbols: str, metadata: Optional[Metadata] = None):
         self.symbols = symbols
         self.images = []
         self.__fields = []
         self.__indexers: Dict[str, Indexer] = {}
-        self.metadata = metadata if metadata else MetadataDict()
+        self.metadata = metadata if metadata else Metadata()
 
     @property
     def fields(self) -> List[str]:
@@ -122,7 +122,7 @@ class Document:
 
         if not issubclass(image_type, PILImage):
             raise NotImplementedError(
-                f"Unsupported image type {image_type} for {Images}"
+                f"Unsupported image type {image_type} for {ImagesField}"
             )
 
         self.images = images
@@ -224,9 +224,9 @@ class Document:
                 metadata: {...}
             }
         """
-        doc_dict = {Symbols: self.symbols, Metadata: self.metadata.to_json()}
+        doc_dict = {SymbolsField: self.symbols, Metadata: self.metadata.to_json()}
         if with_images:
-            doc_dict[Images] = [image.to_json() for image in self.images]
+            doc_dict[ImagesField] = [image.to_json() for image in self.images]
 
         # figure out which fields to serialize
         fields = (
@@ -244,13 +244,13 @@ class Document:
     @classmethod
     def from_json(cls, doc_dict: Dict) -> "Document":
         # 1) instantiate basic Document
-        symbols = doc_dict[Symbols]
-        doc = cls(symbols=symbols, metadata=MetadataDict(**doc_dict.get(Metadata, {})))
+        symbols = doc_dict[SymbolsField]
+        doc = cls(symbols=symbols, metadata=Metadata(**doc_dict.get(Metadata, {})))
 
         if Metadata in doc_dict:
             doc.add_metadata(**doc_dict[Metadata])
 
-        images_dict = doc_dict.get(Images, None)
+        images_dict = doc_dict.get(ImagesField, None)
         if images_dict:
             doc.annotate_images(
                 [PILImage.frombase64(image_str) for image_str in images_dict]

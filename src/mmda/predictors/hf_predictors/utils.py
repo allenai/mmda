@@ -3,7 +3,7 @@ from typing import List, Tuple, Dict
 import itertools
 
 from mmda.types.document import Document
-from mmda.types.names import Blocks, Rows
+from mmda.types.names import BlocksField, RowsField
 
 
 def normalize_bbox(
@@ -84,8 +84,8 @@ def convert_document_page_to_pdf_dict(
             token.spans[0]
                 .box.get_absolute(page_width=page_width, page_height=page_height)
                 .coordinates,  # bbox
-            get_visual_group_id(token, Rows, -1),  # line_ids
-            get_visual_group_id(token, Blocks, -1)  # block_ids
+            get_visual_group_id(token, RowsField, -1),  # line_ids
+            get_visual_group_id(token, BlocksField, -1)  # block_ids
         ) for token in document.tokens
     ]
 

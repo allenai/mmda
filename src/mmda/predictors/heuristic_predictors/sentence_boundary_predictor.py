@@ -7,7 +7,7 @@ import numpy as np
 from mmda.types.annotation import SpanGroup
 from mmda.types.span import Span
 from mmda.types.document import Document
-from mmda.types.names import Pages, Tokens, Words
+from mmda.types.names import PagesField, TokensField, WordsField
 from mmda.predictors.base_predictors.base_heuristic_predictor import (
     BaseHeuristicPredictor,
 )
@@ -73,7 +73,7 @@ class PysbdSentenceBoundaryPredictor(BaseHeuristicPredictor):
     """
 
     REQUIRED_BACKENDS = ["pysbd"]
-    REQUIRED_DOCUMENT_FIELDS = [Pages, Tokens]  # type: ignore
+    REQUIRED_DOCUMENT_FIELDS = [PagesField, TokensField]  # type: ignore
 
     def __init__(self) -> None:
 
@@ -122,16 +122,16 @@ class PysbdSentenceBoundaryPredictor(BaseHeuristicPredictor):
 
     def predict(self, doc: Document) -> List[SpanGroup]:
 
-        if hasattr(doc, Words):
+        if hasattr(doc, WordsField):
             words = [
-                word.text for word in getattr(doc, Words)
+                word.text for word in getattr(doc, WordsField)
             ]
-            attr_name = Words
+            attr_name = WordsField
             # `words` is preferred as it should has better reading
             # orders and text representation
         else:
             words = [token.text for token in doc.tokens]
-            attr_name = Tokens
+            attr_name = TokensField
 
         split = self.split_token_based_on_sentences_boundary(words)
 

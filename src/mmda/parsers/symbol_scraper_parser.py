@@ -21,7 +21,7 @@ from mmda.types.box import Box
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.parsers.parser import Parser
-from mmda.types.names import Pages, Rows, Symbols, Tokens
+from mmda.types.names import PagesField, RowsField, SymbolsField, TokensField
 
 
 logger = logging.getLogger(__name__)
@@ -239,10 +239,10 @@ class SymbolScraperParser(Parser):
         for k, token in enumerate(token_annos):
             token.id = k
         return {
-            Symbols: text,
-            Pages: [page.to_json() for page in page_annos],
-            Tokens: [token.to_json() for token in token_annos],
-            Rows: [row.to_json() for row in row_annos]
+            SymbolsField: text,
+            PagesField: [page.to_json() for page in page_annos],
+            TokensField: [token.to_json() for token in token_annos],
+            RowsField: [row.to_json() for row in row_annos]
         }
 
     def _run_and_log(self, cmd):

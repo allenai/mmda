@@ -9,8 +9,8 @@ from vila.predictors import (
 )
 
 
-from mmda.types.metadata import Metadata as MetadataDict
-from mmda.types.names import Blocks, Pages, Rows, Tokens
+from mmda.types.metadata import Metadata
+from mmda.types.names import BlocksField, PagesField, RowsField, TokensField
 from mmda.types.annotation import Annotation, Span, SpanGroup
 from mmda.types.document import Document
 from mmda.predictors.hf_predictors.utils import (
@@ -22,7 +22,7 @@ from mmda.predictors.hf_predictors.base_hf_predictor import BaseHFPredictor
 
 class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
     REQUIRED_BACKENDS = ["transformers", "torch", "vila"]
-    REQUIRED_DOCUMENT_FIELDS = [Pages, Tokens]
+    REQUIRED_DOCUMENT_FIELDS = [PagesField, TokensField]
     DEFAULT_SUBPAGE_PER_RUN = 2  # TODO: Might remove this in the future for longformer-like models
 
     @property
@@ -107,7 +107,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
 
             start = min([ele.start for ele in cur_spans])
             end = max([ele.end for ele in cur_spans])
-            sg = SpanGroup(spans=[Span(start, end)], metadata=MetadataDict(type=label))
+            sg = SpanGroup(spans=[Span(start, end)], metadata=Metadata(type=label))
             prediction_spans.append(sg)
         return prediction_spans
 
@@ -123,11 +123,11 @@ class IVILATokenClassificationPredictor(BaseSinglePageTokenClassificationPredict
 
     @property
     def REQUIRED_DOCUMENT_FIELDS(self) -> List:
-        base_reqs = [Pages, Tokens]
+        base_reqs = [PagesField, TokensField]
         if self.predictor.preprocessor.config.agg_level == "row":
-            base_reqs.append(Rows)
+            base_reqs.append(RowsField)
         elif self.predictor.preprocessor.config.agg_level == "block":
-            base_reqs.append(Blocks)
+            base_reqs.append(BlocksField)
         return base_reqs
 
 
@@ -136,10 +136,10 @@ class HVILATokenClassificationPredictor(BaseSinglePageTokenClassificationPredict
 
     @property
     def REQUIRED_DOCUMENT_FIELDS(self) -> List:
-        base_reqs = [Pages, Tokens]
+        base_reqs = [PagesField, TokensField]
         if self.predictor.preprocessor.config.agg_level == "row":
-            base_reqs.append(Rows)
+            base_reqs.append(RowsField)
         elif self.predictor.preprocessor.config.agg_level == "block":
-            base_reqs.append(Blocks)
+            base_reqs.append(BlocksField)
         return base_reqs
 
