@@ -224,7 +224,7 @@ class Document:
                 metadata: {...}
             }
         """
-        doc_dict = {SymbolsField: self.symbols, Metadata: self.metadata.to_json()}
+        doc_dict = {SymbolsField: self.symbols, MetadataField: self.metadata.to_json()}
         if with_images:
             doc_dict[ImagesField] = [image.to_json() for image in self.images]
 
@@ -245,7 +245,7 @@ class Document:
     def from_json(cls, doc_dict: Dict) -> "Document":
         # 1) instantiate basic Document
         symbols = doc_dict[SymbolsField]
-        doc = cls(symbols=symbols, metadata=Metadata(**doc_dict.get(Metadata, {})))
+        doc = cls(symbols=symbols, metadata=Metadata(**doc_dict.get(MetadataField, {})))
 
         if Metadata in doc_dict:
             doc.add_metadata(**doc_dict[Metadata])
