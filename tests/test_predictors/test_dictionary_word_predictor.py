@@ -47,6 +47,8 @@ class TestDictionary(unittest.TestCase):
         # because # is not part of the dictionary, stops stripping
         self.assertEqual(self.dict.strip_punct(text='#--fine-tuning--#'), '#--fine-tuning--#')
         self.assertEqual(self.dict.strip_punct(text='--#--fine-tuning--#--'), '#--fine-tuning--#')
+        # shouldnt break with a single punctuation character
+        self.assertEqual(self.dict.strip_punct(text='%'), '')
 
 
 class TestDictionaryWordPredictor(unittest.TestCase):

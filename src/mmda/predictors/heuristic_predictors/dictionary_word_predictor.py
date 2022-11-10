@@ -31,7 +31,7 @@ from typing import Optional, Set, List, Tuple, Iterable, Dict
 from collections import defaultdict
 from mmda.parsers import PDFPlumberParser
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
-from mmda.predictors import WhitespacePredictor
+from mmda.predictors.heuristic_predictors.whitespace_predictor import WhitespacePredictor
 from mmda.types import Metadata, Document, Span, SpanGroup
 from mmda.types.names import Rows, Tokens
 
@@ -54,7 +54,7 @@ class Dictionary:
 
     def strip_punct(self, text: str) -> str:
         start = 0
-        while text[start] in self.punct and start < len(text):
+        while start < len(text) and text[start] in self.punct:
             start += 1
         end = len(text) - 1
         while text[end] in self.punct and end > 0:
