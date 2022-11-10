@@ -5,7 +5,7 @@ from typing import List
 
 from mmda.types.document import Document
 from mmda.types.annotation import SpanGroup
-from mmda.types.names import Tokens
+from mmda.types.names import TokensField
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
@@ -28,7 +28,7 @@ class MockPredictor(BasePredictor):
                 box_group=token.box_group,
                 metadata=token.metadata,
             )
-            for token in getattr(document, Tokens, [])
+            for token in getattr(document, TokensField, [])
         ]
 
 

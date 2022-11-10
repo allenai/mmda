@@ -1,7 +1,7 @@
 import unittest
 
 from mmda.types.document import Document
-from mmda.types.names import Metadata, Symbols
+from mmda.types.names import MetadataField, SymbolsField
 
 
 class TestDocument(unittest.TestCase):
@@ -18,12 +18,14 @@ class TestDocument(unittest.TestCase):
         doc.add_metadata(**metadata)
 
         output_json = doc.to_json()
-        self.assertDictEqual({Symbols: symbols, Metadata: metadata}, output_json)
+        self.assertDictEqual(
+            {SymbolsField: symbols, MetadataField: metadata}, output_json
+        )
 
     def test_metadata_deserializes(self):
         metadata = {"a": {"b": "c"}}
         symbols = "Hey again peeps!"
-        input_json = {Symbols: symbols, Metadata: metadata}
+        input_json = {SymbolsField: symbols, MetadataField: metadata}
 
         doc = Document.from_json(input_json)
 
@@ -32,7 +34,7 @@ class TestDocument(unittest.TestCase):
 
     def test_metadata_deserializes_when_empty(self):
         symbols = "That's all folks!"
-        input_json = {Symbols: symbols}
+        input_json = {SymbolsField: symbols}
 
         doc = Document.from_json(input_json)
 
