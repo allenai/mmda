@@ -17,9 +17,9 @@ from vila.models.hierarchical_model import (
 )
 from vila.dataset.preprocessors import instantiate_dataset_preprocessor
 
-from mmda.types.names import *
-from mmda.types.annotation import Annotation, Span, SpanGroup
 from mmda.types.metadata import Metadata
+from mmda.types.names import PagesField, RowsField, TokensField
+from mmda.types.annotation import Annotation, Span, SpanGroup
 from mmda.types.document import Document
 from mmda.predictors.hf_predictors.utils import (
     convert_document_page_to_pdf_dict,
@@ -58,7 +58,7 @@ class VILAPreprocessorConfig:
 class BaseVILAPredictor(BaseHFPredictor):
 
     REQUIRED_BACKENDS = ["transformers", "torch", "vila"]
-    REQUIRED_DOCUMENT_FIELDS = [Pages, Tokens]
+    REQUIRED_DOCUMENT_FIELDS = [PagesField, TokensField]
 
     def __init__(
         self, model: Any, config: Any, tokenizer: Any, preprocessor, device=None
@@ -214,7 +214,7 @@ class BaseVILAPredictor(BaseHFPredictor):
 
 class SimpleVILAPredictor(BaseVILAPredictor):
 
-    REQUIRED_DOCUMENT_FIELDS = [Pages, Tokens]
+    REQUIRED_DOCUMENT_FIELDS = [PagesField, TokensField]
 
     @staticmethod
     def initialize_preprocessor(tokenizer, config: VILAPreprocessorConfig):
@@ -239,7 +239,7 @@ class SimpleVILAPredictor(BaseVILAPredictor):
 
 
 class IVILAPredictor(SimpleVILAPredictor):
-    REQUIRED_DOCUMENT_FIELDS = [Pages, Tokens, Rows]  # , Blocks]
+    REQUIRED_DOCUMENT_FIELDS = [PagesField, TokensField, RowsField]  # , Blocks]
     # TODO: Right now we only use the rows, but we should also use the blocks
     # in the future.
 
@@ -249,7 +249,7 @@ class IVILAPredictor(SimpleVILAPredictor):
 
 
 class HVILAPredictor(BaseVILAPredictor):
-    REQUIRED_DOCUMENT_FIELDS = [Pages, Tokens, Rows]  # , Blocks]
+    REQUIRED_DOCUMENT_FIELDS = [PagesField, TokensField, RowsField]  # , Blocks]
     # TODO: Right now we only use the rows, but we should also use the blocks
     # in the future.
 

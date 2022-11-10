@@ -4,13 +4,13 @@ from tqdm import tqdm
 import layoutparser as lp
 
 from mmda.types import Document, Box, BoxGroup, Metadata
-from mmda.types.names import *
+from mmda.types.names import ImagesField, PagesField
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 
 
 class LayoutParserPredictor(BasePredictor):
     REQUIRED_BACKENDS = ["layoutparser"]
-    REQUIRED_DOCUMENT_FIELDS = [Pages, Images]
+    REQUIRED_DOCUMENT_FIELDS = [PagesField, ImagesField]
 
     def __init__(self, model):
         self.model = model

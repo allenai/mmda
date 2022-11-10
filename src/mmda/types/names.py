@@ -7,12 +7,13 @@ Names of fields, as strings
 """
 
 # document field names
-Symbols = 'symbols'
-Images = 'images'
+SymbolsField = "symbols"
+MetadataField = "metadata"
+ImagesField = "images"
 
-Pages = 'pages'
-Tokens = 'tokens'
-Rows = 'rows'
-Sentences = 'sents'
-Blocks = 'blocks'
-Words = 'words'
+PagesField = "pages"
+TokensField = "tokens"
+RowsField = "rows"
+SentencesField = "sents"
+BlocksField = "blocks"
+WordsField = "words"

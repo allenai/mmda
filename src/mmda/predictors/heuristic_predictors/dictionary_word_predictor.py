@@ -11,13 +11,13 @@ from mmda.predictors.base_predictors.base_predictor import BasePredictor
 from mmda.types.metadata import Metadata
 from mmda.types.annotation import Annotation, Span, SpanGroup
 from mmda.types.document import Document
-from mmda.types.names import Rows, Tokens
+from mmda.types.names import RowsField, TokensField
 
 
 class DictionaryWordPredictor(BasePredictor):
 
     REQUIRED_BACKENDS = None
-    REQUIRED_DOCUMENT_FIELDS = [Rows, Tokens]
+    REQUIRED_DOCUMENT_FIELDS = [RowsField, TokensField]
 
     _dictionary: Optional[Set[str]] = None
 

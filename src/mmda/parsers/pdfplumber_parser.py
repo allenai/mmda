@@ -9,7 +9,7 @@ from mmda.types.box import Box
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.parsers.parser import Parser
-from mmda.types.names import *
+from mmda.types.names import PagesField, RowsField, SymbolsField, TokensField
 
 
 class PDFPlumberParser(Parser):
@@ -267,10 +267,10 @@ class PDFPlumberParser(Parser):
             page_annos.append(page)
 
         return {
-            Symbols: symbols,
-            Tokens: [token.to_json() for token in token_annos],
-            Rows: [row.to_json() for row in row_annos],
-            Pages: [page.to_json() for page in page_annos]
+            SymbolsField: symbols,
+            TokensField: [token.to_json() for token in token_annos],
+            RowsField: [row.to_json() for row in row_annos],
+            PagesField: [page.to_json() for page in page_annos]
         }
 
     def _simple_line_detection(
