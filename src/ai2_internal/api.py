@@ -1,6 +1,6 @@
 from typing import List, Optional, Type
 
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, Extra, Field
 from pydantic.fields import ModelField
 
 import mmda.types.annotation as mmda_ann
@@ -68,7 +68,7 @@ class Attributes(BaseModel):
 
 
 class Annotation(BaseModel, extra=Extra.ignore):
-    attributes: Attributes
+    attributes: Attributes = Attributes()
 
     @classmethod
     def get_metadata_cls(cls) -> Type[Attributes]:
