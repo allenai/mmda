@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.2.1'
+version = '0.2.2'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -108,7 +108,7 @@ bibentry_detection_predictor = [
 citation_links = [
     'numpy',
     'thefuzz[speedup]',
-    'sklearn',
+    'scikit-learn',
     'xgboost',
 ]
 figure_table_predictors = [
