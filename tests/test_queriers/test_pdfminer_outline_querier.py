@@ -61,7 +61,7 @@ class TestPDFMinerOutlineQuerier(unittest.TestCase):
 
     def test_does_not_capture_file_missing_exception(self):
         input_pdf_path = self.fixture_path / "this-pdf-does-not-exist.pdf"
-        doc = self.parser.parse(input_pdf_path=input_pdf_path)
+        doc = None
 
         with self.assertRaises(FileNotFoundError):
             self.querier.query(input_pdf_path=input_pdf_path, doc=doc)
