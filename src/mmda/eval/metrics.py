@@ -1,26 +1,55 @@
 from mmda.types.box import Box
 
 
-def levenshtein(s1: str, s2: str, case_sensitive: bool = True) -> int:
+def levenshtein(
+    s1: str,
+    s2: str,
+    case_sensitive: bool = True,
+    strip_spaces: bool = False,
+    normalize: bool = False,
+) -> int:
     """See https://en.wikipedia.org/wiki/Levenshtein_distance.
-
     Args:
         s1 (str): String 1 for comparison
         s2 (str): String 2 for comparison
         case_sensitive (bool): When true compare strings as-is, downcase otherwise
-
+        strip_spaces (bool): When true remove spaces before comparing
+        normalize (bool): When true normalize by dividing by max word length
     Returns:
         int: The Levenshtein distance between strings
     """
+    if strip_spaces:
+        return levenshtein(
+            s1.replace(" ", ""),
+            s2.replace(" ", ""),
+            case_sensitive=case_sensitive,
+            strip_spaces=False,
+            normalize=normalize,
+        )
+
     if not case_sensitive:
-        return levenshtein(s1.lower(), s2.lower(), case_sensitive=True)
+        return levenshtein(
+            s1.lower(),
+            s2.lower(),
+            case_sensitive=True,
+            strip_spaces=strip_spaces,
+            normalize=normalize,
+        )
 
     if len(s1) > len(s2):
-        return levenshtein(s2, s1)
+        # pylint: disable=arguments-out-of-order
+        return levenshtein(
+            s2,
+            s1,
+            case_sensitive=case_sensitive,
+            strip_spaces=strip_spaces,
+            normalize=normalize,
+        )
 
     v0 = list(range(len(s2) + 1))
     v1 = [0 for _ in range(len(s2) + 1)]
 
+    # pylint: disable=consider-using-enumerate
     for i in range(len(s1)):
         v1[0] = i + 1
 
@@ -38,7 +67,10 @@ def levenshtein(s1: str, s2: str, case_sensitive: bool = True) -> int:
         v0 = v1
         v1 = [0 for _ in range(len(s2) + 1)]
 
-    return v0[len(s2)]
+    if normalize:
+        return v0[len(s2)] / len(s2)
+    else:
+        return v0[len(s2)]
 
 
 def box_overlap(box: Box, container: Box) -> float:
