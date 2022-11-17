@@ -17,6 +17,7 @@ from typing import Dict, List
 from layoutparser.tools.shape_operations import (
     generalized_connected_component_analysis_1d,
 )
+
 from mmda.eval.metrics import levenshtein
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 from mmda.queriers.pdfminer_outline_querier import OutlineMetadata
@@ -185,51 +186,9 @@ class SectionHeaderPredictor(BasePredictor):
         page_to_outlines = _outlines_to_page_index(outlines)
         predictions: List[SpanGroup] = []
 
-        # lscore = partial(
-        #    levenshtein, case_sensitive=False, strip_spaces=True, normalize=True
-        # )
-        # lscore_words = partial(
-        #    levenshtein, case_sensitive=False, strip_spaces=False, normalize=True
-        # )
-
-        # FIXME: DEBUG
-        # debug_pdf_file = (
-        #    pathlib.Path(__file__).parent.parent.parent.parent.parent
-        #    / "tests"
-        #    / "fixtures"
-        #    / "4be952924cd565488b4a239dc6549095029ee578.pdf"
-        # )
-
-        # with pp.open(debug_pdf_file) as pdf_file:
-        #    images = [(p.to_image(), p.width, p.height) for p in pdf_file.pages]
-
         for i, page in enumerate(document.pages):
             tokens: List[SpanGroup] = page.tokens
             spans: List[Span] = [s for t in tokens for s in t.spans]
-
-            # DEBUG: FIXME
-            # image, w, h = images[i]
-            # for outline in page_to_outlines[i]:
-            #    print((w, h))
-            #    box: Box = _guess_box_dimensions(spans, i, outline)
-
-            #    rect = box.get_absolute(w, h)
-            #    rect = (rect.l, rect.t, rect.l + rect.w, rect.t + rect.h)
-            #    print(rect)
-            #    image.draw_rect(rect)
-
-            #    outline_box = Box(l=outline.l, t=outline.t, w=0.01, h=0.01, page=i)
-            #    outline_box = outline_box.get_absolute(w, h)
-            #    rect = (
-            #        outline_box.l,
-            #        outline_box.t,
-            #        outline_box.l + outline_box.w,
-            #        outline_box.t + outline_box.h,
-            #    )
-            #    print(rect)
-            #    image.draw_rect(rect)
-
-            # image.save(f"debug/page-{i}.png")
 
             for outline in page_to_outlines[i]:
                 box: Box = _guess_box_dimensions(spans, i, outline)
@@ -274,6 +233,8 @@ class SectionHeaderPredictor(BasePredictor):
                     filtered = [x for x in filtered if x.text != MAGIC_TOKEN]
 
                     # Try to find the best of a few different filters
+                    # Initial candidate is simply all linked tokens
+                    # Additional candidates could use things like font name and size
                     candidates = [
                         [x for x in filtered],
                     ]
@@ -284,12 +245,11 @@ class SectionHeaderPredictor(BasePredictor):
                             [x for x in filtered if x.box.l + 0.01 > magic_token.box.l]
                         )
 
+                    # If all tokens are filtered out then we did not find a match
                     if len(candidates) == 0:
-                        # FIXME: Logging warning
                         continue
 
                     best_candidate = _find_best_candidate(candidates, outline)
-
                     metadata = Metadata(level=outline.level, title=outline.title)
                     predictions.append(
                         SpanGroup(
