@@ -84,6 +84,17 @@ class _PDFDestination:
     left: float
 
 
+@dataclass
+class _PDFPageInfo:
+    """Enumeration of PDF page along with dimensions."""
+
+    index: int
+    x0: float
+    y0: float
+    x1: float
+    y1: float
+
+
 _OutlineItemValues = Union[str, int, float]
 
 
@@ -168,8 +179,14 @@ def _dest_to_outline_metadata(
     )
 
 
-def _get_pages(doc: pd.PDFDocument):
-    return {p.pageid: i for i, p in enumerate(pp.PDFPage.create_pages(doc))}
+def _get_page_infos(doc: pd.PDFDocument) -> Dict[Any, _PDFPageInfo]:
+    infos = {}
+
+    for idx, page in enumerate(pp.PDFPage.create_pages(doc)):
+        x0, y0, x1, y1 = page.mediabox
+        infos[page.pageid] = _PDFPageInfo(index=idx, x0=x0, y0=y0, x1=x1, y1=y1)
+
+    return infos
 
 
 def _resolve_dest(dest, doc: pd.PDFDocument):
@@ -182,16 +199,19 @@ def _resolve_dest(dest, doc: pd.PDFDocument):
     return dest
 
 
-def _get_dest(dest: List[Any]) -> _PDFDestination:
+def _get_dest(dest: List[Any], page_info: _PDFPageInfo) -> _PDFDestination:
+    w = page_info.x1 - page_info.x0
+    h = page_info.y1 - page_info.y0
+
     if dest[1] == pr.PSLiteralTable.intern("XYZ"):
         # Sometimes the expected coordinates can be missing
         if dest[3] is None or dest[2] is None:
             raise PDFDestinationLocationMissing(f"Missing location: {dest}!")
 
-        return _PDFDestination(top=dest[3], left=dest[2])
+        return _PDFDestination(top=(h - dest[3]) / h, left=dest[2] / w)
 
     if dest[1] == pr.PSLiteralTable.intern("FitR"):
-        return _PDFDestination(top=dest[5], left=dest[2])
+        return _PDFDestination(top=(h - dest[5]) / h, left=dest[2] / w)
     else:
         raise PDFUnsupportedDestination(f"Unkown destination value: {dest}!")
 
@@ -199,7 +219,7 @@ def _get_dest(dest: List[Any]) -> _PDFDestination:
 class PDFMinerOutlineExtractor:
     """Parse a PDF and return a new Document with just outline metadata added."""
 
-    def extract(self, input_pdf_path: str, doc: Document, **kwargs) -> None:
+    def extract(self, input_pdf_path: str, doc: Document, **kwargs) -> Outline:
         """Get outline metadata from a PDF document and store on Document metadata.
 
         Args:
@@ -229,9 +249,7 @@ class PDFMinerOutlineExtractor:
                 if o.level > 0
             ]
 
-        doc.add_metadata(
-            outline=Outline(items=[o for o in outlines]).to_metadata_dict()
-        )
+        return Outline(items=[o for o in outlines])
 
     def _extract_outlines(self, input_pdf_path: str) -> List[OutlineItem]:
         outlines = []
@@ -241,7 +259,7 @@ class PDFMinerOutlineExtractor:
 
         try:
             psdoc = pd.PDFDocument(ps.PDFParser(pdf_bytes))
-            pages = _get_pages(psdoc)
+            pages = _get_page_infos(psdoc)
 
             # pylint: disable=invalid-name
             for oid, (level, title, dest, a, _se) in enumerate(psdoc.get_outlines()):
@@ -273,8 +291,8 @@ class PDFMinerOutlineExtractor:
                 if page is not None:
                     outlines.append(
                         _dest_to_outline_metadata(
-                            dest=_get_dest(dest),
-                            page=page,
+                            dest=_get_dest(dest, page),
+                            page=page.index,
                             outline_id=oid,
                             title=title,
                             level=level - 1,

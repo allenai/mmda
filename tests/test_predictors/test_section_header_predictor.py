@@ -11,14 +11,14 @@ from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.predictors.heuristic_predictors.section_header_predictor import (
     SectionHeaderPredictor,
 )
-from mmda.queriers.pdfminer_outline_querier import PDFMinerOutlineQuerier
+from mmda.utils.outline_metadata import PDFMinerOutlineExtractor
 
 
 class TestSectionHeaderPredictor(unittest.TestCase):
     def setUp(self) -> None:
         self.fixture_path = pathlib.Path(__file__).parent.parent / "fixtures"
         self.parser = PDFPlumberParser()
-        self.querier = PDFMinerOutlineQuerier()
+        self.extractor = PDFMinerOutlineExtractor()
         self.predictor = SectionHeaderPredictor()
 
     def test_finds_sections(self):
@@ -27,7 +27,7 @@ class TestSectionHeaderPredictor(unittest.TestCase):
         )
 
         doc = self.parser.parse(input_pdf_path=input_pdf_path)
-        self.querier.query(input_pdf_path=input_pdf_path, doc=doc)
-        doc.annotate(sections=self.predictor.predict(document=doc))
+        self.extractor.extract(input_pdf_path=input_pdf_path, doc=doc)
 
-        self.assertEqual(18, len(doc.sections))
+        doc.annotate(sections=self.predictor.predict(document=doc))
+        self.assertEqual(18, len(doc.sections))  # pylint: disable=no-member

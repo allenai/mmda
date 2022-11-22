@@ -23,12 +23,12 @@ from layoutparser.tools.shape_operations import (
 
 from mmda.eval.metrics import levenshtein
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
-from mmda.queriers.pdfminer_outline_querier import OutlineMetadata
 from mmda.types.annotation import Span, SpanGroup
 from mmda.types.box import Box
 from mmda.types.document import Document
 from mmda.types.metadata import Metadata
 from mmda.types.names import PagesField, TokensField
+from mmda.utils.outline_metadata import Outline, OutlineItem
 
 
 @dataclass
@@ -39,27 +39,23 @@ class _BoxWithText:
 
 
 def _doc_has_no_outlines(doc: Document) -> bool:
-    return "outlines" not in doc.metadata or len(doc.metadata.outlines) == 0
+    return "outline" not in doc.metadata or len(doc.metadata.outline) == 0
 
 
-def _parse_outline_metadata(doc: Document) -> List[OutlineMetadata]:
-    return [OutlineMetadata.from_metadata_dict(om) for om in doc.metadata.outlines]
+def _parse_outline_metadata(doc: Document) -> Outline:
+    return Outline.from_metadata_dict(doc.metadata)
 
 
-def _outlines_to_page_index(
-    outlines: List[OutlineMetadata],
-) -> Dict[int, List[OutlineMetadata]]:
+def _outlines_to_page_index(outline: Outline) -> Dict[int, List[OutlineItem]]:
     results = defaultdict(list)
 
-    for outline in outlines:
-        results[outline.page].append(outline)
+    for item in outline.items:
+        results[item.page].append(item)
 
     return results
 
 
-def _guess_box_dimensions(
-    spans: List[Span], index: int, outline: OutlineMetadata
-) -> Box:
+def _guess_box_dimensions(spans: List[Span], index: int, outline: OutlineItem) -> Box:
     """Use this method to expand a pointer to a location in a PDF to a guesstimate box
     that represents a full target location for a Box after clicking a ToC entry. In
     other words, this box is roughly on the PDF page where PDF software would scroll to
@@ -130,7 +126,7 @@ _lscore = partial(levenshtein, case_sensitive=False, strip_spaces=True, normaliz
 
 
 def _find_best_candidate(
-    candidates: List[List[_BoxWithText]], outline: OutlineMetadata
+    candidates: List[List[_BoxWithText]], outline: OutlineItem
 ) -> List[_BoxWithText]:
     best_candidate = candidates[0]
     best_text = "".join([x.text for x in best_candidate])
@@ -194,6 +190,7 @@ class SectionHeaderPredictor(BasePredictor):
             spans: List[Span] = [s for t in tokens for s in t.spans]
 
             for outline in page_to_outlines[i]:
+
                 box: Box = _guess_box_dimensions(spans, i, outline)
 
                 text_boxes: List[_BoxWithText] = [

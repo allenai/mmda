@@ -29,7 +29,9 @@ class TestPDFMinerOutlineExtractor(unittest.TestCase):
         )
 
         doc = self.parser.parse(input_pdf_path=input_pdf_path)
-        self.extractor.extract(input_pdf_path=input_pdf_path, doc=doc)
+
+        outline_pred = self.extractor.extract(input_pdf_path=input_pdf_path, doc=doc)
+        doc.add_metadata(outline=outline_pred.to_metadata_dict())
 
         self.assertIsNotNone(doc.metadata.outline)
         self.assertEqual(18, len(doc.metadata.outline["items"]))
@@ -57,7 +59,9 @@ class TestPDFMinerOutlineExtractor(unittest.TestCase):
         input_pdf_path = self.fixture_path / "1903.10676.pdf"
 
         doc = self.parser.parse(input_pdf_path=input_pdf_path)
-        self.extractor.extract(input_pdf_path=input_pdf_path, doc=doc)
+
+        outline = self.extractor.extract(input_pdf_path=input_pdf_path, doc=doc)
+        doc.add_metadata(outline=outline.to_metadata_dict())
 
         self.assertEqual(0, len(doc.metadata.outline["items"]))
 
