@@ -27,7 +27,8 @@ class TestSectionHeaderPredictor(unittest.TestCase):
         )
 
         doc = self.parser.parse(input_pdf_path=input_pdf_path)
-        self.extractor.extract(input_pdf_path=input_pdf_path, doc=doc)
+        outline = self.extractor.extract(input_pdf_path=input_pdf_path, doc=doc)
+        doc.add_metadata(outline=outline.to_metadata_dict())
 
         doc.annotate(sections=self.predictor.predict(document=doc))
         self.assertEqual(18, len(doc.sections))  # pylint: disable=no-member
