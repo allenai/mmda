@@ -1,6 +1,9 @@
 """
 
-SectionHeaderPredictor -- Use PDF outline metadata to predict section headers and levels
+SectionHeaderPredictor -- Use PDF outline metadata to predict section headers and
+    levels. This predictor is entirely heuristic and only applies to PDFs that have ToC
+    information in the sidebar. See SectionNestingPredictor for a related class that
+    operates over token predictions to yield an outline of sections.
 
 Adapted from https://github.com/rauthur/pdf-outlines-extraction
 
