@@ -10,18 +10,18 @@ import pathlib
 import unittest
 
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
-from mmda.queriers.pdfminer_outline_querier import (
-    OutlineMetadata,
-    PDFMinerOutlineParserError,
-    PDFMinerOutlineQuerier,
+from mmda.utils.outline_metadata import (
+    Outline,
+    PDFMinerOutlineExtractor,
+    PDFMinerOutlineExtractorError,
 )
 
 
-class TestPDFMinerOutlineQuerier(unittest.TestCase):
+class TestPDFMinerOutlineExtractor(unittest.TestCase):
     def setUp(self) -> None:
         self.fixture_path = pathlib.Path(__file__).parent.parent / "fixtures"
         self.parser = PDFPlumberParser()
-        self.querier = PDFMinerOutlineQuerier()
+        self.extractor = PDFMinerOutlineExtractor()
 
     def test_query(self):
         input_pdf_path = (
@@ -29,16 +29,18 @@ class TestPDFMinerOutlineQuerier(unittest.TestCase):
         )
 
         doc = self.parser.parse(input_pdf_path=input_pdf_path)
-        self.querier.query(input_pdf_path=input_pdf_path, doc=doc)
+        self.extractor.extract(input_pdf_path=input_pdf_path, doc=doc)
 
-        self.assertIsNotNone(doc.metadata.outlines)
-        self.assertEqual(18, len(doc.metadata.outlines))
+        self.assertIsNotNone(doc.metadata.outline)
+        self.assertEqual(18, len(doc.metadata.outline["items"]))
 
-        x = OutlineMetadata.from_metadata_dict(doc.metadata.outlines[0])
+        outline = Outline.from_metadata_dict(doc.metadata)
+
+        x = outline.items[0]
         self.assertEqual("I Introduction", x.title)
         self.assertEqual(0, x.level)
 
-        x = OutlineMetadata.from_metadata_dict(doc.metadata.outlines[4])
+        x = outline.items[4]
         self.assertEqual("IV-A Overview", x.title)
         self.assertEqual(1, x.level)
 
@@ -46,8 +48,8 @@ class TestPDFMinerOutlineQuerier(unittest.TestCase):
         input_pdf_path = self.fixture_path / "1903.10676.pdf"
         doc = self.parser.parse(input_pdf_path=input_pdf_path)
 
-        with self.assertRaises(PDFMinerOutlineParserError):
-            self.querier.query(
+        with self.assertRaises(PDFMinerOutlineExtractorError):
+            self.extractor.extract(
                 input_pdf_path=input_pdf_path, doc=doc, raise_exceptions=True
             )
 
@@ -55,13 +57,13 @@ class TestPDFMinerOutlineQuerier(unittest.TestCase):
         input_pdf_path = self.fixture_path / "1903.10676.pdf"
 
         doc = self.parser.parse(input_pdf_path=input_pdf_path)
-        self.querier.query(input_pdf_path=input_pdf_path, doc=doc)
+        self.extractor.extract(input_pdf_path=input_pdf_path, doc=doc)
 
-        self.assertEqual(0, len(doc.metadata.outlines))
+        self.assertEqual(0, len(doc.metadata.outline["items"]))
 
     def test_does_not_capture_file_missing_exception(self):
         input_pdf_path = self.fixture_path / "this-pdf-does-not-exist.pdf"
         doc = None
 
         with self.assertRaises(FileNotFoundError):
-            self.querier.query(input_pdf_path=input_pdf_path, doc=doc)
+            self.extractor.extract(input_pdf_path=input_pdf_path, doc=doc)

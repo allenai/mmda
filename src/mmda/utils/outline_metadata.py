@@ -15,63 +15,64 @@ import pdfminer.pdfpage as pp
 import pdfminer.pdfparser as ps
 import pdfminer.pdftypes as pt
 import pdfminer.psparser as pr
-from mmda.queriers.querier import Querier
+
 from mmda.types.document import Document
+from mmda.types.metadata import Metadata
 
 
-class PDFMinerOutlineParserError(Exception):
+class PDFMinerOutlineExtractorError(Exception):
     """Base class for outline metadata extration errors."""
 
 
-class PDFUnsupportedDestination(PDFMinerOutlineParserError):
+class PDFUnsupportedDestination(PDFMinerOutlineExtractorError):
     """Raised when a destination pointer cannot be parsed to a location."""
 
 
-class PDFNoUsableDestinations(PDFMinerOutlineParserError):
+class PDFNoUsableDestinations(PDFMinerOutlineExtractorError):
     """Raised when there are no usable destinations for any outline metadata."""
 
 
-class PDFDestinationLocationMissing(PDFMinerOutlineParserError):
+class PDFDestinationLocationMissing(PDFMinerOutlineExtractorError):
     """Raised when there is no destination data on a particular outline item."""
 
 
-class PDFNoOutlines(PDFMinerOutlineParserError):
+class PDFNoOutlines(PDFMinerOutlineExtractorError):
     """Raised when underlying PDF contains no outline metadata (common)."""
 
 
-class PDFDestinationNotFound(PDFMinerOutlineParserError):
+class PDFDestinationNotFound(PDFMinerOutlineExtractorError):
     """Raised when the underlying destination cannot be found in the PDF."""
 
 
-class PDFInvalidSyntax(PDFMinerOutlineParserError):
+class PDFInvalidSyntax(PDFMinerOutlineExtractorError):
     """Raised when the PDF cannot be properly parsed."""
 
 
-class PDFPageMissing(PDFMinerOutlineParserError):
+class PDFPageMissing(PDFMinerOutlineExtractorError):
     """Raised when the destination points to a page that cannot be found."""
 
 
-class PDFEncryptionError(PDFMinerOutlineParserError):
+class PDFEncryptionError(PDFMinerOutlineExtractorError):
     """Raised for encrypted PDFs."""
 
 
-class PDFRecursionError(PDFMinerOutlineParserError):
+class PDFRecursionError(PDFMinerOutlineExtractorError):
     """Underlying parse has cyclic reference of some sort causing recursion error."""
 
 
-class PDFAttributeError(PDFMinerOutlineParserError):
+class PDFAttributeError(PDFMinerOutlineExtractorError):
     """Wraps an underlying AttributeError."""
 
 
-class PDFTypeError(PDFMinerOutlineParserError):
+class PDFTypeError(PDFMinerOutlineExtractorError):
     """Wraps an underlying TypeError."""
 
 
-class PDFEOF(PDFMinerOutlineParserError):
+class PDFEOF(PDFMinerOutlineExtractorError):
     """Raised when encountering an unexpected EOF in parsing."""
 
 
-class PDFPSSyntaxError(PDFMinerOutlineParserError):
+class PDFPSSyntaxError(PDFMinerOutlineExtractorError):
     """Raised if the PDF syntax is invalid."""
 
 
@@ -83,11 +84,11 @@ class _PDFDestination:
     left: float
 
 
-_OutlineMetadataKeys = Union[str, int, float]
+_OutlineItemValues = Union[str, int, float]
 
 
 @dataclass
-class OutlineMetadata:
+class OutlineItem:
     """A pointer to a section location in a PDF."""
 
     id: int  # pylint: disable=invalid-name
@@ -99,17 +100,17 @@ class OutlineMetadata:
 
     @classmethod
     def from_metadata_dict(
-        cls, metadata_dict: Dict[str, _OutlineMetadataKeys]
-    ) -> "OutlineMetadata":
+        cls, metadata_dict: Dict[str, _OutlineItemValues]
+    ) -> "OutlineItem":
         """Instantiate from a metadata dict on a Document
 
         Args:
-            metadata_dict (Dict[str, _OutlineMetadataKeys]): Document metadata object
+            metadata_dict (Dict[str, _OutlineItemValues]): Document metadata object
 
         Returns:
-            OutlineMetadata: Rehydrated OutlineMetadata object
+            OutlineItem: Rehydrated OutlineItem object
         """
-        return OutlineMetadata(
+        return OutlineItem(
             id=metadata_dict["id"],
             title=metadata_dict["title"],
             level=metadata_dict["level"],
@@ -118,7 +119,7 @@ class OutlineMetadata:
             t=metadata_dict["t"],
         )
 
-    def to_metadata_dict(self) -> Dict[str, _OutlineMetadataKeys]:
+    def to_metadata_dict(self) -> Dict[str, _OutlineItemValues]:
         """Convert object to a dict for storing as metadata on Document
 
         Returns:
@@ -127,10 +128,42 @@ class OutlineMetadata:
         return asdict(self)
 
 
+@dataclass
+class Outline:
+    """A class to represent an ordered list of outline items."""
+
+    items: List[OutlineItem]
+
+    @classmethod
+    def from_metadata_dict(cls, metadata_dict: Metadata) -> "Outline":
+        """Instantiate from a metadata dict on a Document
+
+        Args:
+            metadata_dict (Metadata): Document metadata object
+
+        Returns:
+            Outline: Rehydrated Outline object
+        """
+        return Outline(
+            items=[
+                OutlineItem.from_metadata_dict(i)
+                for i in metadata_dict["outline"]["items"]
+            ]
+        )
+
+    def to_metadata_dict(self) -> Dict[str, _OutlineItemValues]:
+        """Convert object to a dict for storing as metadata on Document
+
+        Returns:
+            Dict[str, List[Dict[str, _OutlineItemValues]]]: dict representation
+        """
+        return asdict(self)
+
+
 def _dest_to_outline_metadata(
     dest: _PDFDestination, page: int, outline_id: int, title: str, level: int
-) -> OutlineMetadata:
-    return OutlineMetadata(
+) -> OutlineItem:
+    return OutlineItem(
         id=outline_id, title=title, level=level, page=page, l=dest.left, t=dest.top
     )
 
@@ -163,11 +196,11 @@ def _get_dest(dest: List[Any]) -> _PDFDestination:
         raise PDFUnsupportedDestination(f"Unkown destination value: {dest}!")
 
 
-class PDFMinerOutlineQuerier(Querier):
+class PDFMinerOutlineExtractor:
     """Parse a PDF and return a new Document with just outline metadata added."""
 
-    def query(self, input_pdf_path: str, doc: Document, **kwargs) -> None:
-        """Query outline metadata from a PDF document and store on Document metadata.
+    def extract(self, input_pdf_path: str, doc: Document, **kwargs) -> None:
+        """Get outline metadata from a PDF document and store on Document metadata.
 
         Args:
             input_pdf_path (str): The PDF to process
@@ -178,27 +211,29 @@ class PDFMinerOutlineQuerier(Querier):
                 underlying processing exceptions will be raised. Otherwise an empty
                 array of results will be appended to the Document.
         """
-        outlines: List[OutlineMetadata] = []
+        outlines: List[OutlineItem] = []
 
         try:
-            outlines: List[OutlineMetadata] = self._extract_outlines(input_pdf_path)
-        except PDFMinerOutlineParserError as ex:
+            outlines: List[OutlineItem] = self._extract_outlines(input_pdf_path)
+        except PDFMinerOutlineExtractorError as ex:
             if kwargs.get("raise_exceptions"):
                 raise ex
 
         # If we have just one top-level outline assume that it's the title and remove
         if len([o for o in outlines if o.level == 0]) == 1:
             outlines = [
-                OutlineMetadata(
+                OutlineItem(
                     id=o.id, title=o.title, level=o.level - 1, page=o.page, l=o.l, t=o.t
                 )
                 for o in outlines
                 if o.level > 0
             ]
 
-        doc.add_metadata(outlines=[o.to_metadata_dict() for o in outlines])
+        doc.add_metadata(
+            outline=Outline(items=[o for o in outlines]).to_metadata_dict()
+        )
 
-    def _extract_outlines(self, input_pdf_path: str) -> List[OutlineMetadata]:
+    def _extract_outlines(self, input_pdf_path: str) -> List[OutlineItem]:
         outlines = []
 
         with open(input_pdf_path, "rb") as pdf_file:
@@ -208,6 +243,7 @@ class PDFMinerOutlineQuerier(Querier):
             psdoc = pd.PDFDocument(ps.PDFParser(pdf_bytes))
             pages = _get_pages(psdoc)
 
+            # pylint: disable=invalid-name
             for oid, (level, title, dest, a, _se) in enumerate(psdoc.get_outlines()):
                 page = None
 
