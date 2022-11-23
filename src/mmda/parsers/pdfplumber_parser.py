@@ -9,7 +9,7 @@ from mmda.types.box import Box
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.parsers.parser import Parser
-from mmda.types.names import *
+from mmda.types.names import PagesField, RowsField, SymbolsField, TokensField
 
 
 class PDFPlumberParser(Parser):
@@ -100,85 +100,89 @@ class PDFPlumberParser(Parser):
         self.split_at_punctuation = split_at_punctuation
 
     def parse(self, input_pdf_path: str) -> Document:
-        plumber_pdf_object = pdfplumber.open(input_pdf_path)
-        all_tokens = []
-        all_word_ids = []
-        last_word_id = -1
-        all_row_ids = []
-        last_row_id = -1
-        all_page_ids = []
-        for page_id, page in enumerate(plumber_pdf_object.pages):
-            # 1) tokens we use for Document.symbols
-            coarse_tokens = page.extract_words(
-                x_tolerance=self.token_x_tolerance,
-                y_tolerance=self.token_y_tolerance,
-                keep_blank_chars=self.keep_blank_chars,
-                use_text_flow=self.use_text_flow,
-                horizontal_ltr=self.horizontal_ltr,
-                vertical_ttb=self.vertical_ttb,
-                extra_attrs=self.extra_attrs,
-                split_at_punctuation=None
+        with pdfplumber.open(input_pdf_path) as plumber_pdf_object:
+            all_tokens = []
+            all_word_ids = []
+            last_word_id = -1
+            all_row_ids = []
+            last_row_id = -1
+            all_page_ids = []
+            for page_id, page in enumerate(plumber_pdf_object.pages):
+                # 1) tokens we use for Document.symbols
+                coarse_tokens = page.extract_words(
+                    x_tolerance=self.token_x_tolerance,
+                    y_tolerance=self.token_y_tolerance,
+                    keep_blank_chars=self.keep_blank_chars,
+                    use_text_flow=self.use_text_flow,
+                    horizontal_ltr=self.horizontal_ltr,
+                    vertical_ttb=self.vertical_ttb,
+                    extra_attrs=self.extra_attrs,
+                    split_at_punctuation=None
+                )
+                # 2) tokens we use for Document.tokens
+                fine_tokens = page.extract_words(
+                    x_tolerance=self.token_x_tolerance,
+                    y_tolerance=self.token_y_tolerance,
+                    keep_blank_chars=self.keep_blank_chars,
+                    use_text_flow=self.use_text_flow,
+                    horizontal_ltr=self.horizontal_ltr,
+                    vertical_ttb=self.vertical_ttb,
+                    extra_attrs=self.extra_attrs,
+                    split_at_punctuation=self.split_at_punctuation
+                )
+                # 3) align fine tokens with coarse tokens
+                word_ids_of_fine_tokens = self._align_coarse_and_fine_tokens(
+                    coarse_tokens=[c['text'] for c in coarse_tokens],
+                    fine_tokens=[f['text'] for f in fine_tokens]
+                )
+                assert len(word_ids_of_fine_tokens) == len(fine_tokens)
+                # 4) normalize / clean tokens & boxes
+                fine_tokens = [
+                    {
+                        "text": token["text"],
+                        "bbox": Box.from_pdf_coordinates(
+                            x1=float(token["x0"]),
+                            y1=float(token["top"]),
+                            x2=float(token["x1"]),
+                            y2=float(token["bottom"]),
+                            page_width=float(page.width),
+                            page_height=float(page.height),
+                            page=int(page_id)
+                        ).get_relative(
+                            page_width=float(page.width), page_height=float(page.height)
+                        ),
+                    }
+                    for token in fine_tokens
+                ]
+                # 5) group tokens into lines
+                # TODO - doesnt belong in parser; should be own predictor
+                line_ids_of_fine_tokens = self._simple_line_detection(
+                    page_tokens=fine_tokens,
+                    x_tolerance=self.line_x_tolerance / page.width,
+                    y_tolerance=self.line_y_tolerance / page.height,
+                )
+                assert len(line_ids_of_fine_tokens) == len(fine_tokens)
+                # 6) accumulate
+                all_tokens.extend(fine_tokens)
+                all_row_ids.extend(
+                    [i + last_row_id + 1 for i in line_ids_of_fine_tokens]
+                )
+                last_row_id = all_row_ids[-1]
+                all_word_ids.extend(
+                    [i + last_word_id + 1 for i in word_ids_of_fine_tokens]
+                )
+                last_word_id = all_word_ids[-1]
+                for _ in fine_tokens:
+                    all_page_ids.append(page_id)
+            # now turn into a beautiful document!
+            doc_json = self._convert_nested_text_to_doc_json(
+                token_dicts=all_tokens,
+                word_ids=all_word_ids,
+                row_ids=all_row_ids,
+                page_ids=all_page_ids
             )
-            # 2) tokens we use for Document.tokens
-            fine_tokens = page.extract_words(
-                x_tolerance=self.token_x_tolerance,
-                y_tolerance=self.token_y_tolerance,
-                keep_blank_chars=self.keep_blank_chars,
-                use_text_flow=self.use_text_flow,
-                horizontal_ltr=self.horizontal_ltr,
-                vertical_ttb=self.vertical_ttb,
-                extra_attrs=self.extra_attrs,
-                split_at_punctuation=self.split_at_punctuation
-            )
-            # 3) align fine tokens with coarse tokens
-            word_ids_of_fine_tokens = self._align_coarse_and_fine_tokens(
-                coarse_tokens=[c['text'] for c in coarse_tokens],
-                fine_tokens=[f['text'] for f in fine_tokens]
-            )
-            assert len(word_ids_of_fine_tokens) == len(fine_tokens)
-            # 4) normalize / clean tokens & boxes
-            fine_tokens = [
-                {
-                    "text": token["text"],
-                    "bbox": Box.from_pdf_coordinates(
-                        x1=float(token["x0"]),
-                        y1=float(token["top"]),
-                        x2=float(token["x1"]),
-                        y2=float(token["bottom"]),
-                        page_width=float(page.width),
-                        page_height=float(page.height),
-                        page=int(page_id)
-                    ).get_relative(
-                        page_width=float(page.width), page_height=float(page.height)
-                    ),
-                }
-                for token in fine_tokens
-            ]
-            # 5) group tokens into lines
-            # TODO - doesnt belong in parser; should be own predictor
-            line_ids_of_fine_tokens = self._simple_line_detection(
-                page_tokens=fine_tokens,
-                x_tolerance=self.line_x_tolerance / page.width,
-                y_tolerance=self.line_y_tolerance / page.height,
-            )
-            assert len(line_ids_of_fine_tokens) == len(fine_tokens)
-            # 6) accumulate
-            all_tokens.extend(fine_tokens)
-            all_row_ids.extend([i + last_row_id + 1 for i in line_ids_of_fine_tokens])
-            last_row_id = all_row_ids[-1]
-            all_word_ids.extend([i + last_word_id + 1 for i in word_ids_of_fine_tokens])
-            last_word_id = all_word_ids[-1]
-            for _ in fine_tokens:
-                all_page_ids.append(page_id)
-        # now turn into a beautiful document!
-        doc_json = self._convert_nested_text_to_doc_json(
-            token_dicts=all_tokens,
-            word_ids=all_word_ids,
-            row_ids=all_row_ids,
-            page_ids=all_page_ids
-        )
-        doc = Document.from_json(doc_json)
-        return doc
+            doc = Document.from_json(doc_json)
+            return doc
 
     def _convert_nested_text_to_doc_json(
             self,
@@ -269,10 +273,10 @@ class PDFPlumberParser(Parser):
             page_annos.append(page)
 
         return {
-            Symbols: symbols,
-            Tokens: [token.to_json() for token in token_annos],
-            Rows: [row.to_json() for row in row_annos],
-            Pages: [page.to_json() for page in page_annos]
+            SymbolsField: symbols,
+            TokensField: [token.to_json() for token in token_annos],
+            RowsField: [row.to_json() for row in row_annos],
+            PagesField: [page.to_json() for page in page_annos]
         }
 
     def _simple_line_detection(
@@ -366,6 +370,4 @@ class PDFPlumberParser(Parser):
                 coarse_id += 1
 
         return out
-
-
 

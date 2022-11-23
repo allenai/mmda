@@ -33,7 +33,7 @@ from mmda.parsers import PDFPlumberParser
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 from mmda.predictors.heuristic_predictors.whitespace_predictor import WhitespacePredictor
 from mmda.types import Metadata, Document, Span, SpanGroup
-from mmda.types.names import Rows, Tokens
+from mmda.types.names import RowsField, TokensField
 
 
 class Dictionary:
@@ -64,7 +64,7 @@ class Dictionary:
 
 class DictionaryWordPredictor(BasePredictor):
     REQUIRED_BACKENDS = None
-    REQUIRED_DOCUMENT_FIELDS = [Rows, Tokens]
+    REQUIRED_DOCUMENT_FIELDS = [RowsField, TokensField]
 
     def __init__(
             self,
