@@ -39,7 +39,7 @@ class BibEntryPredictor(BasePredictor):
             # https://stackoverflow.com/a/60018731
             self.model.eval()  # for some reason the onnx version doesnt have an eval()
 
-    def predict(self, document: Document) -> BibEntryStructureSpanGroups:
+    def predict(self, document: Document) -> List[BibEntryStructureSpanGroups]:
         # Recover the (approximate) raw bibentry strings from mmda document
         bib_entry_strings = utils.mk_bib_entry_strings(document)
 

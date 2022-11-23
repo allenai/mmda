@@ -16,7 +16,7 @@ def mk_bib_entry_strings(document: Document) -> List[str]:
 def map_raw_predictions_to_mmda(
         bib_entries: List[SpanGroup],
         raw_preds: List[BibEntryPredictionWithSpan]
-) -> BibEntryStructureSpanGroups:
+) -> List[BibEntryStructureSpanGroups]:
     """
     Fussy, and hopefully short-lived logic that can map the spans predicted for a given
     bib entry string back into its corresponding MMDA Document.
@@ -27,7 +27,7 @@ def map_raw_predictions_to_mmda(
     2. map the span for each inferred bib entry component back into original document, using
         one or more `mmda.types.span.Span`s
     """
-    prediction = BibEntryStructureSpanGroups()
+    ret = []
 
     for i in range(len(bib_entries)):
         sg = bib_entries[i]
@@ -73,6 +73,7 @@ def map_raw_predictions_to_mmda(
 
             target.append(SpanGroup(spans=new_spans))
 
+        prediction = BibEntryStructureSpanGroups()
         map_raw_span(prediction.bib_entry_number, raw_pred.citation_number)
         for author in (raw_pred.authors or []):
             map_raw_span(prediction.bib_entry_authors, author)
@@ -82,5 +83,7 @@ def map_raw_predictions_to_mmda(
         map_raw_span(prediction.bib_entry_doi, raw_pred.doi)
         map_raw_span(prediction.bib_entry_url, raw_pred.url)
 
-    return prediction
+        ret.append(prediction)
+
+    return ret
 

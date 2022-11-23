@@ -31,7 +31,7 @@ class TestBibEntryPredictor(unittest.TestCase):
                          + "." * (sg.spans[1].start - sg.spans[0].end) \
                          + "Phytoecdysteroid on Length of Silk Filament and\nNon-Breakable Filament Length of Multivoltine\nMulberry Silkworm B. mori Linn. Academic Journal\nof Entomology, 5 ( 3 ) : 174-181."
 
-        prediction = utils.map_raw_predictions_to_mmda([sg], [raw_prediction])
+        prediction = utils.map_raw_predictions_to_mmda([sg], [raw_prediction])[0]
 
         self.assertEqual(total_doc_text[prediction.bib_entry_number[0].start:prediction.bib_entry_number[0].end], "10")
         self.assertEqual(total_doc_text[prediction.bib_entry_authors[0].start:prediction.bib_entry_authors[0].end], "Srivastava, K.")
