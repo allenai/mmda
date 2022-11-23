@@ -12,12 +12,12 @@ from typing import Optional, Set, List, Tuple
 import tokenizers
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 from mmda.types import Metadata, Document, SpanGroup, Span, BoxGroup
-from mmda.types.names import Tokens
+from mmda.types.names import TokensField
 
 
 class WhitespacePredictor(BasePredictor):
     REQUIRED_BACKENDS = None
-    REQUIRED_DOCUMENT_FIELDS = [Tokens]
+    REQUIRED_DOCUMENT_FIELDS = [TokensField]
 
     _dictionary: Optional[Set[str]] = None
 
