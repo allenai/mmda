@@ -247,9 +247,10 @@ class PDFPlumberParser(Parser):
                         end=row_tokens[-1][0].end,
                         box=Box.small_boxes_to_big_box(
                             boxes=[span.box for t in row_tokens for span in t]
-                        ),
+                        )
                     )
-                ]
+                ],
+                id=row_id
             )
             row_annos.append(row)
 
@@ -264,9 +265,10 @@ class PDFPlumberParser(Parser):
                         end=page_tokens[-1][0].end,
                         box=Box.small_boxes_to_big_box(
                             boxes=[span.box for t in page_tokens for span in t]
-                        ),
+                        )
                     )
-                ]
+                ],
+                id=page_id
             )
             page_annos.append(page)
 
@@ -369,39 +371,3 @@ class PDFPlumberParser(Parser):
 
         return out
 
-
-
-
-
-
-
-
-
-"""
-
-            
-            
-
-                
-                row_annos.append(row)
-                current_rows_tokens = []
-
-                # if new row... is it also a new page?
-                if next_page_id == current_page_id:
-                    current_pages_tokens.append(token)
-                else:
-                    page = SpanGroup(
-                        spans=[
-                            Span(
-                                start=current_pages_tokens[0][0].start,
-                                end=current_pages_tokens[-1][0].end,
-                                box=Box.small_boxes_to_big_box(
-                                    boxes=[span.box for t in current_pages_tokens for span in t]
-                                ),
-                            )
-                        ]
-                    )
-                    page_annos.append(page)
-                    current_pages_tokens = []
-
-"""
