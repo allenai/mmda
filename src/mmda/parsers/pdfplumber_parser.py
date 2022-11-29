@@ -1,15 +1,56 @@
-from typing import Optional, List, Dict, Union
-
-import string
-import pdfplumber
-
 import itertools
-from mmda.types.span import Span
-from mmda.types.box import Box
-from mmda.types.annotation import SpanGroup
-from mmda.types.document import Document
+import string
+from typing import Dict, List, Optional, Union
+
+import pdfplumber
+import pdfplumber.utils as ppu
+from pdfplumber._typing import T_num
+
 from mmda.parsers.parser import Parser
+from mmda.types.annotation import SpanGroup
+from mmda.types.box import Box
+from mmda.types.document import Document
+from mmda.types.metadata import Metadata
 from mmda.types.names import PagesField, RowsField, SymbolsField, TokensField
+from mmda.types.span import Span
+
+
+class WordExtractorWithFontInfo(ppu.WordExtractor):
+    """Override WordExtractor methods to append additional char-level info."""
+
+    def __init__(
+        self,
+        x_tolerance: T_num = ppu.DEFAULT_X_TOLERANCE,
+        y_tolerance: T_num = ppu.DEFAULT_Y_TOLERANCE,
+        keep_blank_chars: bool = False,
+        use_text_flow: bool = False,
+        horizontal_ltr: bool = True,
+        vertical_ttb: bool = True,
+        extra_attrs: Optional[List[str]] = None,
+        split_at_punctuation: Union[bool, str] = False,
+        append_attrs: Optional[List[str]] = None,
+    ):
+        super().__init__(
+            x_tolerance,
+            y_tolerance,
+            keep_blank_chars,
+            use_text_flow,
+            horizontal_ltr,
+            vertical_ttb,
+            extra_attrs,
+            split_at_punctuation,
+        )
+        self.append_attrs = append_attrs
+
+    def merge_chars(self, ordered_chars: ppu.T_obj_list) -> ppu.T_obj:
+        """Modify returned word to capture additional char-level info."""
+        word = super().merge_chars(ordered_chars=ordered_chars)
+
+        for key in self.append_attrs:
+            if key not in word:
+                word[key] = ordered_chars[0][key]
+
+        return word
 
 
 class PDFPlumberParser(Parser):
@@ -27,7 +68,7 @@ class PDFPlumberParser(Parser):
         horizontal_ltr: bool = True,
         vertical_ttb: bool = True,
         extra_attrs: Optional[List[str]] = None,
-        split_at_punctuation: Union[str, bool] = True
+        split_at_punctuation: Union[str, bool] = True,
     ):
         """The PDFPlumber PDF Detector
         Args:
@@ -117,10 +158,10 @@ class PDFPlumberParser(Parser):
                     horizontal_ltr=self.horizontal_ltr,
                     vertical_ttb=self.vertical_ttb,
                     extra_attrs=self.extra_attrs,
-                    split_at_punctuation=None
+                    split_at_punctuation=None,
                 )
                 # 2) tokens we use for Document.tokens
-                fine_tokens = page.extract_words(
+                fine_tokens = WordExtractorWithFontInfo(
                     x_tolerance=self.token_x_tolerance,
                     y_tolerance=self.token_y_tolerance,
                     keep_blank_chars=self.keep_blank_chars,
@@ -128,18 +169,21 @@ class PDFPlumberParser(Parser):
                     horizontal_ltr=self.horizontal_ltr,
                     vertical_ttb=self.vertical_ttb,
                     extra_attrs=self.extra_attrs,
-                    split_at_punctuation=self.split_at_punctuation
-                )
+                    split_at_punctuation=self.split_at_punctuation,
+                    append_attrs=["fontname", "size"],
+                ).extract(page.chars)
                 # 3) align fine tokens with coarse tokens
                 word_ids_of_fine_tokens = self._align_coarse_and_fine_tokens(
-                    coarse_tokens=[c['text'] for c in coarse_tokens],
-                    fine_tokens=[f['text'] for f in fine_tokens]
+                    coarse_tokens=[c["text"] for c in coarse_tokens],
+                    fine_tokens=[f["text"] for f in fine_tokens],
                 )
                 assert len(word_ids_of_fine_tokens) == len(fine_tokens)
                 # 4) normalize / clean tokens & boxes
                 fine_tokens = [
                     {
                         "text": token["text"],
+                        "fontname": token["fontname"],
+                        "size": token["size"],
                         "bbox": Box.from_pdf_coordinates(
                             x1=float(token["x0"]),
                             y1=float(token["top"]),
@@ -147,7 +191,7 @@ class PDFPlumberParser(Parser):
                             y2=float(token["bottom"]),
                             page_width=float(page.width),
                             page_height=float(page.height),
-                            page=int(page_id)
+                            page=int(page_id),
                         ).get_relative(
                             page_width=float(page.width), page_height=float(page.height)
                         ),
@@ -179,17 +223,17 @@ class PDFPlumberParser(Parser):
                 token_dicts=all_tokens,
                 word_ids=all_word_ids,
                 row_ids=all_row_ids,
-                page_ids=all_page_ids
+                page_ids=all_page_ids,
             )
             doc = Document.from_json(doc_json)
             return doc
 
     def _convert_nested_text_to_doc_json(
-            self,
-            token_dicts: List[Dict],
-            word_ids: List[int],
-            row_ids: List[int],
-            page_ids: List[int]
+        self,
+        token_dicts: List[Dict],
+        word_ids: List[int],
+        row_ids: List[int],
+        page_ids: List[int],
     ) -> Dict:
         """For a single page worth of text"""
 
@@ -210,8 +254,21 @@ class PDFPlumberParser(Parser):
 
             # 2) make Token
             end = start + len(token_dict["text"])
-            token = SpanGroup(spans=[Span(start=start, end=end, box=token_dict["bbox"])],
-                              id=token_id)
+
+            # 2b) gather token metadata
+            if "fontname" in token_dict and "size" in token_dict:
+                token_metadata = Metadata(
+                    fontname=token_dict["fontname"],
+                    size=token_dict["size"],
+                )
+            else:
+                token_metadata = None
+
+            token = SpanGroup(
+                spans=[Span(start=start, end=end, box=token_dict["bbox"])],
+                id=token_id,
+                metadata=token_metadata,
+            )
             token_annos.append(token)
 
             # 3) increment whitespace based on Row & Word membership. and build Rows.
@@ -228,8 +285,10 @@ class PDFPlumberParser(Parser):
         # handle last token
         symbols += token_dicts[-1]["text"]
         end = start + len(token_dicts[-1]["text"])
-        token = SpanGroup(spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
-                          id=len(token_dicts) - 1)
+        token = SpanGroup(
+            spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
+            id=len(token_dicts) - 1,
+        )
         token_annos.append(token)
 
         # 2) build rows
@@ -238,7 +297,9 @@ class PDFPlumberParser(Parser):
             for token, row_id, page_id in zip(token_annos, row_ids, page_ids)
         ]
         row_annos: List[SpanGroup] = []
-        for row_id, tups in itertools.groupby(iterable=tokens_with_group_ids, key=lambda tup: tup[1]):
+        for row_id, tups in itertools.groupby(
+            iterable=tokens_with_group_ids, key=lambda tup: tup[1]
+        ):
             row_tokens = [token for token, _, _ in tups]
             row = SpanGroup(
                 spans=[
@@ -247,16 +308,18 @@ class PDFPlumberParser(Parser):
                         end=row_tokens[-1][0].end,
                         box=Box.small_boxes_to_big_box(
                             boxes=[span.box for t in row_tokens for span in t]
-                        )
+                        ),
                     )
                 ],
-                id=row_id
+                id=row_id,
             )
             row_annos.append(row)
 
         # 3) build pages
         page_annos: List[SpanGroup] = []
-        for page_id, tups in itertools.groupby(iterable=tokens_with_group_ids, key=lambda tup: tup[2]):
+        for page_id, tups in itertools.groupby(
+            iterable=tokens_with_group_ids, key=lambda tup: tup[2]
+        ):
             page_tokens = [token for token, _, _ in tups]
             page = SpanGroup(
                 spans=[
@@ -265,10 +328,10 @@ class PDFPlumberParser(Parser):
                         end=page_tokens[-1][0].end,
                         box=Box.small_boxes_to_big_box(
                             boxes=[span.box for t in page_tokens for span in t]
-                        )
+                        ),
                     )
                 ],
-                id=page_id
+                id=page_id,
             )
             page_annos.append(page)
 
@@ -276,14 +339,11 @@ class PDFPlumberParser(Parser):
             SymbolsField: symbols,
             TokensField: [token.to_json() for token in token_annos],
             RowsField: [row.to_json() for row in row_annos],
-            PagesField: [page.to_json() for page in page_annos]
+            PagesField: [page.to_json() for page in page_annos],
         }
 
     def _simple_line_detection(
-            self,
-            page_tokens: List[Dict],
-            x_tolerance: int = 10,
-            y_tolerance: int = 10
+        self, page_tokens: List[Dict], x_tolerance: int = 10, y_tolerance: int = 10
     ) -> List[int]:
         """Get text lines from the page_tokens.
         It will automatically add new lines for 1) line breaks (i.e., the current token
@@ -332,16 +392,16 @@ class PDFPlumberParser(Parser):
         return lines
 
     def _align_coarse_and_fine_tokens(
-            self,
-            coarse_tokens: List[str],
-            fine_tokens: List[str]
+        self, coarse_tokens: List[str], fine_tokens: List[str]
     ) -> List[int]:
         """Returns a list of length len(fine_tokens) where elements of the list are
         integer indices into coarse_tokens elements."""
-        assert len(coarse_tokens) <= len(fine_tokens), \
-            f"This method requires |coarse| <= |fine|"
-        assert ''.join(coarse_tokens) == ''.join(fine_tokens), \
-            f"This method requires the chars(coarse) == chars(fine)"
+        assert len(coarse_tokens) <= len(
+            fine_tokens
+        ), f"This method requires |coarse| <= |fine|"
+        assert "".join(coarse_tokens) == "".join(
+            fine_tokens
+        ), f"This method requires the chars(coarse) == chars(fine)"
 
         coarse_start_ends = []
         start = 0
@@ -370,4 +430,3 @@ class PDFPlumberParser(Parser):
                 coarse_id += 1
 
         return out
-
