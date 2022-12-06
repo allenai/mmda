@@ -8,7 +8,7 @@ from mmda.predictors.base_predictors.base_predictor import BasePredictor
 from mmda.types.annotation import BoxGroup
 from mmda.types.box import Box
 from mmda.types.document import Document
-from mmda.types.names import Pages, Images, Tokens
+from mmda.types.names import PagesField, ImagesField, TokensField
 from mmda.types.span import Span
 
 
@@ -65,7 +65,7 @@ def tighten_boxes(bib_box_group, page_tokens, page_width, page_height):
 
 class BibEntryDetectionPredictor(BasePredictor):
     REQUIRED_BACKENDS = ["layoutparser", "detectron2"]
-    REQUIRED_DOCUMENT_FIELDS = [Pages, Images, Tokens]
+    REQUIRED_DOCUMENT_FIELDS = [PagesField, ImagesField, TokensField]
 
     def __init__(self, artifacts_dir: str, threshold: float = 0.88):
         label_map = {0: "bibentry"}

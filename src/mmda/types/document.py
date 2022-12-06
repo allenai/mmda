@@ -6,26 +6,27 @@
 
 import itertools
 import warnings
-from copy import deepcopy
 from typing import Dict, Iterable, List, Optional
 
 from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
 from mmda.types.image import PILImage
 from mmda.types.indexers import Indexer, SpanGroupIndexer
-from mmda.types.names import Images, Symbols
-from mmda.utils.tools import allocate_overlapping_tokens_for_box, MergeSpans
+from mmda.types.metadata import Metadata
+from mmda.types.names import ImagesField, MetadataField, SymbolsField
+from mmda.utils.tools import MergeSpans, allocate_overlapping_tokens_for_box
 
 
 class Document:
 
-    SPECIAL_FIELDS = [Symbols, Images]
+    SPECIAL_FIELDS = [SymbolsField, ImagesField, MetadataField]
     UNALLOWED_FIELD_NAMES = ["fields"]
 
-    def __init__(self, symbols: str):
+    def __init__(self, symbols: str, metadata: Optional[Metadata] = None):
         self.symbols = symbols
         self.images = []
         self.__fields = []
         self.__indexers: Dict[str, Indexer] = {}
+        self.metadata = metadata if metadata else Metadata()
 
     @property
     def fields(self) -> List[str]:
@@ -38,6 +39,11 @@ class Document:
                 f"Currently only supports query of type SpanGroup"
             )
         return self.__indexers[field_name].find(query=query)
+
+    def add_metadata(self, **kwargs):
+        """Copy kwargs into the document metadata"""
+        for k, value in kwargs.items():
+            self.metadata.set(k, value)
 
     def annotate(
         self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
@@ -99,6 +105,12 @@ class Document:
             setattr(self, field_name, span_groups)
             self.__fields.append(field_name)
 
+    def remove(self, field_name: str):
+        delattr(self, field_name)
+        self.__fields = [f for f in self.__fields if f != field_name]
+        del self.__indexers[field_name]
+
+
     def annotate_images(
         self, images: Iterable[PILImage], is_overwrite: bool = False
     ) -> None:
@@ -116,7 +128,7 @@ class Document:
 
         if not issubclass(image_type, PILImage):
             raise NotImplementedError(
-                f"Unsupported image type {image_type} for {Images}"
+                f"Unsupported image type {image_type} for {ImagesField}"
             )
 
         self.images = images
@@ -176,8 +188,10 @@ class Document:
 
             derived_span_groups.append(
                 SpanGroup(
-                    spans=MergeSpans(list_of_spans=all_token_spans_with_box_group, index_distance=1)
-                    .merge_neighbor_spans_by_symbol_distance(), box_group=box_group,
+                    spans=MergeSpans(
+                        list_of_spans=all_token_spans_with_box_group, index_distance=1
+                    ).merge_neighbor_spans_by_symbol_distance(),
+                    box_group=box_group,
                     # id = box_id,
                 )
                 # TODO Right now we cannot assign the box id, or otherwise running doc.blocks will
@@ -212,12 +226,13 @@ class Document:
             {
                 symbols: "...",
                 field1: [...],
-                field2: [...]
+                field2: [...],
+                metadata: {...}
             }
         """
-        doc_dict = {Symbols: self.symbols}
+        doc_dict = {SymbolsField: self.symbols, MetadataField: self.metadata.to_json()}
         if with_images:
-            doc_dict[Images] = [image.to_json() for image in self.images]
+            doc_dict[ImagesField] = [image.to_json() for image in self.images]
 
         # figure out which fields to serialize
         fields = (
@@ -235,10 +250,13 @@ class Document:
     @classmethod
     def from_json(cls, doc_dict: Dict) -> "Document":
         # 1) instantiate basic Document
-        symbols = doc_dict[Symbols]
-        doc = cls(symbols=symbols)
+        symbols = doc_dict[SymbolsField]
+        doc = cls(symbols=symbols, metadata=Metadata(**doc_dict.get(MetadataField, {})))
 
-        images_dict = doc_dict.get(Images, None)
+        if Metadata in doc_dict:
+            doc.add_metadata(**doc_dict[Metadata])
+
+        images_dict = doc_dict.get(ImagesField, None)
         if images_dict:
             doc.annotate_images(
                 [PILImage.frombase64(image_str) for image_str in images_dict]
