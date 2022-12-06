@@ -218,8 +218,9 @@ class DictionaryWordPredictor(BasePredictor):
             current = document.tokens[i]
             next = document.tokens[i + 1]
             is_transition = current.rows[0].id != next.rows[0].id
-            is_hyphen = current._ws_tokens[0].text.endswith('-')
-            if is_transition and is_hyphen:
+            has_hyphen = current._ws_tokens[0].text.endswith('-')
+            has_prefix = current._ws_tokens[0].text != '-'    # avoids cases where "-" by itself
+            if is_transition and has_hyphen and has_prefix:
                 row_end_token_ids = sorted([token.id for token in current._ws_tokens[0].tokens])
                 row_start_token_ids = sorted([token.id for token in next._ws_tokens[0].tokens])
                 for i in row_end_token_ids:
@@ -397,6 +398,25 @@ class DictionaryWordPredictor(BasePredictor):
                             word_id_to_text[i] = document.tokens[i].text
             else:
                 pass
+
+        # edge case handling. there are cases (e.g. tables) where each cell is detected as its own
+        # row. This is super annoying but *shrug*. In these cases, a cell "-" followed by another
+        # cell "48.9" can be represented as 2 adjacent rows. This can cause the token for "48"
+        # to be implicated in `row_start_after_hyphen_token_ids`, and thus the tokens "48.9"
+        # wouldn't be processed under the Second module above... But it also wouldnt be processed
+        # under the Third module above because the preceding hyphen "-" wouldn't have made it to
+        # `row_end_with_hyphen_token_ids` (as it's by itself).
+        # Anyways... this case is soooooo specific that for now, the easiest thing is to just
+        # do a final layer of passing over unclassified tokens & assigning word_id based on
+        # whitespace.
+        for token in document.tokens:
+            if token_id_to_word_id[token.id] is None:
+                clustered_token_ids = token_id_to_token_ids[token.id]
+                first_token_id = min(clustered_token_ids)
+                candidate_text = ''.join([document.tokens[i].text for i in clustered_token_ids])
+                for i in clustered_token_ids:
+                    token_id_to_word_id[i] = first_token_id
+                word_id_to_text[first_token_id] = candidate_text
 
         # are there any unclassified tokens?
         assert None not in token_id_to_word_id.values()

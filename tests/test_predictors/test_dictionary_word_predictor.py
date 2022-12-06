@@ -127,3 +127,42 @@ class TestDictionaryWordPredictor(unittest.TestCase):
             words = predictor.predict(document)
 
         self.assertEqual([w.text for w in words], ['Many', 'lin-es'])
+
+
+    def test_single_token_rows(self):
+        predictor = DictionaryWordPredictor()
+
+        # simple case without punctuation
+        text = 'a b cdefg'
+        spans = [
+            Span(start=0, end=1),
+            Span(start=2, end=3),
+            Span(start=4, end=9)
+        ]
+        rows = [
+            SpanGroup(id=1, spans=[spans[0]]),
+            SpanGroup(id=2, spans=[spans[1]]),
+            SpanGroup(id=3, spans=[spans[2]]),
+        ]
+        document = mock_document(symbols=text, spans=spans, rows=rows)
+        words = predictor.predict(document)
+
+        self.assertEqual([w.text for w in words], ['a', 'b', 'cdefg'])
+
+        # now with punctuation
+        text = '- - cdefg'
+        spans = [
+            Span(start=0, end=1),
+            Span(start=2, end=3),
+            Span(start=4, end=9)
+        ]
+        rows = [
+            SpanGroup(id=1, spans=[spans[0]]),
+            SpanGroup(id=2, spans=[spans[1]]),
+            SpanGroup(id=3, spans=[spans[2]]),
+        ]
+        document = mock_document(symbols=text, spans=spans, rows=rows)
+        words = predictor.predict(document)
+
+        self.assertEqual([w.text for w in words], ['-', '-', 'cdefg'])
+
