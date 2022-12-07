@@ -1,14 +1,18 @@
 """
 
-Annotations are objects that are 'aware' of the Document
+Annotations are objects that are 'aware' of the Document. For example, imagine an entity
+in a document; representing it as an Annotation data type would allow you to access the
+Document object directly from within the Entity itself.
 
-Collections of Annotations are how one constructs a new
-Iterable of Group-type objects within the Document
+@kylel
 
 """
-import warnings
+
+import logging
+
 from abc import abstractmethod
 from copy import deepcopy
+
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
 
 from mmda.types.box import Box
@@ -18,9 +22,7 @@ from mmda.types.span import Span
 if TYPE_CHECKING:
     from mmda.types.document import Document
 
-
 __all__ = ["Annotation", "BoxGroup", "SpanGroup", "Relation"]
-
 
 
 def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
@@ -34,19 +36,15 @@ def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
     warnings.warn(msg, UserWarning, stacklevel=2)
 
 
-
 class Annotation:
-    """Annotation is intended for storing model predictions for a document."""
+    """Annotation allows us to layer different model predictions on a single document."""
 
-    def __init__(
-            self,
-            id: Optional[int] = None,
-            doc: Optional['Document'] = None,
-            metadata: Optional[Metadata] = None
-    ):
-        self.id = id
-        self.doc = doc
-        self.metadata = metadata if metadata else Metadata()
+    @abstractmethod
+    def __init__(self):
+        logging.warning('Unless testing or developing, we dont recommend creating Annotations '
+                        'manually. Annotations need to store things like `id` and references '
+                        'to a `Document` to be valuable. These are all handled automatically in '
+                        '`Parsers` and `Predictors`.')
 
     @abstractmethod
     def to_json(self) -> Dict:
@@ -58,13 +56,15 @@ class Annotation:
         pass
 
     def attach_doc(self, doc: "Document") -> None:
+        """This method attaches a Document to this Annotation, allowing the Annotation
+        to access things beyond itself within the Document (e.g. neighbors)"""
         if not self.doc:
             self.doc = doc
         else:
             raise AttributeError("This annotation already has an attached document")
 
-    # TODO[kylel] - comment explaining
     def __getattr__(self, field: str) -> List["Annotation"]:
+        """This method """
         if self.doc is None:
             raise ValueError("This annotation is not attached to a document")
 
@@ -75,7 +75,6 @@ class Annotation:
             return self.doc.find_overlapping(self, field)
 
         return self.__getattribute__(field)
-
 
 
 class BoxGroup(Annotation):
@@ -150,7 +149,6 @@ class BoxGroup(Annotation):
 
 
 class SpanGroup(Annotation):
-
     def __init__(
             self,
             spans: List[Span],
@@ -173,7 +171,7 @@ class SpanGroup(Annotation):
             return []
 
     def annotate(
-        self, is_overwrite: bool = False, **kwargs: Iterable["Annotation"]
+            self, is_overwrite: bool = False, **kwargs: Iterable["Annotation"]
     ) -> None:
         if self.doc is None:
             raise ValueError("SpanGroup has no attached document!")
@@ -282,7 +280,6 @@ class SpanGroup(Annotation):
     @text.setter
     def text(self, text: Union[str, None]) -> None:
         self.metadata.text = text
-
 
 
 class Relation(Annotation):
