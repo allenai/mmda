@@ -131,7 +131,8 @@ class DictionaryWordPredictor(BasePredictor):
         # 2) precompute features about each token specific to whether it's
         #    start/end of a row, or whether it corresponds to punctuation
         row_start_after_hyphen_token_ids, row_end_with_hyphen_token_ids, \
-        max_row_end_token_id_to_min_row_start_token_id, punct_strip_candidate_token_ids = \
+        max_row_end_token_id_to_min_row_start_token_id, punct_r_strip_candidate_token_ids, \
+        punct_l_strip_candidate_token_ids = \
             self._precompute_token_features(
                 document=document,
                 token_id_to_token_ids=token_id_to_token_ids
@@ -153,7 +154,8 @@ class DictionaryWordPredictor(BasePredictor):
             row_start_after_hyphen_token_ids=row_start_after_hyphen_token_ids,
             row_end_with_hyphen_token_ids=row_end_with_hyphen_token_ids,
             max_row_end_token_id_to_min_row_start_token_id=max_row_end_token_id_to_min_row_start_token_id,
-            punct_strip_candidate_token_ids=punct_strip_candidate_token_ids
+            punct_r_strip_candidate_token_ids=punct_r_strip_candidate_token_ids,
+            punct_l_strip_candidate_token_ids=punct_l_strip_candidate_token_ids
         )
 
         # 5) transformation
@@ -219,7 +221,7 @@ class DictionaryWordPredictor(BasePredictor):
             next = document.tokens[i + 1]
             is_transition = current.rows[0].id != next.rows[0].id
             has_hyphen = current._ws_tokens[0].text.endswith('-')
-            has_prefix = current._ws_tokens[0].text != '-'    # avoids cases where "-" by itself
+            has_prefix = current._ws_tokens[0].text != '-'  # avoids cases where "-" by itself
             if is_transition and has_hyphen and has_prefix:
                 row_end_token_ids = sorted([token.id for token in current._ws_tokens[0].tokens])
                 row_start_token_ids = sorted([token.id for token in next._ws_tokens[0].tokens])
@@ -233,20 +235,41 @@ class DictionaryWordPredictor(BasePredictor):
 
         # also, keep track of potential punct token_ids to right-strip (e.g. ',' in 'models,')
         # should apply to all tokens except those at end of a row
-        punct_strip_candidate_token_ids = set()
+        punct_r_strip_candidate_token_ids = set()
         for token in document.tokens:
             candidate_token_ids = token_id_to_token_ids[token.id]
-            if len(candidate_token_ids) > 1 and token.id not in row_end_with_hyphen_token_ids:
-                for k in candidate_token_ids[::-1]:
+            if len(candidate_token_ids) > 1:
+                # r-strip logic. keep checking trailing tokens for punct; stop as soon as not
+                if token.id not in row_end_with_hyphen_token_ids:
+                    for k in candidate_token_ids[::-1]:
+                        if document.tokens[k].text in self._dictionary.punct:
+                            punct_r_strip_candidate_token_ids.add(k)
+                        else:
+                            break
+
+        # also track of potential punct token_ids to left-strip (e.g. '(' in '(BERT)')
+        # should apply to all tokens.
+        # avoid tracking cases where it's all punctuation (e.g. '...')
+        punct_l_strip_candidate_token_ids = set()
+        for token in document.tokens:
+            candidate_token_ids = token_id_to_token_ids[token.id]
+            is_multiple_tokens_wout_whitespace = len(candidate_token_ids) > 1
+            is_entirely_punctuation = all([
+                document.tokens[i].text in self._dictionary.punct for i in candidate_token_ids
+            ])
+            if is_multiple_tokens_wout_whitespace and not is_entirely_punctuation:
+                # l-strip logic. keep checking prefix tokens for punct; stop as soon as not
+                for k in candidate_token_ids:
                     if document.tokens[k].text in self._dictionary.punct:
-                        punct_strip_candidate_token_ids.add(k)
+                        punct_l_strip_candidate_token_ids.add(k)
                     else:
                         break
 
         return row_start_after_hyphen_token_ids, \
                row_end_with_hyphen_token_ids, \
                max_row_end_token_id_to_min_row_start_token_id, \
-               punct_strip_candidate_token_ids
+               punct_r_strip_candidate_token_ids, \
+               punct_l_strip_candidate_token_ids
 
     def _build_internal_dictionary(
             self,
@@ -276,10 +299,12 @@ class DictionaryWordPredictor(BasePredictor):
             row_start_after_hyphen_token_ids,
             row_end_with_hyphen_token_ids,
             max_row_end_token_id_to_min_row_start_token_id,
-            punct_strip_candidate_token_ids
+            punct_r_strip_candidate_token_ids,
+            punct_l_strip_candidate_token_ids
     ) -> Tuple[Dict, Dict]:
 
         token_id_to_word_id = {token.id: None for token in document.tokens}
+        word_id_to_token_ids = defaultdict(list)
         word_id_to_text = {}
 
         # easy case first! most words aren't split & are their own tokens
@@ -291,6 +316,7 @@ class DictionaryWordPredictor(BasePredictor):
                             len(clustered_token_ids) == 1
             ):
                 token_id_to_word_id[token.id] = token.id
+                word_id_to_token_ids[token.id].append(token.id)
                 word_id_to_text[token.id] = token.text
             else:
                 pass
@@ -308,28 +334,31 @@ class DictionaryWordPredictor(BasePredictor):
                 clustered_token_ids = token_id_to_token_ids[token.id]
                 first_token_id = min(clustered_token_ids)
                 candidate_text = ''.join([document.tokens[i].text for i in clustered_token_ids])
-                clustered_token_ids_strip_punct = [
+                clustered_token_ids_r_strip_punct = [
                     i for i in clustered_token_ids
-                    if i not in punct_strip_candidate_token_ids
+                    if i not in punct_r_strip_candidate_token_ids
                 ]
                 candidate_text_strip_punct = ''.join([
-                    document.tokens[i].text for i in clustered_token_ids_strip_punct
+                    document.tokens[i].text for i in clustered_token_ids_r_strip_punct
                 ])
 
                 # if concatenated tokens are in dictionary as-is, take them as a single word
                 if internal_dictionary.is_in(text=candidate_text, strip_punct=False):
                     for i in clustered_token_ids:
                         token_id_to_word_id[i] = first_token_id
+                        word_id_to_token_ids[first_token_id].append(i)
                     word_id_to_text[first_token_id] = candidate_text
                 # otherwise, default is to take all adjacent tokens (w/out whitespace between them)
                 # as a single word & strip punctuation
                 else:
-                    for i in clustered_token_ids_strip_punct:
+                    for i in clustered_token_ids_r_strip_punct:
                         token_id_to_word_id[i] = first_token_id
+                        word_id_to_token_ids[first_token_id].append(i)
                     word_id_to_text[first_token_id] = candidate_text_strip_punct
                     for i in clustered_token_ids:
-                        if i in punct_strip_candidate_token_ids:
+                        if i in punct_r_strip_candidate_token_ids:
                             token_id_to_word_id[i] = i
+                            word_id_to_token_ids[i].append(i)
                             word_id_to_text[i] = document.tokens[i].text
             else:
                 pass
@@ -351,7 +380,7 @@ class DictionaryWordPredictor(BasePredictor):
                     max_row_end_token_id_to_min_row_start_token_id[token.id]
                 ]
                 end_token_ids_strip_punct = [
-                    i for i in end_token_ids if i not in punct_strip_candidate_token_ids
+                    i for i in end_token_ids if i not in punct_r_strip_candidate_token_ids
                 ]
                 start_text = ''.join([document.tokens[i].text for i in start_token_ids])
                 end_text = ''.join([document.tokens[i].text for i in end_token_ids])
@@ -369,21 +398,25 @@ class DictionaryWordPredictor(BasePredictor):
                 if internal_dictionary.is_in(text=candidate_text, strip_punct=False):
                     for i in start_token_ids + end_token_ids:
                         token_id_to_word_id[i] = first_token_id
+                        word_id_to_token_ids[first_token_id].append(i)
                     word_id_to_text[first_token_id] = candidate_text
                 # if concatenated tokens wout hyphen are in dictionary
                 elif internal_dictionary.is_in(text=candidate_text_no_hyphen, strip_punct=False):
                     for i in start_token_ids + end_token_ids:
                         token_id_to_word_id[i] = first_token_id
+                        word_id_to_token_ids[first_token_id].append(i)
                     word_id_to_text[first_token_id] = candidate_text_no_hyphen
                 # if concatenated tokens wout hyphen *AND* right-strip punct are in dict..
                 elif internal_dictionary.is_in(text=candidate_text_strip_punct_no_hyphen,
                                                strip_punct=False):
                     for i in start_token_ids + end_token_ids_strip_punct:
                         token_id_to_word_id[i] = first_token_id
+                        word_id_to_token_ids[first_token_id].append(i)
                     word_id_to_text[first_token_id] = candidate_text_strip_punct_no_hyphen
                     for i in end_token_ids:
-                        if i in punct_strip_candidate_token_ids:
+                        if i in punct_r_strip_candidate_token_ids:
                             token_id_to_word_id[i] = i
+                            word_id_to_token_ids[i].append(i)
                             word_id_to_text[i] = document.tokens[i].text
                 # if concatenated tokens are *NOT* in dictionary, default behavior is
                 # to concatenate anyways, keeping hyphen, and stripping punctuation as
@@ -391,13 +424,38 @@ class DictionaryWordPredictor(BasePredictor):
                 else:
                     for i in start_token_ids + end_token_ids_strip_punct:
                         token_id_to_word_id[i] = first_token_id
+                        word_id_to_token_ids[first_token_id].append(i)
                     word_id_to_text[first_token_id] = candidate_text_strip_punct
                     for i in end_token_ids:
-                        if i in punct_strip_candidate_token_ids:
+                        if i in punct_r_strip_candidate_token_ids:
                             token_id_to_word_id[i] = i
+                            word_id_to_token_ids[i].append(i)
                             word_id_to_text[i] = document.tokens[i].text
             else:
                 pass
+
+        # 2022-12; we need to handle cases like '(CS)' where the word starts with a punct "("
+        # we actually do want this as a separate word. but under the above logic, we would've
+        # assigned "(" and "CS" the same word ID.
+        # this part identifies words that begin with punctuation, and splits them.
+        for token in document.tokens:
+            if token.id in punct_l_strip_candidate_token_ids:
+                # current state, before fixing
+                word_id = token_id_to_word_id[token.id]
+                word_text = word_id_to_text[word_id]
+                # update this punctuation token to be its own word
+                word_id_to_text[word_id] = token.text
+                # update subsequent tokens that were implicated. fix their word_id. fix the text.
+                other_same_word_token_ids = [
+                    i for i in word_id_to_token_ids[token_id_to_word_id[token.id]]
+                    if token_id_to_word_id[i] == word_id and i != token.id
+                ]
+                new_first_token_id = min(other_same_word_token_ids)
+                for other_token_id in other_same_word_token_ids:
+                    token_id_to_word_id[other_token_id] = new_first_token_id
+                word_id_to_text[new_first_token_id] = word_text.lstrip(token.text)
+        # this data structure has served its purpose by this point
+        del word_id_to_token_ids
 
         # edge case handling. there are cases (e.g. tables) where each cell is detected as its own
         # row. This is super annoying but *shrug*. In these cases, a cell "-" followed by another
@@ -409,14 +467,19 @@ class DictionaryWordPredictor(BasePredictor):
         # Anyways... this case is soooooo specific that for now, the easiest thing is to just
         # do a final layer of passing over unclassified tokens & assigning word_id based on
         # whitespace.
-        for token in document.tokens:
-            if token_id_to_word_id[token.id] is None:
-                clustered_token_ids = token_id_to_token_ids[token.id]
-                first_token_id = min(clustered_token_ids)
-                candidate_text = ''.join([document.tokens[i].text for i in clustered_token_ids])
-                for i in clustered_token_ids:
-                    token_id_to_word_id[i] = first_token_id
-                word_id_to_text[first_token_id] = candidate_text
+        #
+        # 2022-12: actually this may not be needed anymore after modifying featurization function
+        # to avoid considering cases where a row only contains a single hyphen.
+        # commented out for now.
+        #
+        # for token in document.tokens:
+        #     if token_id_to_word_id[token.id] is None:
+        #         clustered_token_ids = token_id_to_token_ids[token.id]
+        #         first_token_id = min(clustered_token_ids)
+        #         candidate_text = ''.join([document.tokens[i].text for i in clustered_token_ids])
+        #         for i in clustered_token_ids:
+        #             token_id_to_word_id[i] = first_token_id
+        #         word_id_to_text[first_token_id] = candidate_text
 
         # are there any unclassified tokens?
         assert None not in token_id_to_word_id.values()

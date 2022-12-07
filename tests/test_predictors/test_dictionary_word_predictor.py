@@ -1,7 +1,7 @@
 """
 Tests for DictionaryWordPredictor
 
-@rauthur
+@rauthur, @kylel
 """
 
 import tempfile
@@ -166,3 +166,23 @@ class TestDictionaryWordPredictor(unittest.TestCase):
 
         self.assertEqual([w.text for w in words], ['-', '-', 'cdefg'])
 
+
+    def test_words_with_surrounding_punct(self):
+        predictor = DictionaryWordPredictor()
+
+        # simple case without punctuation
+        text = '(abc)'
+        spans = [
+            Span(start=0, end=1),
+            Span(start=1, end=4),
+            Span(start=4, end=5)
+        ]
+        rows = [
+            SpanGroup(id=1, spans=[spans[0]]),
+            SpanGroup(id=2, spans=[spans[1]]),
+            SpanGroup(id=3, spans=[spans[2]]),
+        ]
+        document = mock_document(symbols=text, spans=spans, rows=rows)
+        words = predictor.predict(document)
+
+        self.assertEqual([w.text for w in words], ['(', 'abc', ')'])
