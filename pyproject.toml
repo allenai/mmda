@@ -16,7 +16,7 @@ dependencies = [
         'pandas',
         'pydantic',
         'ncls',
-        'necessary',
+        'necessary>=0.3.2',
 ]
 
 [project.urls]
