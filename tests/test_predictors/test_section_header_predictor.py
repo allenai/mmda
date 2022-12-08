@@ -17,7 +17,7 @@ from mmda.utils.outline_metadata import PDFMinerOutlineExtractor
 class TestSectionHeaderPredictor(unittest.TestCase):
     def setUp(self) -> None:
         self.fixture_path = pathlib.Path(__file__).parent.parent / "fixtures"
-        self.parser = PDFPlumberParser()
+        self.parser = PDFPlumberParser(extra_attrs=[])
         self.extractor = PDFMinerOutlineExtractor()
         self.predictor = SectionHeaderPredictor()
 

@@ -114,6 +114,11 @@ citation_links = [
     'scikit-learn',
     'xgboost',
 ]
+section_nesting = [
+    'numpy',
+    'scipy',
+    'xgboost',
+]
 figure_table_predictors = [
     'scipy',
 ]
