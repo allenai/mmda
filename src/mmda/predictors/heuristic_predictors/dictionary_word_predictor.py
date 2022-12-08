@@ -440,19 +440,21 @@ class DictionaryWordPredictor(BasePredictor):
         # this part identifies words that begin with punctuation, and splits them.
         for token in document.tokens:
             if token.id in punct_l_strip_candidate_token_ids:
-                # current state, before fixing
+                # capture current state, before fixing
                 word_id = token_id_to_word_id[token.id]
                 word_text = word_id_to_text[word_id]
-                # update this punctuation token to be its own word
-                word_id_to_text[word_id] = token.text
-                # update subsequent tokens that were implicated. fix their word_id. fix the text.
                 other_same_word_token_ids = [
                     i for i in word_id_to_token_ids[token_id_to_word_id[token.id]]
                     if token_id_to_word_id[i] == word_id and i != token.id
                 ]
                 new_first_token_id = min(other_same_word_token_ids)
+                # update this punctuation token to be its own word
+                word_id_to_text[word_id] = token.text
+                word_id_to_token_ids[word_id] = [token.id]
+                # update subsequent tokens that were implicated. fix their word_id. fix the text.
                 for other_token_id in other_same_word_token_ids:
                     token_id_to_word_id[other_token_id] = new_first_token_id
+                word_id_to_token_ids[new_first_token_id] = other_same_word_token_ids
                 word_id_to_text[new_first_token_id] = word_text.lstrip(token.text)
         # this data structure has served its purpose by this point
         del word_id_to_token_ids

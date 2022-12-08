@@ -186,3 +186,23 @@ class TestDictionaryWordPredictor(unittest.TestCase):
         words = predictor.predict(document)
 
         self.assertEqual([w.text for w in words], ['(', 'abc', ')'])
+
+
+    def test_words_with_multiple_preceding_punct(self):
+        predictor = DictionaryWordPredictor()
+
+        text = ')/2'
+        spans = [
+            Span(start=0, end=1),
+            Span(start=1, end=2),
+            Span(start=2, end=3)
+        ]
+        rows = [
+            SpanGroup(id=1, spans=[spans[0]]),
+            SpanGroup(id=2, spans=[spans[1]]),
+            SpanGroup(id=3, spans=[spans[2]]),
+        ]
+        document = mock_document(symbols=text, spans=spans, rows=rows)
+        words = predictor.predict(document)
+
+        self.assertEqual([w.text for w in words], [')', '/', '2'])
