@@ -67,7 +67,8 @@ class BibEntryPredictor(BasePredictor):
         for i in range(num_items):
             # Combine token-level prediction into word-level prediction
             label_ids = BibEntryPredictor._get_word_level_prediction(tokenized_inputs.word_ids(i), pred_ids[i])
-            num_words = [id for id in tokenized_inputs.word_ids(i) if id][-1] + 1
+            word_ids = [id for id in tokenized_inputs.word_ids(i) if id]
+            num_words = word_ids[-1] + 1 if word_ids else 0
             spans = [tokenized_inputs.word_to_chars(i, word_index) for word_index in range(num_words)]
 
             # Extract output fields from word predictions
