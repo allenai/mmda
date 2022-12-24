@@ -16,7 +16,7 @@ from ai2_internal import api
 from mmda.predictors.hf_predictors.token_classification_predictor import (
     IVILATokenClassificationPredictor,
 )
-from mmda.types.document import Document, SpanGroup
+from mmda.types.document import Document, Entity
 from mmda.types.image import frombase64
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ class Prediction(BaseModel):
     groups: List[api.SpanGroup]
 
     @classmethod
-    def from_mmda(cls, groups: List[SpanGroup]) -> "Prediction":
+    def from_mmda(cls, groups: List[Entity]) -> "Prediction":
         return cls(groups=[api.SpanGroup.from_mmda(grp) for grp in groups])
 
 

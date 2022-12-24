@@ -7,7 +7,7 @@ Tests for SpanGroup
 import json
 import unittest
 
-from mmda.types import SpanGroup, Document, Span
+from mmda.types import Entity, Document, Span
 
 
 class TestSpanGroup(unittest.TestCase):
@@ -17,7 +17,7 @@ class TestSpanGroup(unittest.TestCase):
         self.doc = Document("This is a test document!")
 
     def test_annotation_attaches_document(self):
-        span_group = SpanGroup(id=1, spans=[Span(0, 4), Span(5, 7)])
+        span_group = Entity(id=1, spans=[Span(0, 4), Span(5, 7)])
         self.doc.annotate(tokens=[span_group])
 
         span_group = self.doc.tokens[0]

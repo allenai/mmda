@@ -8,7 +8,7 @@
 import unittest
 
 from mmda.predictors import WhitespacePredictor
-from mmda.types import Document, SpanGroup, Span
+from mmda.types import Document, Entity, Span
 
 
 
@@ -42,7 +42,7 @@ class TestWhitespacePredictor(unittest.TestCase):
         ]
 
         doc = Document(symbols=symbols)
-        doc.annotate(tokens=[SpanGroup(id=i, spans=[span]) for i, span in enumerate(spans)])
+        doc.annotate(tokens=[Entity(id=i, spans=[span]) for i, span in enumerate(spans)])
 
         predictor = WhitespacePredictor()
         ws_chunks = predictor.predict(doc)

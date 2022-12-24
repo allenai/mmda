@@ -4,7 +4,7 @@ import unittest
 from typing import List
 
 from mmda.types.document import Document
-from mmda.types.annotation import SpanGroup
+from mmda.types.annotation import Entity
 from mmda.types.names import TokensField
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
@@ -20,10 +20,10 @@ class MockPredictor(BasePredictor):
     REQUIRED_BACKENDS = []  # pyright: ignore
     REQUIRED_DOCUMENT_FIELDS = []   # pyright: ignore
 
-    def predict(self, document: Document) -> List[SpanGroup]:
-        token: SpanGroup
+    def predict(self, document: Document) -> List[Entity]:
+        token: Entity
         return [
-            SpanGroup(
+            Entity(
                 spans=token.spans,
                 box_group=token.box_group,
                 metadata=token.metadata,

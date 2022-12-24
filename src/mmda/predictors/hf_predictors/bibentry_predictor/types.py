@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from mmda.types.annotation import SpanGroup
+from mmda.types.annotation import Entity
 
 
 class BibEntryLabel(Enum):
@@ -50,10 +50,10 @@ class BibEntryPredictionWithSpan(BaseModel):
 
 @dataclass
 class BibEntryStructureSpanGroups:
-    bib_entry_number: List[SpanGroup] = field(default_factory=list)
-    bib_entry_authors: List[SpanGroup] = field(default_factory=list)
-    bib_entry_title: List[SpanGroup] = field(default_factory=list)
-    bib_entry_venue_or_event: List[SpanGroup] = field(default_factory=list)
-    bib_entry_year: List[SpanGroup] = field(default_factory=list)
-    bib_entry_doi: List[SpanGroup] = field(default_factory=list)
-    bib_entry_url: List[SpanGroup] = field(default_factory=list)
+    bib_entry_number: List[Entity] = field(default_factory=list)
+    bib_entry_authors: List[Entity] = field(default_factory=list)
+    bib_entry_title: List[Entity] = field(default_factory=list)
+    bib_entry_venue_or_event: List[Entity] = field(default_factory=list)
+    bib_entry_year: List[Entity] = field(default_factory=list)
+    bib_entry_doi: List[Entity] = field(default_factory=list)
+    bib_entry_url: List[Entity] = field(default_factory=list)

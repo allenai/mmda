@@ -20,7 +20,7 @@ from smashed.interfaces.simple import (
 )
 
 from mmda.types.metadata import Metadata
-from mmda.types.annotation import Annotation, Span, SpanGroup
+from mmda.types.annotation import Annotation, Span, Entity
 from mmda.types.document import Document
 from mmda.predictors.hf_predictors.base_hf_predictor import BaseHFPredictor
 
@@ -241,7 +241,7 @@ class SpanGroupClassificationPredictor(BaseHFPredictor):
                 else:
                     new_metadata.label = None
                     new_metadata.score = None
-                new_span_group = SpanGroup(
+                new_span_group = Entity(
                     spans=span_group.spans,
                     box_group=span_group.box_group,
                     metadata=new_metadata

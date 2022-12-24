@@ -11,7 +11,7 @@ from vila.predictors import (
 
 from mmda.types.metadata import Metadata
 from mmda.types.names import BlocksField, PagesField, RowsField, TokensField
-from mmda.types.annotation import Annotation, Span, SpanGroup
+from mmda.types.annotation import Annotation, Span, Entity
 from mmda.types.document import Document
 from mmda.predictors.hf_predictors.utils import (
     convert_document_page_to_pdf_dict,
@@ -97,7 +97,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
             page, page_width=page_width, page_height=page_height
         )
 
-    def postprocess(self, document: Document, model_predictions) -> List[SpanGroup]:
+    def postprocess(self, document: Document, model_predictions) -> List[Entity]:
 
         token_prediction_spans = convert_sequence_tagging_to_spans(model_predictions)
 
@@ -107,7 +107,7 @@ class BaseSinglePageTokenClassificationPredictor(BaseHFPredictor):
 
             start = min([ele.start for ele in cur_spans])
             end = max([ele.end for ele in cur_spans])
-            sg = SpanGroup(spans=[Span(start, end)], metadata=Metadata(type=label))
+            sg = Entity(spans=[Span(start, end)], metadata=Metadata(type=label))
             prediction_spans.append(sg)
         return prediction_spans
 

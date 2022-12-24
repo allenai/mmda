@@ -9,7 +9,7 @@ from typing import List
 from abc import abstractmethod
 from dataclasses import dataclass, field
 
-from mmda.types.annotation import SpanGroup, Annotation
+from mmda.types.annotation import Entity, Annotation
 from ncls import NCLS
 import numpy as np
 import pandas as pd
@@ -41,7 +41,7 @@ class SpanGroupIndexer(Indexer):
     Volume 23, Issue 11, 1 June 2007, Pages 1386–1393, https://doi.org/10.1093/bioinformatics/btl647
     """
 
-    def __init__(self, span_groups: List[SpanGroup]) -> None:
+    def __init__(self, span_groups: List[Entity]) -> None:
         starts = []
         ends = []
         ids = []
@@ -74,8 +74,8 @@ class SpanGroupIndexer(Indexer):
                         f"Detected overlap with existing SpanGroup(s) {matches} for {span_group}"
                     )
 
-    def find(self, query: SpanGroup) -> List[SpanGroup]:
-        if not isinstance(query, SpanGroup):
+    def find(self, query: Entity) -> List[Entity]:
+        if not isinstance(query, Entity):
             raise ValueError(f'SpanGroupIndexer only works with `query` that is SpanGroup type')
 
         if not query.spans:

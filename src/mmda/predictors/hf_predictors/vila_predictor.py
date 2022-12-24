@@ -19,7 +19,7 @@ from vila.dataset.preprocessors import instantiate_dataset_preprocessor
 
 from mmda.types.metadata import Metadata
 from mmda.types.names import PagesField, RowsField, TokensField
-from mmda.types.annotation import Annotation, Span, SpanGroup
+from mmda.types.annotation import Annotation, Span, Entity
 from mmda.types.document import Document
 from mmda.predictors.hf_predictors.utils import (
     convert_document_page_to_pdf_dict,
@@ -153,7 +153,7 @@ class BaseVILAPredictor(BaseHFPredictor):
 
     def postprocess(
         self, document, pdf_dict, model_inputs, model_predictions
-    ) -> List[SpanGroup]:
+    ) -> List[Entity]:
 
         true_token_prediction = self.get_true_token_level_category_prediction(
             pdf_dict, model_inputs, model_predictions
@@ -168,7 +168,7 @@ class BaseVILAPredictor(BaseHFPredictor):
 
             start = min([ele.start for ele in cur_spans])
             end = max([ele.end for ele in cur_spans])
-            sg = SpanGroup(spans=[Span(start, end)], metadata=Metadata(type=label))
+            sg = Entity(spans=[Span(start, end)], metadata=Metadata(type=label))
             prediction_spans.append(sg)
 
         return prediction_spans

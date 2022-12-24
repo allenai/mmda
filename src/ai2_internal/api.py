@@ -115,7 +115,7 @@ class SpanGroup(Annotation):
     text: Optional[str]
 
     @classmethod
-    def from_mmda(cls, span_group: mmda_ann.SpanGroup) -> "SpanGroup":
+    def from_mmda(cls, span_group: mmda_ann.Entity) -> "SpanGroup":
         box_group = (
             BoxGroup.from_mmda(span_group.box_group)
             if span_group.box_group is not None
@@ -136,13 +136,13 @@ class SpanGroup(Annotation):
             ret.box_group = BoxGroup.from_mmda(span_group.box_group)
         return ret
 
-    def to_mmda(self) -> mmda_ann.SpanGroup:
+    def to_mmda(self) -> mmda_ann.Entity:
         metadata = mmda_ann.Metadata.from_json(self.attributes.dict())
         if self.type:
             metadata.type = self.type
         if self.text:
             metadata.text = self.text
-        return mmda_ann.SpanGroup(
+        return mmda_ann.Entity(
             metadata=metadata,
             spans=[span.to_mmda() for span in self.spans],
             box_group=self.box_group.to_mmda()if self.box_group else None,
