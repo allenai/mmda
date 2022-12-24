@@ -8,7 +8,7 @@ import unittest
 
 import json
 
-from mmda.types.annotation import Span, SpanGroup
+from mmda.types.annotation import Span, Entity
 from mmda.types.document import Document
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.predictors.hf_predictors.span_group_classification_predictor import (
@@ -24,8 +24,8 @@ TEST_DOC_JSON = {"symbols": "modelling reward . In International Conference on\n
 class TestSpangroupClassificationPredictor(unittest.TestCase):
     def setUp(self):
         self.doc = Document.from_json(doc_dict=TEST_DOC_JSON)
-        sg1 = SpanGroup(spans=[Span(start=86, end=456)])
-        sg2 = SpanGroup(spans=[Span(start=457, end=641)])
+        sg1 = Entity(spans=[Span(start=86, end=456)])
+        sg2 = Entity(spans=[Span(start=457, end=641)])
         self.doc.annotate(bibs=[sg1, sg2])
 
         self.predictor = SpanGroupClassificationPredictor.from_pretrained(

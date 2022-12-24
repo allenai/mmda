@@ -11,9 +11,7 @@ Document object directly from within the Entity itself.
 import logging
 
 from abc import abstractmethod
-from copy import deepcopy
-
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 from mmda.types.box import Box
 from mmda.types.metadata import Metadata
@@ -22,8 +20,7 @@ from mmda.types.span import Span
 if TYPE_CHECKING:
     from mmda.types.document import Document
 
-__all__ = ["Annotation", "BoxGroup", "SpanGroup", "Relation"]
-
+__all__ = ["Annotation", "BoxGroup", "Entity", "Relation"]
 
 def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
     """Warns when a deepcopy is performed on an Annotation."""
@@ -41,10 +38,39 @@ class Annotation:
 
     @abstractmethod
     def __init__(self):
+        self._id: Optional[int] = None
+        self._doc: Optional['Document'] = None
         logging.warning('Unless testing or developing, we dont recommend creating Annotations '
                         'manually. Annotations need to store things like `id` and references '
                         'to a `Document` to be valuable. These are all handled automatically in '
                         '`Parsers` and `Predictors`.')
+
+    @property
+    def doc(self) -> Optional['Document']:
+        return self._doc
+
+    @doc.setter
+    def doc(self, doc: Document) -> None:
+        """This method attaches a Document to this Annotation, allowing the Annotation
+                to access things beyond itself within the Document (e.g. neighbors)"""
+        if self.doc:
+            raise AttributeError("This annotation already has an attached document")
+        self._doc = doc
+
+    @property
+    def id(self) -> Optional[int]:
+        return self._id
+
+    @id.setter
+    def id(self, id: int) -> None:
+        """This method assigns an ID to an Annotation. Requires a Document to be attached
+        to this Annotation. ID basically gives the Annotation itself awareness of its
+        position within the broader Document."""
+        if self.id:
+            raise AttributeError("This annotation already has an ID")
+        if not self.doc:
+            raise AttributeError('This annotation is missing a Document')
+        self._id = id
 
     @abstractmethod
     def to_json(self) -> Dict:
@@ -54,14 +80,6 @@ class Annotation:
     @abstractmethod
     def from_json(cls, annotation_dict: Dict) -> "Annotation":
         pass
-
-    def attach_doc(self, doc: "Document") -> None:
-        """This method attaches a Document to this Annotation, allowing the Annotation
-        to access things beyond itself within the Document (e.g. neighbors)"""
-        if not self.doc:
-            self.doc = doc
-        else:
-            raise AttributeError("This annotation already has an attached document")
 
     def __getattr__(self, field: str) -> List["Annotation"]:
         """This method """
@@ -77,198 +95,23 @@ class Annotation:
         return self.__getattribute__(field)
 
 
-class BoxGroup(Annotation):
-    def __init__(
-            self,
-            boxes: List[Box],
-            id: Optional[int] = None,
-            doc: Optional['Document'] = None,
-            metadata: Optional[Metadata] = None,
-    ):
-        self.boxes = boxes
-        super().__init__(id=id, doc=doc, metadata=metadata)
-
-    def to_json(self) -> Dict:
-        box_group_dict = dict(
-            boxes=[box.to_json() for box in self.boxes],
-            id=self.id,
-            metadata=self.metadata.to_json()
-        )
-        return {
-            key: value for key, value in box_group_dict.items() if value
-        }  # only serialize non-null values
-
-    @classmethod
-    def from_json(cls, box_group_dict: Dict) -> "BoxGroup":
-
-        if "metadata" in box_group_dict:
-            metadata_dict = box_group_dict["metadata"]
-        else:
-            # this fallback is necessary to ensure compatibility with box
-            # groups that were create before the metadata migration and
-            # therefore have "type" in the root of the json dict instead.
-            metadata_dict = {
-                "type": box_group_dict.get("type", None)
-            }
-
-        return cls(
-            boxes=[
-                Box.from_json(box_dict=box_dict)
-                # box_group_dict["boxes"] might not be present since we
-                # minimally serialize when running to_json()
-                for box_dict in box_group_dict.get("boxes", [])
-            ],
-            id=box_group_dict.get("id", None),
-            metadata=Metadata.from_json(metadata_dict),
-        )
-
-    def __getitem__(self, key: int):
-        return self.boxes[key]
-
-    def __deepcopy__(self, memo):
-        warn_deepcopy_of_annotation(self)
-
-        box_group = BoxGroup(
-            boxes=deepcopy(self.boxes, memo),
-            id=self.id,
-            metadata=deepcopy(self.metadata, memo)
-        )
-
-        # Don't copy an attached document
-        box_group.doc = self.doc
-
-        return box_group
-
-    @property
-    def type(self) -> str:
-        return self.metadata.get("type", None)
-
-    @type.setter
-    def type(self, type: Union[str, None]) -> None:
-        self.metadata.type = type
-
-
-class SpanGroup(Annotation):
+class Entity(Annotation):
     def __init__(
             self,
             spans: List[Span],
-            box_group: Optional[BoxGroup] = None,
-            id: Optional[int] = None,
-            doc: Optional['Document'] = None,
-            metadata: Optional[Metadata] = None,
+            boxes: Optional[List[Box]] = None,
+            metadata: Optional[Metadata] = None
     ):
         self.spans = spans
-        self.box_group = box_group
-        super().__init__(id=id, doc=doc, metadata=metadata)
+        self.boxes = boxes
+        self.metadata = metadata if metadata else Metadata
+        super().__init__()
 
     @property
     def symbols(self) -> List[str]:
-        if self.doc is not None:
-            return [
-                self.doc.symbols[span.start: span.end] for span in self.spans
-            ]
-        else:
-            return []
-
-    def annotate(
-            self, is_overwrite: bool = False, **kwargs: Iterable["Annotation"]
-    ) -> None:
         if self.doc is None:
-            raise ValueError("SpanGroup has no attached document!")
-
-        key_remaps = {k: v for k, v in kwargs.items()}
-
-        self.doc.annotate(is_overwrite=is_overwrite, **key_remaps)
-
-    def to_json(self) -> Dict:
-        span_group_dict = dict(
-            spans=[span.to_json() for span in self.spans],
-            id=self.id,
-            metadata=self.metadata.to_json(),
-            box_group=self.box_group.to_json() if self.box_group else None
-        )
-        return {
-            key: value
-            for key, value in span_group_dict.items()
-            if value is not None
-        }  # only serialize non-null values
-
-    @classmethod
-    def from_json(cls, span_group_dict: Dict) -> "SpanGroup":
-        box_group_dict = span_group_dict.get("box_group")
-        if box_group_dict:
-            box_group = BoxGroup.from_json(box_group_dict=box_group_dict)
-        else:
-            box_group = None
-
-        if "metadata" in span_group_dict:
-            metadata_dict = span_group_dict["metadata"]
-        else:
-            # this fallback is necessary to ensure compatibility with span
-            # groups that were create before the metadata migration and
-            # therefore have "id", "type" in the root of the json dict instead.
-            metadata_dict = {
-                "type": span_group_dict.get("type", None),
-                "text": span_group_dict.get("text", None)
-            }
-
-        return cls(
-            spans=[
-                Span.from_json(span_dict=span_dict)
-                for span_dict in span_group_dict["spans"]
-            ],
-            id=span_group_dict.get("id", None),
-            metadata=Metadata.from_json(metadata_dict),
-            box_group=box_group,
-        )
-
-    def __getitem__(self, key: int):
-        return self.spans[key]
-
-    @property
-    def start(self) -> Union[int, float]:
-        return (
-            min([span.start for span in self.spans])
-            if len(self.spans) > 0
-            else float("-inf")
-        )
-
-    @property
-    def end(self) -> Union[int, float]:
-        return (
-            max([span.end for span in self.spans])
-            if len(self.spans) > 0
-            else float("inf")
-        )
-
-    def __lt__(self, other: "SpanGroup"):
-        if self.id and other.id:
-            return self.id < other.id
-        else:
-            return self.start < other.start
-
-    def __deepcopy__(self, memo):
-        warn_deepcopy_of_annotation(self)
-
-        span_group = SpanGroup(
-            spans=deepcopy(self.spans, memo),
-            id=self.id,
-            metadata=deepcopy(self.metadata, memo),
-            box_group=deepcopy(self.box_group, memo)
-        )
-
-        # Don't copy an attached document
-        span_group.doc = self.doc
-
-        return span_group
-
-    @property
-    def type(self) -> str:
-        return self.metadata.get("type", None)
-
-    @type.setter
-    def type(self, type: Union[str, None]) -> None:
-        self.metadata.type = type
+            raise ValueError(f'No document attached.')
+        return [self.doc.symbols[span.start: span.end] for span in self.spans]
 
     @property
     def text(self) -> str:
@@ -281,6 +124,60 @@ class SpanGroup(Annotation):
     def text(self, text: Union[str, None]) -> None:
         self.metadata.text = text
 
+    def to_json(self) -> Dict:
+        entity_dict = dict(
+            spans=[span.to_json() for span in self.spans],
+            boxes=[box.to_json() for box in self.boxes] if self.boxes else None,
+            metadata=self.metadata.to_json()
+        )
+        # only serialize non-null values
+        return {k: v for k, v in entity_dict.items() if v is not None}
+
+    @classmethod
+    def from_json(cls, entity_dict: Dict) -> "Entity":
+        return cls(
+            spans=[Span.from_json(span_dict=span_dict) for span_dict in entity_dict["spans"]],
+            boxes=[Box.from_json(box_dict=box_dict) for box_dict in entity_dict['boxes']]
+            if entity_dict.get('boxes') else None,
+            metadata=Metadata.from_json(entity_dict['metadata'])
+            if entity_dict.get('metadata') else None
+        )
+
+    @property
+    def start(self) -> int:
+        return min([span.start for span in self.spans])
+
+    @property
+    def end(self) -> int:
+        return max([span.end for span in self.spans])
+
 
 class Relation(Annotation):
-    pass
+    def __init__(
+            self,
+            source: Entity,
+            target: Entity,
+            metadata: Optional[Metadata] = None
+    ):
+        self.source = source
+        self.target = target
+        self.metadata = metadata if metadata else Metadata
+        super().__init__()
+
+    def to_json(self) -> Dict:
+        relation_dict = dict(
+            source=Entity.id,
+            target=Entity.id,
+            metadata=self.metadata.to_json()
+        )
+        # only serialize non-null values
+        return {k: v for k, v in relation_dict.items() if v is not None}
+
+    @classmethod
+    def from_json(cls, relation_dict: Dict, doc: Document) -> "Relation":
+        return cls(
+            source=None,
+            target=None,
+            metadata=Metadata.from_json(relation_dict['metadata'])
+            if relation_dict.get('metadata') else None
+        )

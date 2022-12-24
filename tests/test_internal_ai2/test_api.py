@@ -20,7 +20,7 @@ class ClassificationSpanGroup(mmda_api.SpanGroup):
 
 class TestApi(unittest.TestCase):
     def test_vanilla_span_group(self) -> None:
-        sg_ann = mmda_ann.SpanGroup.from_json({
+        sg_ann = mmda_ann.Entity.from_json({
             'spans': [{'start': 0, 'end': 1}],
             'id': 1,
             'metadata': {'text': 'hello', 'id': 999}    # note id not used; it's just in metadata
@@ -33,7 +33,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(sg_api.attributes.dict(), {})
 
     def test_classification_span_group(self) -> None:
-        sg_ann = mmda_ann.SpanGroup.from_json({
+        sg_ann = mmda_ann.Entity.from_json({
             'spans': [{'start': 0, 'end': 1}],
             'metadata': {'text': 'hello', 'id': 1}
         })
@@ -63,7 +63,7 @@ class TestApi(unittest.TestCase):
             ClassificationSpanGroup.from_mmda(sg_ann)
 
     def test_equivalence(self):
-        sg_ann = mmda_ann.SpanGroup.from_json({
+        sg_ann = mmda_ann.Entity.from_json({
             'spans': [{'start': 0, 'end': 1}],
             'metadata': {'label': 'label', 'score': 0.5}
         })

@@ -17,7 +17,7 @@ from mmda.predictors.hf_predictors.vila_predictor import (BaseVILAPredictor,
                                                           IVILAPredictor)
 from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
-from mmda.types.annotation import SpanGroup
+from mmda.types.annotation import Entity
 from mmda.types.document import Document
 
 
@@ -31,7 +31,7 @@ class VluePrediction:
 
 
 def _vila_docbank_extract_entities(types: List[str]):
-    def extractor(doc: Document) -> Dict[str, List[SpanGroup]]:
+    def extractor(doc: Document) -> Dict[str, List[Entity]]:
         mapping = {
             "paragraph": 0,
             "title": 1,
@@ -62,7 +62,7 @@ def _vila_docbank_extract_entities(types: List[str]):
 
 
 def _vila_grotoap2_extract_entities(types: List[str]):
-    def extractor(doc: Document) -> Dict[str, List[SpanGroup]]:
+    def extractor(doc: Document) -> Dict[str, List[Entity]]:
         # TODO: Have some sort of unified mapping between this and docbank
         # TODO: Below title and abstract have been lower-cased to match docbank
         mapping = {
@@ -107,7 +107,7 @@ def vila_prediction(
     id_: str,
     doc: Document,
     vila_predictor: BaseVILAPredictor,  # pylint: disable=redefined-outer-name
-    vila_extractor: Callable[[Document], Dict[str, List[SpanGroup]]],
+    vila_extractor: Callable[[Document], Dict[str, List[Entity]]],
 ) -> VluePrediction:
     # Predict token types
     span_groups = vila_predictor.predict(doc)

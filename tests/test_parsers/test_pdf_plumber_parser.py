@@ -7,7 +7,7 @@ import os
 import pathlib
 import unittest
 
-from mmda.types import Document, SpanGroup, BoxGroup, Span, Box
+from mmda.types import Document, Entity, BoxGroup, Span, Box
 from mmda.parsers import PDFPlumberParser
 
 import re
@@ -126,13 +126,13 @@ class TestPDFPlumberParser(unittest.TestCase):
             page_ids=page_ids
         )
         assert out['symbols'] == 'abc\nd ef\ngh i\njkl'
-        tokens = [SpanGroup.from_json(span_group_dict=t_dict) for t_dict in out['tokens']]
+        tokens = [Entity.from_json(entity_dict=t_dict) for t_dict in out['tokens']]
         assert [(t.start, t.end) for t in tokens] == [(0, 2), (2, 3), (4, 5), (6, 8), (9, 11), (12, 13), (14, 15), (15, 17)]
         assert [out['symbols'][t.start : t.end] for t in tokens] == ['ab', 'c', 'd', 'ef', 'gh', 'i', 'j', 'kl']
-        rows = [SpanGroup.from_json(span_group_dict=r_dict) for r_dict in out['rows']]
+        rows = [Entity.from_json(entity_dict=r_dict) for r_dict in out['rows']]
         assert [(r.start, r.end) for r in rows] == [(0, 3), (4, 8), (9, 13), (14, 17)]
         assert [out['symbols'][r.start: r.end] for r in rows] == ['abc', 'd ef', 'gh i', 'jkl']
-        pages = [SpanGroup.from_json(span_group_dict=p_dict) for p_dict in out['pages']]
+        pages = [Entity.from_json(entity_dict=p_dict) for p_dict in out['pages']]
         assert [(p.start, p.end) for p in pages] == [(0, 8), (9, 17)]
         assert [out['symbols'][p.start: p.end] for p in pages] == ['abc\nd ef', 'gh i\njkl']
 

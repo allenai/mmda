@@ -32,7 +32,7 @@ from collections import defaultdict
 from mmda.parsers import PDFPlumberParser
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
 from mmda.predictors.heuristic_predictors.whitespace_predictor import WhitespacePredictor
-from mmda.types import Metadata, Document, Span, SpanGroup
+from mmda.types import Metadata, Document, Span, Entity
 from mmda.types.names import RowsField, TokensField
 
 
@@ -102,7 +102,7 @@ class DictionaryWordPredictor(BasePredictor):
                 raise FileNotFoundError(f'{self.dictionary_file_path}')
         self.whitespace_predictor = WhitespacePredictor()
 
-    def predict(self, document: Document) -> List[SpanGroup]:
+    def predict(self, document: Document) -> List[Entity]:
         """Get words from a document as a list of SpanGroup.
 
         Args:
@@ -159,7 +159,7 @@ class DictionaryWordPredictor(BasePredictor):
         )
 
         # 5) transformation
-        words: List[SpanGroup] = self._convert_to_words(
+        words: List[Entity] = self._convert_to_words(
             document=document,
             token_id_to_word_id=token_id_to_word_id,
             word_id_to_text=word_id_to_text
@@ -174,7 +174,7 @@ class DictionaryWordPredictor(BasePredictor):
         `whitespace_tokenization` is necessary because lack of whitespace is an indicator that
         adjacent tokens belong in a word together.
         """
-        _ws_tokens: List[SpanGroup] = self.whitespace_predictor.predict(document=document)
+        _ws_tokens: List[Entity] = self.whitespace_predictor.predict(document=document)
         document.annotate(_ws_tokens=_ws_tokens)
 
         # token -> ws_tokens
@@ -492,7 +492,7 @@ class DictionaryWordPredictor(BasePredictor):
             document: Document,
             token_id_to_word_id,
             word_id_to_text
-    ) -> List[SpanGroup]:
+    ) -> List[Entity]:
         words = []
         tokens_in_word = [document.tokens[0]]
         current_word_id = 0
@@ -502,7 +502,7 @@ class DictionaryWordPredictor(BasePredictor):
             if word_id == current_word_id:
                 tokens_in_word.append(token)
             else:
-                word = SpanGroup(
+                word = Entity(
                     spans=[span for token in tokens_in_word for span in token.spans],
                     id=current_word_id,
                     metadata=Metadata(text=word_id_to_text[current_word_id])
@@ -511,7 +511,7 @@ class DictionaryWordPredictor(BasePredictor):
                 tokens_in_word = [token]
                 current_word_id = word_id
         # last bit
-        word = SpanGroup(
+        word = Entity(
             spans=[span for token in tokens_in_word for span in token.spans],
             id=current_word_id,
             metadata=Metadata(text=word_id_to_text[current_word_id])

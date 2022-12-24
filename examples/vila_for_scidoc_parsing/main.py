@@ -8,7 +8,7 @@ import layoutparser as lp
 
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
-from mmda.types.annotation import SpanGroup
+from mmda.types.annotation import Entity
 from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor, HVILAPredictor
 
@@ -33,7 +33,7 @@ DOCBANK_LABEL_MAP = {int(key): val for key, val in DOCBANK_LABEL_MAP.items()}
 
 def draw_tokens(
     image,
-    doc_tokens: List[SpanGroup],
+    doc_tokens: List[Entity],
     color_map=None,
     token_boundary_width=0,
     alpha=0.25,
@@ -65,7 +65,7 @@ def draw_tokens(
 
 def draw_blocks(
     image,
-    doc_tokens: List[SpanGroup],
+    doc_tokens: List[Entity],
     color_map=None,
     token_boundary_width=0,
     alpha=0.25,

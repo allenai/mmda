@@ -10,6 +10,8 @@ Names of fields, as strings
 SymbolsField = "symbols"
 MetadataField = "metadata"
 ImagesField = "images"
+EntitiesField = 'entities'
+RelationsField = 'relations'
 
 PagesField = "pages"
 TokensField = "tokens"

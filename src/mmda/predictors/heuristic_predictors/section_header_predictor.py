@@ -23,7 +23,7 @@ from layoutparser.tools.shape_operations import (
 
 from mmda.eval.metrics import levenshtein
 from mmda.predictors.base_predictors.base_predictor import BasePredictor
-from mmda.types.annotation import Span, SpanGroup
+from mmda.types.annotation import Span, Entity
 from mmda.types.box import Box
 from mmda.types.document import Document
 from mmda.types.metadata import Metadata
@@ -63,7 +63,7 @@ def _guess_box_dimensions(spans: List[Span], index: int, outline: OutlineItem) -
     capture a reasonable area.
 
     Args:
-        page (SpanGroup): The page object from a PDF parser
+        page (Entity): The page object from a PDF parser
         index (int): The page index from 0
         outline (OutlineMetadata): Rehydrated OutlineMetadata object from querier
 
@@ -166,14 +166,14 @@ class SectionHeaderPredictor(BasePredictor):
         self._x_threshold = _x_threshold
         self._y_threshold = _y_threshold
 
-    def predict(self, document: Document) -> List[SpanGroup]:
+    def predict(self, document: Document) -> List[Entity]:
         """Get section headers in a Document as a list of SpanGroup.
 
         Args:
             doc (Document): The document to process
 
         Returns:
-            list[SpanGroup]: SpanGroups that appear to be headers based on outline
+            list[Entity]: SpanGroups that appear to be headers based on outline
                 metadata in the PDF (i.e., ToC or sidebar headers).
         """
         if _doc_has_no_outlines(document):
@@ -183,10 +183,10 @@ class SectionHeaderPredictor(BasePredictor):
 
         outlines = _parse_outline_metadata(document)
         page_to_outlines = _outlines_to_page_index(outlines)
-        predictions: List[SpanGroup] = []
+        predictions: List[Entity] = []
 
         for i, page in enumerate(document.pages):
-            tokens: List[SpanGroup] = page.tokens
+            tokens: List[Entity] = page.tokens
             spans: List[Span] = [s for t in tokens for s in t.spans]
 
             for outline in page_to_outlines[i]:
@@ -252,7 +252,7 @@ class SectionHeaderPredictor(BasePredictor):
                     best_candidate = _find_best_candidate(candidates, outline)
                     metadata = Metadata(level=outline.level, title=outline.title)
                     predictions.append(
-                        SpanGroup(
+                        Entity(
                             spans=[x.span for x in best_candidate], metadata=metadata
                         )
                     )

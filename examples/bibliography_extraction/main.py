@@ -10,14 +10,14 @@ from mmda.predictors.heuristic_predictors.grobid_citation_predictor import (
 from mmda.predictors.hf_predictors.vila_predictor import HVILAPredictor
 from mmda.predictors.tesseract_predictors import TesseractBlockPredictor
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
-from mmda.types.annotation import BoxGroup, SpanGroup
+from mmda.types.annotation import BoxGroup, Entity
 from mmda.types.document import Document
 
 PDF_PATH = "resources/maml.pdf"
 
 
-def _clone_span_group(span_group: SpanGroup):
-    return SpanGroup(
+def _clone_span_group(span_group: Entity):
+    return Entity(
         spans=span_group.spans,
         id=span_group.id,
         text=span_group.text,
@@ -46,7 +46,7 @@ def _index_document_pages(document) -> List[PageSpan]:
     return page_spans
 
 
-def _find_page_num(span_group: SpanGroup, page_spans: List[PageSpan]) -> int:
+def _find_page_num(span_group: Entity, page_spans: List[PageSpan]) -> int:
     s = min([span.start for span in span_group.spans])
     e = max([span.end for span in span_group.spans])
 
@@ -58,7 +58,7 @@ def _find_page_num(span_group: SpanGroup, page_spans: List[PageSpan]) -> int:
 
 
 def _highest_overlap_block(
-    token: SpanGroup, blocks: Iterable[BoxGroup]
+    token: Entity, blocks: Iterable[BoxGroup]
 ) -> Optional[BoxGroup]:
     assert len(token.spans) == 1
     token_box = token.spans[0].box
@@ -78,7 +78,7 @@ def _highest_overlap_block(
     return found_block
 
 
-def extract_bibliography_grotoap2(document: Document) -> Iterable[SpanGroup]:
+def extract_bibliography_grotoap2(document: Document) -> Iterable[Entity]:
     """GROTOAP2 has type 1 for REFERENCES"""
     return [_clone_span_group(sg) for sg in document.preds if sg.type == 1]
 
