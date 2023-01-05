@@ -4,7 +4,7 @@ import itertools
 import pysbd
 import numpy as np
 
-from mmda.types.annotation import SpanGroup
+from mmda.types.annotation import Entity
 from mmda.types.span import Span
 from mmda.types.document import Document
 from mmda.types.names import PagesField, TokensField, WordsField
@@ -120,7 +120,7 @@ class PysbdSentenceBoundaryPredictor(BaseHeuristicPredictor):
             token_id_start = token_id_end
         return split
 
-    def predict(self, doc: Document) -> List[SpanGroup]:
+    def predict(self, doc: Document) -> List[Entity]:
 
         if hasattr(doc, WordsField):
             words = [
@@ -149,7 +149,7 @@ class PysbdSentenceBoundaryPredictor(BaseHeuristicPredictor):
             )
 
             sentence_spans.append(
-                SpanGroup(spans=merge_neighbor_spans(all_token_spans))
+                Entity(spans=merge_neighbor_spans(all_token_spans))
             )
 
         return sentence_spans

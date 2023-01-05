@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from ai2_internal import api
 from mmda.predictors.base_predictors.base_heuristic_predictor import BaseHeuristicPredictor
-from mmda.types import SpanGroup, BoxGroup, Metadata
+from mmda.types import Entity, BoxGroup, Metadata
 from mmda.types.document import Document
 from mmda.types.span import Span
 from mmda.utils.tools import MergeSpans
@@ -101,7 +101,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return t_cap - t_fig
 
     @staticmethod
-    def _predict(doc: Document, caption_type: str = 'Figure') -> List[SpanGroup]:
+    def _predict(doc: Document, caption_type: str = 'Figure') -> List[Entity]:
         """
         Merges boxes corresponding to tokens of table, figure captions. For each page each caption/object create cost
         matrix which is distance based on get_object_caption_distance. Using linear_sum_assignment find corresponding
@@ -143,7 +143,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
                 row_ind, col_ind = linear_sum_assignment(cost_matrix)
                 for row, col in zip(row_ind, col_ind):
-                    predictions.append(SpanGroup(spans=[Span(
+                    predictions.append(Entity(spans=[Span(
                         start=merged_boxes_caption_dict[page][col].start,
                         end=merged_boxes_caption_dict[page][col].end,
                         box=merged_boxes_caption_dict[page][col].box)],
@@ -153,7 +153,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return predictions
 
     @staticmethod
-    def predict(document: Document) -> Tuple[List[SpanGroup], List[SpanGroup]]:
+    def predict(document: Document) -> Tuple[List[Entity], List[Entity]]:
         """
         Return tuple caption -> figure, caption -> table
         Args:

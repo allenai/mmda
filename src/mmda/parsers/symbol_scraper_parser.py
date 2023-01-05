@@ -18,7 +18,7 @@ from typing import Optional, List, Dict, Tuple
 
 from mmda.types.span import Span
 from mmda.types.box import Box
-from mmda.types.annotation import SpanGroup
+from mmda.types.annotation import Entity
 from mmda.types.document import Document
 from mmda.parsers.parser import Parser
 from mmda.types.names import PagesField, RowsField, SymbolsField, TokensField
@@ -192,15 +192,15 @@ class SymbolScraperParser(Parser):
 
     def _convert_nested_text_to_doc_json(self, page_to_row_to_tokens: Dict) -> Dict:
         text = ''
-        page_annos: List[SpanGroup] = []
-        token_annos: List[SpanGroup] = []
-        row_annos: List[SpanGroup] = []
+        page_annos: List[Entity] = []
+        token_annos: List[Entity] = []
+        row_annos: List[Entity] = []
         start = 0
         for page, row_to_tokens in page_to_row_to_tokens.items():
-            page_rows: List[SpanGroup] = []
+            page_rows: List[Entity] = []
             for row, tokens in row_to_tokens.items():
                 # process tokens in this row
-                row_tokens: List[SpanGroup] = []
+                row_tokens: List[Entity] = []
                 for k, token in enumerate(tokens):
                     # TODO: this is a graphical token specific to SScraper. We process it here,
                     # instead of in XML so we can still reuse XML cache. But this should be replaced w/ better
@@ -210,7 +210,7 @@ class SymbolScraperParser(Parser):
                     text += token['text']
                     end = start + len(token['text'])
                     # make token
-                    token = SpanGroup(spans=[Span(start=start, end=end, box=token['bbox'])])
+                    token = Entity(spans=[Span(start=start, end=end, box=token['bbox'])])
                     row_tokens.append(token)
                     token_annos.append(token)
                     if k < len(tokens) - 1:
@@ -219,14 +219,14 @@ class SymbolScraperParser(Parser):
                         text += '\n'    # start newline at end of row
                     start = end + 1
                 # make row
-                row = SpanGroup(spans=[
+                row = Entity(spans=[
                     Span(start=row_tokens[0][0].start, end=row_tokens[-1][0].end,
                          box=Box.small_boxes_to_big_box(boxes=[span.box for t in row_tokens for span in t]))
                 ])
                 page_rows.append(row)
                 row_annos.append(row)
             # make page
-            page = SpanGroup(spans=[
+            page = Entity(spans=[
                 Span(start=page_rows[0][0].start, end=page_rows[-1][0].end,
                      box=Box.small_boxes_to_big_box(boxes=[span.box for r in page_rows for span in r]))
             ])

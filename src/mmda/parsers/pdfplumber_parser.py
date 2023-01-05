@@ -6,7 +6,7 @@ import pdfplumber
 import itertools
 from mmda.types.span import Span
 from mmda.types.box import Box
-from mmda.types.annotation import SpanGroup
+from mmda.types.annotation import Entity
 from mmda.types.document import Document
 from mmda.parsers.parser import Parser
 from mmda.types.names import PagesField, RowsField, SymbolsField, TokensField
@@ -195,7 +195,7 @@ class PDFPlumberParser(Parser):
 
         # 1) build tokens & symbols
         symbols = ""
-        token_annos: List[SpanGroup] = []
+        token_annos: List[Entity] = []
         start = 0
         for token_id in range(len(token_dicts) - 1):
 
@@ -210,8 +210,8 @@ class PDFPlumberParser(Parser):
 
             # 2) make Token
             end = start + len(token_dict["text"])
-            token = SpanGroup(spans=[Span(start=start, end=end, box=token_dict["bbox"])],
-                              id=token_id)
+            token = Entity(spans=[Span(start=start, end=end, box=token_dict["bbox"])],
+                           id=token_id)
             token_annos.append(token)
 
             # 3) increment whitespace based on Row & Word membership. and build Rows.
@@ -228,8 +228,8 @@ class PDFPlumberParser(Parser):
         # handle last token
         symbols += token_dicts[-1]["text"]
         end = start + len(token_dicts[-1]["text"])
-        token = SpanGroup(spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
-                          id=len(token_dicts) - 1)
+        token = Entity(spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
+                       id=len(token_dicts) - 1)
         token_annos.append(token)
 
         # 2) build rows
@@ -237,10 +237,10 @@ class PDFPlumberParser(Parser):
             (token, row_id, page_id)
             for token, row_id, page_id in zip(token_annos, row_ids, page_ids)
         ]
-        row_annos: List[SpanGroup] = []
+        row_annos: List[Entity] = []
         for row_id, tups in itertools.groupby(iterable=tokens_with_group_ids, key=lambda tup: tup[1]):
             row_tokens = [token for token, _, _ in tups]
-            row = SpanGroup(
+            row = Entity(
                 spans=[
                     Span(
                         start=row_tokens[0][0].start,
@@ -255,10 +255,10 @@ class PDFPlumberParser(Parser):
             row_annos.append(row)
 
         # 3) build pages
-        page_annos: List[SpanGroup] = []
+        page_annos: List[Entity] = []
         for page_id, tups in itertools.groupby(iterable=tokens_with_group_ids, key=lambda tup: tup[2]):
             page_tokens = [token for token, _, _ in tups]
-            page = SpanGroup(
+            page = Entity(
                 spans=[
                     Span(
                         start=page_tokens[0][0].start,

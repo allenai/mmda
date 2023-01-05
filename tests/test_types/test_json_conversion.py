@@ -8,7 +8,7 @@ Author:      @soldni
 import json
 from pathlib import Path
 
-from mmda.types import BoxGroup, SpanGroup, Document, Metadata
+from mmda.types import BoxGroup, Entity, Document, Metadata
 from mmda.parsers import PDFPlumberParser
 
 
@@ -16,8 +16,8 @@ PDFFILEPATH = Path(__file__).parent / "../fixtures/1903.10676.pdf"
 
 
 def test_span_group_conversion():
-    sg = SpanGroup(spans=[], id=3, metadata=Metadata.from_json({"text": "test"}))
-    sg2 = SpanGroup.from_json(sg.to_json())
+    sg = Entity(spans=[], id=3, metadata=Metadata.from_json({"text": "test"}))
+    sg2 = Entity.from_json(sg.to_json())
     assert sg2.to_json() == sg.to_json()
     assert sg2.__dict__ == sg.__dict__
 
@@ -51,8 +51,8 @@ def test_doc_conversion():
         )
 
         # type annotations to keep mypy quiet
-        orig_sg: SpanGroup
-        new_sg: SpanGroup
+        orig_sg: Entity
+        new_sg: Entity
 
         for orig_sg, new_sg in field_it:
             # for each pair, they should have same metadata (type, id,

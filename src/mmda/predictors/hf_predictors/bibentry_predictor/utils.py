@@ -1,6 +1,6 @@
 from typing import List
 
-from mmda.types.annotation import SpanGroup
+from mmda.types.annotation import Entity
 from mmda.types.document import Document
 from mmda.types.span import Span
 from mmda.predictors.hf_predictors.bibentry_predictor.types import BibEntryPredictionWithSpan, BibEntryStructureSpanGroups
@@ -14,7 +14,7 @@ def mk_bib_entry_strings(document: Document) -> List[str]:
 
 
 def map_raw_predictions_to_mmda(
-        bib_entries: List[SpanGroup],
+        bib_entries: List[Entity],
         raw_preds: List[BibEntryPredictionWithSpan]
 ) -> BibEntryStructureSpanGroups:
     """
@@ -71,7 +71,7 @@ def map_raw_predictions_to_mmda(
                     if cur_pos >= end:
                         break
 
-            target.append(SpanGroup(spans=new_spans))
+            target.append(Entity(spans=new_spans))
 
         map_raw_span(prediction.bib_entry_number, raw_pred.citation_number)
         for author in (raw_pred.authors or []):

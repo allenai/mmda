@@ -1,6 +1,6 @@
 """
 
-
+@kylel
 
 """
 
@@ -8,18 +8,18 @@ import itertools
 import warnings
 from typing import Dict, Iterable, List, Optional
 
-from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
+from mmda.types.annotation import Annotation, BoxGroup, Entity
 from mmda.types.image import PILImage
 from mmda.types.indexers import Indexer, SpanGroupIndexer
 from mmda.types.metadata import Metadata
-from mmda.types.names import ImagesField, MetadataField, SymbolsField
+from mmda.types.names import (
+    ImagesField, MetadataField, SymbolsField, EntitiesField, RelationsField
+)
 from mmda.utils.tools import MergeSpans, allocate_overlapping_tokens_for_box
 
 
 class Document:
-
-    SPECIAL_FIELDS = [SymbolsField, ImagesField, MetadataField]
-    UNALLOWED_FIELD_NAMES = ["fields"]
+    SPECIAL_FIELDS = [SymbolsField, ImagesField, MetadataField, EntitiesField, RelationsField]
 
     def __init__(self, symbols: str, metadata: Optional[Metadata] = None):
         self.symbols = symbols
@@ -30,11 +30,12 @@ class Document:
 
     @property
     def fields(self) -> List[str]:
+        """Names of all Entities or Relations one can """
         return self.__fields
 
     # TODO: extend implementation to support DocBoxGroup
     def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
-        if not isinstance(query, SpanGroup):
+        if not isinstance(query, Entity):
             raise NotImplementedError(
                 f"Currently only supports query of type SpanGroup"
             )
@@ -46,7 +47,7 @@ class Document:
             self.metadata.set(k, value)
 
     def annotate(
-        self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
+            self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
     ) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
@@ -87,7 +88,7 @@ class Document:
             ), f"Annotations in field_name {field_name} more than 1 type: {annotation_types}"
             annotation_type = annotation_types.pop()
 
-            if annotation_type == SpanGroup:
+            if annotation_type == Entity:
                 span_groups = self._annotate_span_group(
                     span_groups=annotations, field_name=field_name
                 )
@@ -110,9 +111,8 @@ class Document:
         self.__fields = [f for f in self.__fields if f != field_name]
         del self.__indexers[field_name]
 
-
     def annotate_images(
-        self, images: Iterable[PILImage], is_overwrite: bool = False
+            self, images: Iterable[PILImage], is_overwrite: bool = False
     ) -> None:
         if not is_overwrite and len(self.images) > 0:
             raise AssertionError(
@@ -134,12 +134,12 @@ class Document:
         self.images = images
 
     def _annotate_span_group(
-        self, span_groups: List[SpanGroup], field_name: str
-    ) -> List[SpanGroup]:
+            self, span_groups: List[Entity], field_name: str
+    ) -> List[Entity]:
         """Annotate the Document using a bunch of span groups.
         It will associate the annotations with the document symbols.
         """
-        assert all([isinstance(group, SpanGroup) for group in span_groups])
+        assert all([isinstance(group, Entity) for group in span_groups])
 
         # 1) add Document to each SpanGroup
         for span_group in span_groups:
@@ -151,8 +151,8 @@ class Document:
         return span_groups
 
     def _annotate_box_group(
-        self, box_groups: List[BoxGroup], field_name: str
-    ) -> List[SpanGroup]:
+            self, box_groups: List[BoxGroup], field_name: str
+    ) -> List[Entity]:
         """Annotate the Document using a bunch of box groups.
         It will associate the annotations with the document symbols.
         """
@@ -187,7 +187,7 @@ class Document:
                 all_token_spans_with_box_group.extend(tokens_in_box)
 
             derived_span_groups.append(
-                SpanGroup(
+                Entity(
                     spans=MergeSpans(
                         list_of_spans=all_token_spans_with_box_group, index_distance=1
                     ).merge_neighbor_spans_by_symbol_distance(),
@@ -267,7 +267,7 @@ class Document:
         for field_name, span_group_dicts in doc_dict.items():
             if field_name not in doc.SPECIAL_FIELDS:
                 span_groups = [
-                    SpanGroup.from_json(span_group_dict=span_group_dict)
+                    Entity.from_json(entity_dict=span_group_dict)
                     for span_group_dict in span_group_dicts
                 ]
                 field_name_to_span_groups[field_name] = span_groups

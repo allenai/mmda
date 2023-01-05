@@ -1,4 +1,4 @@
-from mmda.types.annotation import SpanGroup
+from mmda.types.annotation import Entity
 from typing import List, Tuple, Dict
 import itertools
 
@@ -39,7 +39,7 @@ def shift_index_sequence_to_zero_start(sequence):
     return [i - sequence_start for i in sequence]
 
 
-def get_visual_group_id(token: SpanGroup, field_name: str, defaults=-1) -> int:
+def get_visual_group_id(token: Entity, field_name: str, defaults=-1) -> int:
     if not hasattr(token, field_name):
         return defaults
     field_value = getattr(token, field_name)

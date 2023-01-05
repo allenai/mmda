@@ -4,7 +4,7 @@ import re
 from thefuzz import fuzz
 from typing import List, Tuple, Dict
 
-from mmda.types.annotation import SpanGroup
+from mmda.types.annotation import Entity
 
 
 DIGITS = re.compile(r'[0-9]+')
@@ -24,7 +24,7 @@ JACCARD_ALPHA = "jaccard_alpha"
 MATCH_FIRST_TOKEN = "match_first_token"
 
 class CitationLink:
-    def __init__(self, mention: SpanGroup, bib: SpanGroup):
+    def __init__(self, mention: Entity, bib: Entity):
         self.mention = mention
         self.bib = bib
 

@@ -7,7 +7,7 @@ from optimum.onnxruntime import ORTModelForTokenClassification
 import torch
 from transformers import AutoModelForTokenClassification, AutoTokenizer
 
-from mmda.types.annotation import Annotation, SpanGroup
+from mmda.types.annotation import Annotation, Entity
 from mmda.types.document import Document
 from mmda.types.span import Span
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
@@ -65,7 +65,7 @@ class MentionPredictor:
             # https://stackoverflow.com/a/60018731
             self.model.eval()  # for some reason the onnx version doesnt have an eval()
 
-    def predict(self, doc: Document, print_warnings: bool = False) -> List[SpanGroup]:
+    def predict(self, doc: Document, print_warnings: bool = False) -> List[Entity]:
         if not hasattr(doc, 'pages'):
             return []
 
@@ -75,7 +75,7 @@ class MentionPredictor:
             spangroups.extend(self.predict_page(page, counter=counter, print_warnings=print_warnings))
         return spangroups
 
-    def predict_page(self, page: Annotation, counter: Iterator[int], print_warnings: bool = False) -> List[SpanGroup]:
+    def predict_page(self, page: Annotation, counter: Iterator[int], print_warnings: bool = False) -> List[Entity]:
         if not hasattr(page, 'tokens'):
             return []
 
@@ -126,7 +126,7 @@ class MentionPredictor:
             def append_acc():
                 nonlocal acc
                 if acc:
-                    ret.append(SpanGroup(spans=acc, id=next(counter)))
+                    ret.append(Entity(spans=acc, id=next(counter)))
                 acc = []
 
             for word_id, label_ids in zip(word_ids, word_label_ids):
