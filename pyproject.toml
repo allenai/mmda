@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.2.5'
+version = '0.2.7'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -16,13 +16,13 @@ dependencies = [
         'pandas',
         'pydantic',
         'ncls',
-        'necessary',
+        'necessary>=0.3.2',
 ]
 
 [project.urls]
-'Homepage' = 'https=//www.github.com/allenai/mmda'
-'Repository' = 'https=//www.github.com/allenai/mmda'
-'Bug Tracker' = 'https=//www.github.com/allenai/mmda/issues'
+'Homepage' = 'https://www.github.com/allenai/mmda'
+'Repository' = 'https://www.github.com/allenai/mmda'
+'Bug Tracker' = 'https://www.github.com/allenai/mmda/issues'
 
 [tool.setuptools]
 # ...
