@@ -227,11 +227,17 @@ class PDFPlumberParser(Parser):
                 symbols += "\n"
                 start = end + 1
         # handle last token
-        symbols += token_dicts[-1]["text"]
-        end = start + len(token_dicts[-1]["text"])
-        token = SpanGroup(spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
-                          id=len(token_dicts) - 1)
-        token_annos.append(token)
+        if token_dicts:
+            token_dict = token_dicts[-1]
+            end = start + len(token_dict["text"])
+            token = SpanGroup(spans=[Span(start=start, end=end, box=token_dict["bbox"])],
+                              id=len(token_dicts) - 1)
+            token_annos.append(token)
+            symbols += token_dicts[-1]["text"]
+            end = start + len(token_dicts[-1]["text"])
+            token = SpanGroup(spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
+                              id=len(token_dicts) - 1)
+            token_annos.append(token)
 
         # 2) build rows
         tokens_with_group_ids = [
