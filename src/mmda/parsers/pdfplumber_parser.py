@@ -167,13 +167,14 @@ class PDFPlumberParser(Parser):
                 all_row_ids.extend(
                     [i + last_row_id + 1 for i in line_ids_of_fine_tokens]
                 )
-                last_row_id = all_row_ids[-1]
-                all_word_ids.extend(
-                    [i + last_word_id + 1 for i in word_ids_of_fine_tokens]
-                )
-                last_word_id = all_word_ids[-1]
-                for _ in fine_tokens:
-                    all_page_ids.append(page_id)
+                if all_row_ids:
+                    last_row_id = all_row_ids[-1]
+                    all_word_ids.extend(
+                        [i + last_word_id + 1 for i in word_ids_of_fine_tokens]
+                    )
+                    last_word_id = all_word_ids[-1]
+                    for _ in fine_tokens:
+                        all_page_ids.append(page_id)
             # now turn into a beautiful document!
             doc_json = self._convert_nested_text_to_doc_json(
                 token_dicts=all_tokens,
