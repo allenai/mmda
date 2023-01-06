@@ -23,8 +23,13 @@ set -ex
 # upgrade twine as needed
 python3 -m pip install --upgrade build twine
 
+# try to get the root dir of the package
+if [ -z ${ROOT_PACK_DIR} ]; then
+  ROOT_PACK_DIR="${SCRIPT_DIR}/.."
+fi
+
 # moves up to root dir
-cd "${SCRIPT_DIR}/.."
+cd ${ROOT_PACK_DIR}
 
 # build and upload to PyPi
 python3 -m build
