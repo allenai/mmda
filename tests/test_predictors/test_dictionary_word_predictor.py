@@ -1,13 +1,14 @@
 """
 Tests for DictionaryWordPredictor
 
-@rauthur
+@rauthur, @kylel
 """
 
 import tempfile
 import unittest
 from typing import List, Optional, Set
 
+from mmda.predictors.heuristic_predictors.dictionary_word_predictor import Dictionary
 from mmda.predictors import DictionaryWordPredictor
 from mmda.types import Document, SpanGroup, Span
 
@@ -16,24 +17,55 @@ def mock_document(symbols: str, spans: List[Span], rows: List[SpanGroup]) -> Doc
     doc = Document(symbols=symbols)
     doc.annotate(rows=rows)
     doc.annotate(
-        tokens=[SpanGroup(id=i + 1, spans=[span]) for i, span in enumerate(spans)]
+        tokens=[SpanGroup(id=i, spans=[span]) for i, span in enumerate(spans)]
     )
     return doc
+
+
+# 'fine-tuning', 'sentence', 'word'
+class TestDictionary(unittest.TestCase):
+    def setUp(self):
+        self.dict = Dictionary(words=[], punct='-!%')
+
+    def test_add_and_is_in(self):
+        self.dict.add('Fine-TuninG')
+        self.dict.add('--fine-tuning--')
+        self.assertTrue(self.dict.is_in('Fine-TuninG'))
+        self.assertTrue(self.dict.is_in('--fine-tuning--'))
+        self.assertTrue(self.dict.is_in('---FINE-TUNING----'))
+        self.assertTrue(self.dict.is_in('fine-tuning'))
+        self.assertFalse(self.dict.is_in('fine'))
+        self.assertFalse(self.dict.is_in('tuning'))
+        self.assertFalse(self.dict.is_in('finetuning'))
+
+    def test_strip_punct(self):
+        self.assertEqual(self.dict.strip_punct(text='fine-tuning'), 'fine-tuning')
+        self.assertEqual(self.dict.strip_punct(text='123fine-tuning123'), '123fine-tuning123')
+        self.assertEqual(self.dict.strip_punct(text='--fine-tuning--'), 'fine-tuning')
+        self.assertEqual(self.dict.strip_punct(text='!!--fine-tuning--!!'), 'fine-tuning')
+        self.assertEqual(self.dict.strip_punct(text='%!!--fine-tuning--!!%'), 'fine-tuning')
+        # because # is not part of the dictionary, stops stripping
+        self.assertEqual(self.dict.strip_punct(text='#--fine-tuning--#'), '#--fine-tuning--#')
+        self.assertEqual(self.dict.strip_punct(text='--#--fine-tuning--#--'), '#--fine-tuning--#')
+        # shouldnt break with a single punctuation character
+        self.assertEqual(self.dict.strip_punct(text='%'), '')
 
 
 class TestDictionaryWordPredictor(unittest.TestCase):
     def test_hyphenated_word_combines(self):
         # fmt:off
-               #0         10        20        30        40        50        60        70
-               #01234567890123456789012345678901234567890123456789012345678901234567890123456789
-        text = "The goal of meta-learning is to train a model on a vari-ety of learning tasks"
+        # 0         10        20        30        40        50        60        70
+        # 01234567890123456789012345678901234567890123456789012345678901234567890123456789
+        text = "The goal of meta-learning is to train a model on a vari-\nety! of learning tasks."
         # fmt:on
 
         spans = [
             Span(start=0, end=3),  # The
             Span(start=4, end=8),  # goal
             Span(start=9, end=11),  # of
-            Span(start=12, end=25),  # meta-learning (within one row)
+            Span(start=12, end=16),  # meta
+            Span(start=16, end=17),  # -
+            Span(start=17, end=25),  # learning
             Span(start=26, end=28),  # is
             Span(start=29, end=31),  # to
             Span(start=32, end=37),  # train
@@ -41,153 +73,37 @@ class TestDictionaryWordPredictor(unittest.TestCase):
             Span(start=40, end=45),  # model
             Span(start=46, end=48),  # on
             Span(start=49, end=50),  # a
-            Span(start=51, end=56),  # vari- (split rows)
-            Span(start=56, end=59),  # ety
-            Span(start=60, end=62),  # of
-            Span(start=63, end=71),  # learning
-            Span(start=72, end=77),  # tasks
+            Span(start=51, end=55),  # vari
+            Span(start=55, end=56),  # -
+            Span(start=57, end=60),  # ety
+            Span(start=60, end=61),  # !
+            Span(start=62, end=64),  # of
+            Span(start=65, end=73),  # learning
+            Span(start=74, end=79),  # tasks
+            Span(start=79, end=80),  # .
         ]
 
-        rows = [SpanGroup(id=1, spans=spans[0:12]), SpanGroup(id=2, spans=spans[12:])]
+        rows = [SpanGroup(id=0, spans=spans[0:15]), SpanGroup(id=1, spans=spans[15:])]
         document = mock_document(symbols=text, spans=spans, rows=rows)
 
         with tempfile.NamedTemporaryFile() as f:
             f.write("variety\n".encode("utf-8"))
             f.flush()
 
-            predictor = DictionaryWordPredictor(dictionary_file_path=f.name)
+            predictor = DictionaryWordPredictor()
             words = predictor.predict(document)
             document.annotate(words=words)
 
         self.assertEqual(
-            "The goal of meta-learning is to train a model on a variety of learning tasks",
-            " ".join([w.text for w in words]),
-        )
+            [w.text for w in words],
+            ['The', 'goal', 'of', 'meta-learning', 'is', 'to', 'train', 'a', 'model',
+             'on', 'a', 'vari-ety', '!', 'of', 'learning', 'tasks', '.'])
 
-    def test_hyphenated_nonword_keeps_separate(self):
-        # fmt:off
-               #0         10        20        30        40        50        60        70
-               #01234567890123456789012345678901234567890123456789012345678901234567890123456789
-        text = "The goal of meta-learning is to train a model on a vari-ety of learning tasks"
-        # fmt:on
-
-        spans = [
-            Span(start=0, end=3),  # The
-            Span(start=4, end=8),  # goal
-            Span(start=9, end=11),  # of
-            Span(start=12, end=25),  # meta-learning (within one row)
-            Span(start=26, end=28),  # is
-            Span(start=29, end=31),  # to
-            Span(start=32, end=37),  # train
-            Span(start=38, end=39),  # a
-            Span(start=40, end=45),  # model
-            Span(start=46, end=48),  # on
-            Span(start=49, end=50),  # a
-            Span(start=51, end=56),  # vari- (split rows)
-            Span(start=56, end=59),  # ety
-            Span(start=60, end=62),  # of
-            Span(start=63, end=71),  # learning
-            Span(start=72, end=77),  # tasks
-        ]
-
-        rows = [SpanGroup(id=1, spans=spans[0:12]), SpanGroup(id=2, spans=spans[12:])]
-        document = mock_document(symbols=text, spans=spans, rows=rows)
-
-        with tempfile.NamedTemporaryFile() as f:
-            f.write("nothing\n".encode("utf-8"))
-            f.flush()
-
-            predictor = DictionaryWordPredictor(dictionary_file_path=f.name)
-            words = predictor.predict(document)
-
-        self.assertEqual(
-            "The goal of meta-learning is to train a model on a vari-ety of learning tasks",
-            " ".join([w.text for w in words]),
-        )
-
-    def test_local_document_dictionary_adds_words(self):
-        # fmt:off
-               #0         10        20        30        40        50        60        70
-               #01234567890123456789012345678901234567890123456789012345678901234567890123456789
-        text = "The goal of TensorFlow is to train models in a Ten-sorFlow manner"
-        # fmt:on
-
-        spans = [
-            Span(start=0, end=3),  # The
-            Span(start=4, end=8),  # goal
-            Span(start=9, end=11),  # of
-            Span(start=12, end=22),  # Tensorflow (custom word)
-            Span(start=23, end=25),  # is
-            Span(start=26, end=28),  # to
-            Span(start=29, end=34),  # train
-            Span(start=35, end=41),  # models
-            Span(start=42, end=44),  # in
-            Span(start=45, end=46),  # a
-            Span(start=47, end=51),  # Ten-
-            Span(start=51, end=58),  # sorflow
-            Span(start=59, end=65),  # manner
-        ]
-
-        rows = [SpanGroup(id=1, spans=spans[0:11]), SpanGroup(id=2, spans=spans[11:])]
-        document = mock_document(symbols=text, spans=spans, rows=rows)
-
-        with tempfile.NamedTemporaryFile() as f:
-            f.write("nothing\n".encode("utf-8"))
-            f.flush()
-
-            predictor = DictionaryWordPredictor(dictionary_file_path=f.name)
-            words = predictor.predict(document)
-
-        self.assertEqual(
-            "The goal of TensorFlow is to train models in a TensorFlow manner",
-            " ".join([w.text for w in words]),
-        )
-
-    def test_optional_plurarl_words_combined(self):
-        # fmt:off
-               #0         10        20        30        40        50        60        70
-               #01234567890123456789012345678901234567890123456789012345678901234567890123456789
-        text = "Do you have any up-date(s)? Please share your up-date(s) now."
-        # fmt:on
-
-        spans = [
-            Span(start=0, end=2),  # Do
-            Span(start=3, end=6),  # you
-            Span(start=7, end=11),  # have
-            Span(start=12, end=15),  # any
-            Span(start=16, end=19),  # up-
-            Span(start=19, end=27),  # date(s)?
-            Span(start=28, end=34),  # Please
-            Span(start=35, end=40),  # share
-            Span(start=41, end=45),  # your
-            Span(start=46, end=49),  # up-
-            Span(start=49, end=56),  # date(s)
-            Span(start=57, end=61),  # now.
-        ]
-
-        rows = [
-            SpanGroup(id=1, spans=spans[0:5]),
-            SpanGroup(id=2, spans=spans[5:10]),
-            SpanGroup(id=3, spans=spans[10:]),
-        ]
-        document = mock_document(symbols=text, spans=spans, rows=rows)
-
-        with tempfile.NamedTemporaryFile() as f:
-            f.write("update\n".encode("utf-8"))
-            f.flush()
-
-            predictor = DictionaryWordPredictor(dictionary_file_path=f.name)
-            words = predictor.predict(document)
-
-        self.assertEqual(
-            "Do you have any update(s)? Please share your update(s) now.",
-            " ".join([w.text for w in words]),
-        )
 
     def test_next_row_single_token(self):
         # fmt:off
-               #0         10 
-               #012345678901
+        # 0         10
+        # 012345678901
         text = "Many lin-es"
         # fmt:on
 
@@ -210,7 +126,83 @@ class TestDictionaryWordPredictor(unittest.TestCase):
             predictor = DictionaryWordPredictor(dictionary_file_path=f.name)
             words = predictor.predict(document)
 
-        self.assertEqual(
-            "Many lin-es",
-            " ".join([w.text for w in words]),
-        )
+        self.assertEqual([w.text for w in words], ['Many', 'lin-es'])
+
+
+    def test_single_token_rows(self):
+        predictor = DictionaryWordPredictor()
+
+        # simple case without punctuation
+        text = 'a b cdefg'
+        spans = [
+            Span(start=0, end=1),
+            Span(start=2, end=3),
+            Span(start=4, end=9)
+        ]
+        rows = [
+            SpanGroup(id=1, spans=[spans[0]]),
+            SpanGroup(id=2, spans=[spans[1]]),
+            SpanGroup(id=3, spans=[spans[2]]),
+        ]
+        document = mock_document(symbols=text, spans=spans, rows=rows)
+        words = predictor.predict(document)
+
+        self.assertEqual([w.text for w in words], ['a', 'b', 'cdefg'])
+
+        # now with punctuation
+        text = '- - cdefg'
+        spans = [
+            Span(start=0, end=1),
+            Span(start=2, end=3),
+            Span(start=4, end=9)
+        ]
+        rows = [
+            SpanGroup(id=1, spans=[spans[0]]),
+            SpanGroup(id=2, spans=[spans[1]]),
+            SpanGroup(id=3, spans=[spans[2]]),
+        ]
+        document = mock_document(symbols=text, spans=spans, rows=rows)
+        words = predictor.predict(document)
+
+        self.assertEqual([w.text for w in words], ['-', '-', 'cdefg'])
+
+
+    def test_words_with_surrounding_punct(self):
+        predictor = DictionaryWordPredictor()
+
+        # simple case without punctuation
+        text = '(abc)'
+        spans = [
+            Span(start=0, end=1),
+            Span(start=1, end=4),
+            Span(start=4, end=5)
+        ]
+        rows = [
+            SpanGroup(id=1, spans=[spans[0]]),
+            SpanGroup(id=2, spans=[spans[1]]),
+            SpanGroup(id=3, spans=[spans[2]]),
+        ]
+        document = mock_document(symbols=text, spans=spans, rows=rows)
+        words = predictor.predict(document)
+
+        self.assertEqual([w.text for w in words], ['(', 'abc', ')'])
+
+
+    def test_words_with_multiple_preceding_punct(self):
+        predictor = DictionaryWordPredictor()
+
+        text = ')/2'
+        spans = [
+            Span(start=0, end=1),
+            Span(start=1, end=2),
+            Span(start=2, end=3)
+        ]
+        rows = [
+            SpanGroup(id=1, spans=[spans[0]]),
+            SpanGroup(id=2, spans=[spans[1]]),
+            SpanGroup(id=3, spans=[spans[2]]),
+        ]
+        document = mock_document(symbols=text, spans=spans, rows=rows)
+        words = predictor.predict(document)
+
+        self.assertEqual([w.text for w in words], [')', '/', '2'])

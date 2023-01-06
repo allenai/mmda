@@ -1,0 +1,140 @@
+[project]
+name = 'mmda'
+version = '0.2.7'
+description = 'MMDA - multimodal document analysis'
+authors = [
+    {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
+]
+license = {text = 'Apache-2.0'}
+readme = 'README.md'
+requires-python = '>=3.7'
+dependencies = [
+        'tqdm',
+        'pdf2image',
+        'pdfplumber>0.7.1',
+        'requests',
+        'pandas',
+        'pydantic',
+        'ncls',
+        'necessary>=0.3.2',
+]
+
+[project.urls]
+'Homepage' = 'https=//www.github.com/allenai/mmda'
+'Repository' = 'https=//www.github.com/allenai/mmda'
+'Bug Tracker' = 'https=//www.github.com/allenai/mmda/issues'
+
+[tool.setuptools]
+# ...
+# By default, include-package-data is true in pyproject.toml, so you do
+# NOT have to specify this line.
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ['src',]
+
+[tool.setuptools.package-data]
+mmda = [
+    '../requirements.txt',
+    'ai2_internal.bibentry_detection_predictor.data',
+    'ai2_internal.bibentry_predictor_mmda.data',
+    'ai2_internal.citation_mentions.data',
+    'ai2_internal.vila.test_fixtures',
+    'ai2_internal.figure_table_predictors.test_fixtures',
+    'ai2_internal.figure_table_predictors.test_fixtures.images',
+    'ai2_internal.shared_test_fixtures',
+]
+
+[build-system]
+build-backend = 'setuptools.build_meta'
+requires = [
+    'setuptools >= 61.0.0',
+    'pip >= 21.0.0',
+    'wheel'
+]
+
+[project.optional-dependencies]
+dev = [
+    'pytest',
+    'pytest-xdist',
+    'pytest-cov',
+]
+spacy_predictors = [
+    'spacy',
+]
+pysbd_predictors = [
+    'pysbd',
+]
+heuristic_predictors = [
+    'tokenizers'
+]
+lp_predictors = [
+    'layoutparser',
+    'torch',
+    'torchvision',
+    'effdet',
+]
+hf_predictors = [
+    'torch',
+    'transformers',
+    'smashed==0.1.10',
+]
+vila_predictors = [
+    'vila>=0.5,<0.6',
+    'transformers',
+]
+mention_predictor = [
+    'transformers[torch]',
+    'optimum[onnxruntime]'
+]
+mention_predictor_gpu = [
+    'transformers[torch]',
+    'optimum[onnxruntime-gpu]',
+]
+bibentry_predictor = [
+    'transformers',
+    'unidecode',
+    'torch',
+    'optimum[onnxruntime]',
+]
+bibentry_predictor_gpu = [
+    'transformers',
+    'unidecode',
+    'torch',
+    'optimum[onnxruntime-gpu]',
+]
+bibentry_detection_predictor = [
+    'layoutparser',
+    'torch==1.8.0+cu111',
+    'torchvision==0.9.0+cu111',
+]
+citation_links = [
+    'numpy',
+    'thefuzz[speedup]',
+    'scikit-learn',
+    'xgboost',
+]
+figure_table_predictors = [
+    'scipy',
+]
+
+[tool.pytest.ini_options]
+addopts = '-n auto --cov=src/mmda'
+testpaths = ['tests/']
+pythonpath = [
+  '.', 'src',
+]
+python_classes = ['Test*', '*Test']
+log_format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+log_level = 'DEBUG'
+markers = []
+filterwarnings = []
+
+[tool.coverage.run]
+omit = [
+    '*__init__*',
+    '*Test*',
+    'tests/fixtures/*',
+]
+[tool.coverage.report]
+fail_under = 57
