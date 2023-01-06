@@ -31,6 +31,15 @@ class TestPDFPlumberParser(unittest.TestCase):
         for keyword in ['Field', 'Task', 'SOTA', 'Base', 'Frozen', 'Finetune', 'NER']:
             assert keyword in doc.symbols[:100]
 
+    def test_parse_empty_page(self):
+        parser = PDFPlumberParser()
+        doc = parser.parse(input_pdf_path=self.fixture_path / 'empty_page.pdf')
+        assert len(doc.pages) == 0
+        assert len(doc.tokens) == 0
+        assert len(doc.symbols) == 0
+        assert len(doc.rows) == 0
+
+
     def test_split_punctuation(self):
         no_split_parser = PDFPlumberParser(split_at_punctuation=False)
         no_split_doc = no_split_parser.parse(input_pdf_path=self.fixture_path / '2107.07170.pdf')
