@@ -16,27 +16,6 @@ from mmda.predictors.xgb_predictors.section_nesting_predictor import (
 )
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from mmda.types.annotation import SpanGroup
-from mmda.types.box import Box
-
-S2VL_LABEL_MAP = {
-    "0": "Title",
-    "1": "Author",
-    "2": "Abstract",
-    "3": "Keywords",
-    "4": "Section",
-    "5": "Paragraph",
-    "6": "List",
-    "7": "Bibliography",
-    "8": "Equation",
-    "9": "Algorithm",
-    "10": "Figure",
-    "11": "Table",
-    "12": "Caption",
-    "13": "Header",
-    "14": "Footer",
-    "15": "Footnote",
-}
-S2VL_LABEL_MAP = {int(key): val for key, val in S2VL_LABEL_MAP.items()}
 
 
 class TestSectionNestingPredictor(unittest.TestCase):
