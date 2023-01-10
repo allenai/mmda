@@ -13,7 +13,7 @@ from mmda.types.metadata import Metadata
 from mmda.types.names import PagesField, RowsField, SymbolsField, TokensField
 from mmda.types.span import Span
 
-_TOL = int | float
+_TOL = Union[int, float]
 
 
 class WordExtractorWithFontInfo(ppu.WordExtractor):
