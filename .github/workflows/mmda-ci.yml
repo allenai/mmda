@@ -24,7 +24,10 @@ jobs:
       - name: Test with Python ${{ matrix.python-version }}
         run: |
           pip install -e .[dev,pysbd_predictors,hf_predictors,lp_predictors]
-          pytest --cov-fail-under=42 --ignore=tests/test_predictors/test_vila_predictors.py --ignore=tests/test_predictors/test_figure_table_predictors.py
+          pytest --cov-fail-under=42 \
+            --ignore=tests/test_predictors/test_vila_predictors.py \
+            --ignore=tests/test_predictors/test_figure_table_predictors.py \
+            --ignore=tests/test_predictors/test_section_nesting_predictor.py
 
   test_vila_predictors:
     runs-on: ubuntu-latest
@@ -39,7 +42,7 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install poppler-utils
       - run: |
-          pip install -e .[dev]
-          pip install -e .[vila_predictors]
+          pip install -e .[dev,vila_predictors,section_nesting]
           pytest tests/test_predictors/test_vila_predictors.py --no-cov
           pytest tests/test_predictors/test_figure_table_predictors.py --no-cov
+          pytest tests/test_predictors/test_section_nesting_predictor.py --no-cov

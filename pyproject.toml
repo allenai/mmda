@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.2.7'
+version = '0.2.8'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -112,6 +112,11 @@ citation_links = [
     'numpy',
     'thefuzz[speedup]',
     'scikit-learn',
+    'xgboost',
+]
+section_nesting = [
+    'numpy',
+    'scipy',
     'xgboost',
 ]
 figure_table_predictors = [
