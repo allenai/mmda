@@ -167,14 +167,13 @@ class PDFPlumberParser(Parser):
                 all_row_ids.extend(
                     [i + last_row_id + 1 for i in line_ids_of_fine_tokens]
                 )
-                if all_row_ids:
-                    last_row_id = all_row_ids[-1]
-                    all_word_ids.extend(
-                        [i + last_word_id + 1 for i in word_ids_of_fine_tokens]
-                    )
-                    last_word_id = all_word_ids[-1]
-                    for _ in fine_tokens:
-                        all_page_ids.append(page_id)
+                last_row_id = all_row_ids[-1] if all_word_ids else -1
+                all_word_ids.extend(
+                    [i + last_word_id + 1 for i in word_ids_of_fine_tokens]
+                )
+                last_word_id = all_word_ids[-1] if all_word_ids else -1
+                for _ in fine_tokens:
+                    all_page_ids.append(page_id)
             # now turn into a beautiful document!
             doc_json = self._convert_nested_text_to_doc_json(
                 token_dicts=all_tokens,
@@ -228,11 +227,6 @@ class PDFPlumberParser(Parser):
                 start = end + 1
         # handle last token
         if token_dicts:
-            token_dict = token_dicts[-1]
-            end = start + len(token_dict["text"])
-            token = SpanGroup(spans=[Span(start=start, end=end, box=token_dict["bbox"])],
-                              id=len(token_dicts) - 1)
-            token_annos.append(token)
             symbols += token_dicts[-1]["text"]
             end = start + len(token_dicts[-1]["text"])
             token = SpanGroup(spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
