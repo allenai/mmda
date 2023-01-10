@@ -1,10 +1,9 @@
 import itertools
 import string
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 import pdfplumber
 import pdfplumber.utils as ppu
-from pdfplumber._typing import T_num
 
 from mmda.parsers.parser import Parser
 from mmda.types.annotation import SpanGroup
@@ -14,14 +13,16 @@ from mmda.types.metadata import Metadata
 from mmda.types.names import PagesField, RowsField, SymbolsField, TokensField
 from mmda.types.span import Span
 
+_TOL = int | float
+
 
 class WordExtractorWithFontInfo(ppu.WordExtractor):
     """Override WordExtractor methods to append additional char-level info."""
 
     def __init__(
         self,
-        x_tolerance: T_num = ppu.DEFAULT_X_TOLERANCE,
-        y_tolerance: T_num = ppu.DEFAULT_Y_TOLERANCE,
+        x_tolerance: _TOL = ppu.DEFAULT_X_TOLERANCE,
+        y_tolerance: _TOL = ppu.DEFAULT_Y_TOLERANCE,
         keep_blank_chars: bool = False,
         use_text_flow: bool = False,
         horizontal_ltr: bool = True,
@@ -31,14 +32,14 @@ class WordExtractorWithFontInfo(ppu.WordExtractor):
         append_attrs: Optional[List[str]] = None,
     ):
         super().__init__(
-            x_tolerance,
-            y_tolerance,
-            keep_blank_chars,
-            use_text_flow,
-            horizontal_ltr,
-            vertical_ttb,
-            extra_attrs,
-            split_at_punctuation,
+            x_tolerance=x_tolerance,
+            y_tolerance=y_tolerance,
+            keep_blank_chars=keep_blank_chars,
+            use_text_flow=use_text_flow,
+            horizontal_ltr=horizontal_ltr,
+            vertical_ttb=vertical_ttb,
+            extra_attrs=extra_attrs,
+            split_at_punctuation=split_at_punctuation,
         )
         self.append_attrs = append_attrs
 
@@ -46,6 +47,8 @@ class WordExtractorWithFontInfo(ppu.WordExtractor):
         """Modify returned word to capture additional char-level info."""
         word = super().merge_chars(ordered_chars=ordered_chars)
 
+        # ordered_chars is a list of characters for the word with extra attributes.
+        # Here we simply append additional information to the word using the first char.
         for key in self.append_attrs:
             if key not in word:
                 word[key] = ordered_chars[0][key]
@@ -230,11 +233,11 @@ class PDFPlumberParser(Parser):
 
     def _convert_nested_text_to_doc_json(
         self,
-        token_dicts: List[Dict],
+        token_dicts: List[dict],
         word_ids: List[int],
         row_ids: List[int],
         page_ids: List[int],
-    ) -> Dict:
+    ) -> dict:
         """For a single page worth of text"""
 
         # 1) build tokens & symbols
@@ -343,7 +346,7 @@ class PDFPlumberParser(Parser):
         }
 
     def _simple_line_detection(
-        self, page_tokens: List[Dict], x_tolerance: int = 10, y_tolerance: int = 10
+        self, page_tokens: List[dict], x_tolerance: int = 10, y_tolerance: int = 10
     ) -> List[int]:
         """Get text lines from the page_tokens.
         It will automatically add new lines for 1) line breaks (i.e., the current token
