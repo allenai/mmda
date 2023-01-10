@@ -16,13 +16,13 @@ dependencies = [
         'pandas',
         'pydantic',
         'ncls',
-        'necessary',
+        'necessary>=0.3.2',
 ]
 
 [project.urls]
-'Homepage' = 'https=//www.github.com/allenai/mmda'
-'Repository' = 'https=//www.github.com/allenai/mmda'
-'Bug Tracker' = 'https=//www.github.com/allenai/mmda/issues'
+'Homepage' = 'https://www.github.com/allenai/mmda'
+'Repository' = 'https://www.github.com/allenai/mmda'
+'Bug Tracker' = 'https://www.github.com/allenai/mmda/issues'
 
 [tool.setuptools]
 # ...
