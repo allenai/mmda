@@ -58,7 +58,6 @@ dev = [
     'pytest',
     'pytest-xdist',
     'pytest-cov',
-    'xgboost',
 ]
 spacy_predictors = [
     'spacy',
