@@ -53,10 +53,8 @@ def resolve(file: str) -> str:
     return os.path.join(pathlib.Path(os.path.dirname(__file__)), "data", file)
 
 
-def read_fixture_doc_and_entries():
-    # Produced from running upstream models on example paper
-    # (26bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf)
-    path = resolve("test_data.json.gz")
+def read_fixture_doc_and_entries(filename):
+    path = resolve(filename)
 
     with gzip.open(path, "r") as f:
         raw = json.loads(f.read())
@@ -70,7 +68,10 @@ def read_fixture_doc_and_entries():
 @with_timo_container
 class TestInterfaceIntegration(unittest.TestCase):
     def test__predictions(self, container):
-        doc, bib_entry_boxes = read_fixture_doc_and_entries()
+        # Produced from running upstream models on example paper
+        # (26bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf)
+        filename = "test_data.json.gz"
+        doc, bib_entry_boxes = read_fixture_doc_and_entries(filename)
         instance = Instance(
             symbols=doc.symbols,
             tokens=[api.SpanGroup.from_mmda(token) for token in doc.tokens],
@@ -104,4 +105,18 @@ class TestInterfaceIntegration(unittest.TestCase):
         self.assertEqual(final_doc.bib_entry_boxes[1].bib_entry_title[0].text, "Effect of ecological factors on the silk producing\npotential of the mulberry silkworm ( Bombyx mori\nLinn. )")
         self.assertEqual(final_doc.bib_entry_boxes[1].bib_entry_venue_or_event[0].text, "Malays. Appl. Biol.")
 
+    def test__empty_boxes_passes(self, container):
+        # Produced from getting annotation store data from running upstream models on example paper
+        # Upstream bib detector model produces annotations which result in SpanGroups with empty spans
+        # See https://github.com/allenai/mmda/pull/186
+        # (3cf45514384bbb7d083ae53e19bdc22300e648ab.pdf)
+        filename = "test_data_v2_boxes_turn_into_empty_span_groups.json.gz"
+        doc, bib_entry_boxes = read_fixture_doc_and_entries(filename)
+        instance = Instance(
+            symbols=doc.symbols,
+            tokens=[api.SpanGroup.from_mmda(token) for token in doc.tokens],
+            pages=[api.SpanGroup.from_mmda(page) for page in doc.pages],
+            bib_entry_boxes=[api.BoxGroup(**bib_entry) for bib_entry in bib_entry_boxes]
+        )
+        prediction = container.predict_batch([instance])[0]
 
