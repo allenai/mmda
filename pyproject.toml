@@ -20,9 +20,9 @@ dependencies = [
 ]
 
 [project.urls]
-'Homepage' = 'https=//www.github.com/allenai/mmda'
-'Repository' = 'https=//www.github.com/allenai/mmda'
-'Bug Tracker' = 'https=//www.github.com/allenai/mmda/issues'
+'Homepage' = 'https://www.github.com/allenai/mmda'
+'Repository' = 'https://www.github.com/allenai/mmda'
+'Bug Tracker' = 'https://www.github.com/allenai/mmda/issues'
 
 [tool.setuptools]
 # ...
@@ -114,6 +114,11 @@ citation_links = [
     'numpy',
     'thefuzz[speedup]',
     'scikit-learn',
+    'xgboost',
+]
+section_nesting = [
+    'numpy',
+    'scipy',
     'xgboost',
 ]
 figure_table_predictors = [
