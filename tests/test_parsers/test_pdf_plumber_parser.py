@@ -38,6 +38,24 @@ class TestPDFPlumberParser(unittest.TestCase):
         assert len(doc.symbols) == 0
         assert len(doc.rows) == 0
 
+    def test_parse_empty_non_empty_page(self):
+        parser = PDFPlumberParser()
+        doc = parser.parse(input_pdf_path=self.fixture_path /
+                                          'empty_page_next_page_f87f9a26543e03c985867d0dbff1b900ecb6e46d.pdf')
+        assert len(doc.pages) == 1
+        assert len(doc.tokens) == 619
+        assert len(doc.symbols) == 3405
+        assert len(doc.rows) == 86
+
+    def test_parse_non_empty_empty_page(self):
+        parser = PDFPlumberParser()
+        doc = parser.parse(input_pdf_path=self.fixture_path /
+                                          'non_empty_empty_page_f87f9a26543e03c985867d0dbff1b900ecb6e46d.pdf')
+        assert len(doc.pages) == 1
+        assert len(doc.tokens) == 619
+        assert len(doc.symbols) == 3405
+        assert len(doc.rows) == 86
+
     def test_parse_fontinfo(self):
         parser = PDFPlumberParser()
         doc = parser.parse(input_pdf_path=self.fixture_path / "1903.10676.pdf")
