@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.2.8'
+version = '0.2.81'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -36,13 +36,15 @@ where = ['src',]
 [tool.setuptools.package-data]
 mmda = [
     '../requirements.txt',
-    'ai2_internal.bibentry_detection_predictor.data',
-    'ai2_internal.bibentry_predictor_mmda.data',
-    'ai2_internal.citation_mentions.data',
-    'ai2_internal.vila.test_fixtures',
-    'ai2_internal.figure_table_predictors.test_fixtures',
-    'ai2_internal.figure_table_predictors.test_fixtures.images',
-    'ai2_internal.shared_test_fixtures',
+]
+ai2_internal = [
+    './bibentry_detection_predictor/data/*',
+    './bibentry_predictor_mmda/data/*',
+    './citation_mentions/data/*',
+    './vila/test_fixtures/*',
+    './figure_table_predictors/test_fixtures/*',
+    './figure_table_predictors/test_fixtures.images/*',
+    './shared_test_fixtures/*',
 ]
 
 [build-system]
