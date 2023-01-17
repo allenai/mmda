@@ -69,7 +69,7 @@ def read_fixture_doc_and_entries(filename):
 class TestInterfaceIntegration(unittest.TestCase):
     def test__predictions(self, container):
         # Produced from running upstream models on example paper
-        # (26bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf)
+        # (000026bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf)
         filename = "test_data.json.gz"
         doc, bib_entry_boxes = read_fixture_doc_and_entries(filename)
         instance = Instance(

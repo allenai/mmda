@@ -61,7 +61,7 @@ class TestInterfaceIntegration(unittest.TestCase):
         return rasterizer.rasterize(str(resolve(pdf_filename)), dpi=72)
 
     def test__predictions(self, container):
-        pdf = "26bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf"
+        pdf = "000026bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf"
         doc = PDFPlumberParser(split_at_punctuation=True).parse(resolve(pdf))
 
         tokens = [api.SpanGroup.from_mmda(sg) for sg in doc.tokens]
