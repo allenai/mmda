@@ -125,3 +125,38 @@ class TestInterfaceIntegration(unittest.TestCase):
 
         self.assertEqual(len(predictions[0].bib_entries), 0)
         self.assertEqual(len(predictions[0].raw_bib_entry_boxes), 0)
+
+
+    def test__spanless_bibs(self, container):
+        pdf = "spanless_bibs_3cf45514384bbb7d083ae53e19bdc22300e648ab.pdf"  # 3cf45514384bbb7d083ae53e19bdc22300e648ab
+        doc = PDFPlumberParser(split_at_punctuation=True).parse(resolve(pdf))
+
+        tokens = [api.SpanGroup.from_mmda(sg) for sg in doc.tokens]
+        rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
+        pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
+
+        page_images = self.get_images(pdf)
+        encoded_page_images = [tobase64(img) for img in page_images]
+
+        doc.annotate_images(page_images)
+
+        with open(resolve("spanless_bibs_vila_span_groups.json")) as f:
+            vila_span_groups = [api.SpanGroup(**sg) for sg in json.load(f)["vila_span_groups"]]
+
+        instances = [Instance(
+            symbols=doc.symbols,
+            tokens=tokens,
+            rows=rows,
+            pages=pages,
+            page_images=encoded_page_images,
+            vila_span_groups=vila_span_groups)]
+
+        # should not error
+        predictions = container.predict_batch(instances)
+
+        # bib span_group overlapped another, causing one of them to end up with no spans
+        expected_bib_count = 30
+        expected_raw_bib_count = 31
+
+        self.assertEqual(len(predictions[0].bib_entries), expected_bib_count)
+        self.assertEqual(len(predictions[0].raw_bib_entry_boxes), expected_raw_bib_count)
