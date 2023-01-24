@@ -36,6 +36,7 @@ import unittest
 from .. import api
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
+from mmda.types.annotation import SpanGroup as MmdaSpanGroup
 from mmda.types.image import tobase64
 from .interface import Instance
 
@@ -126,7 +127,6 @@ class TestInterfaceIntegration(unittest.TestCase):
         self.assertEqual(len(predictions[0].bib_entries), 0)
         self.assertEqual(len(predictions[0].raw_bib_entry_boxes), 0)
 
-
     def test__spanless_bibs(self, container):
         pdf = "spanless_bibs_3cf45514384bbb7d083ae53e19bdc22300e648ab.pdf"  # 3cf45514384bbb7d083ae53e19bdc22300e648ab
         doc = PDFPlumberParser(split_at_punctuation=True).parse(resolve(pdf))
@@ -141,7 +141,7 @@ class TestInterfaceIntegration(unittest.TestCase):
         doc.annotate_images(page_images)
 
         with open(resolve("spanless_bibs_vila_span_groups.json")) as f:
-            vila_span_groups = [api.SpanGroup(**sg) for sg in json.load(f)["vila_span_groups"]]
+            vila_span_groups = [api.SpanGroup.from_mmda(MmdaSpanGroup.from_json(sg)) for sg in json.load(f)["vila_span_groups"]]
 
         instances = [Instance(
             symbols=doc.symbols,
@@ -154,9 +154,9 @@ class TestInterfaceIntegration(unittest.TestCase):
         # should not error
         predictions = container.predict_batch(instances)
 
-        # bib span_group overlapped another, causing one of them to end up with no spans
-        expected_bib_count = 30
-        expected_raw_bib_count = 31
+        # several bib boxes overlapped others, causing them to end up with no spans
+        expected_bib_count = 99
+        expected_raw_bib_count = 102
 
         self.assertEqual(len(predictions[0].bib_entries), expected_bib_count)
         self.assertEqual(len(predictions[0].raw_bib_entry_boxes), expected_raw_bib_count)
