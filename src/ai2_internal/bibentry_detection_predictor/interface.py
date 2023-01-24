@@ -98,13 +98,18 @@ class Predictor:
         doc.annotate_images(images)
         doc.annotate(vila_span_groups=[sg.to_mmda() for sg in inst.vila_span_groups])
 
-        processed_bib_entry_box_groups, original_box_groups = self._predictor.predict(doc, self._config.BIB_ENTRY_DETECTION_MIN_VILA_BIB_ROWS)
+        processed_bib_entry_box_groups, original_box_groups = self._predictor.predict(
+            doc,
+            self._config.BIB_ENTRY_DETECTION_MIN_VILA_BIB_ROWS
+        )
 
         # generate SpanGroups
         if len(processed_bib_entry_box_groups) > 0:
             doc.annotate(bib_entries=processed_bib_entry_box_groups)
             prediction = Prediction(
-                bib_entries=[api.SpanGroup.from_mmda(sg) for sg in doc.bib_entries],
+                # filter out span-less SpanGroups
+                bib_entries=[api.SpanGroup.from_mmda(sg) for sg in doc.bib_entries if len(sg.spans) != 0],
+                # retain the original model output
                 raw_bib_entry_boxes=[api.BoxGroup.from_mmda(bg) for bg in original_box_groups]
             )
         else:

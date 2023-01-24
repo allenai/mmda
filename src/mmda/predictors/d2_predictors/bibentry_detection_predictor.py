@@ -56,10 +56,9 @@ def tighten_boxes(bib_box_group, page_tokens, page_width, page_height):
         )
     new_box_group = BoxGroup(
         boxes=new_boxes,
-        id=bib_box_group.id,
-        type="bib_entry"
-
+        id=bib_box_group.id
     )
+    new_box_group.metadata.set('type', 'bib_entry')
     return new_box_group
 
 
@@ -120,13 +119,13 @@ class BibEntryDetectionPredictor(BasePredictor):
 
             current_id = next(id_counter)
 
-            original_box_groups.append(
-                BoxGroup(
-                    boxes=[model_output_box],
-                    id=current_id,
-                    type="raw_model_prediction"
-                )
+            box_group = BoxGroup(
+                boxes=[model_output_box],
+                id=current_id
             )
+            box_group.metadata.set('type', 'raw_model_prediction')
+
+            original_box_groups.append(box_group)
 
         processed_box_groups: List[BoxGroup] = []
         for o_box_group in original_box_groups:

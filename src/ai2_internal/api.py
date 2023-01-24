@@ -124,12 +124,22 @@ class SpanGroup(Annotation):
         spans = [Span.from_mmda(sp) for sp in span_group.spans]
         metadata = cls.get_metadata_cls().from_mmda(span_group.metadata)
 
+        if span_group.metadata.has('type'):
+            type_val = span_group.metadata.type
+        else:
+            type_val = None
+
+        if span_group.metadata.has('text'):
+            text_val = span_group.metadata.text
+        else:
+            text_val = None
+
         ret = cls(
             spans=spans,
             box_group=box_group,
             id=span_group.id,
-            type=span_group.metadata.type,
-            text=span_group.metadata.text,
+            type=type_val,
+            text=text_val,
             attributes=metadata,
         )
         if span_group.box_group is not None:
