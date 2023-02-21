@@ -18,3 +18,5 @@ SentencesField = "sents"
 BlocksField = "blocks"
 WordsField = "words"
 SectionsField = "sections"
+
+VilaSpanGroupsField = "vila_span_groups"
