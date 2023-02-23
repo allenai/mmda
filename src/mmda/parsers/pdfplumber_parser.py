@@ -3,7 +3,13 @@ import string
 from typing import List, Optional, Union
 
 import pdfplumber
-import pdfplumber.utils as ppu
+
+try:
+    # pdfplumber >= 0.8.0
+    import pdfplumber.utils.text as ppu
+except:
+    # pdfplumber <= 0.7.6
+    import pdfplumber.utils as ppu
 
 from mmda.parsers.parser import Parser
 from mmda.types.annotation import SpanGroup
@@ -54,6 +60,14 @@ class WordExtractorWithFontInfo(ppu.WordExtractor):
                 word[key] = ordered_chars[0][key]
 
         return word
+
+    def extract(self, chars: ppu.T_obj_list) -> ppu.T_obj_list:
+        if hasattr(super(), 'extract'):
+            # pdfplumber <= 0.7.6
+            return super().extract(chars)
+        else:
+            # pdfplumber >= 0.8.0
+            return super().extract_words(chars)
 
 
 class PDFPlumberParser(Parser):
