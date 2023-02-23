@@ -38,3 +38,9 @@ If you see an error reading `SSL:CERTIFICATE_VERIFY_FAILED`, then you may need
 to download a certificate for Python. See [this Stack Overflow
 answer](https://stackoverflow.com/a/53310545/2096369) for a fix that might work
 on Mac, as well as other answers.
+
+## Expected Output
+
+The output of the script should look something like this:
+
+![Preview of output](./preview.png)

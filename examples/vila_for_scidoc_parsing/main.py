@@ -17,19 +17,6 @@ from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor
 
 
 DOCBANK_LABEL_MAP = {
-    # 0: "paragraph",
-    # 1: "title",
-    # 2: "equation",
-    # 3: "reference",
-    # 4: "section",
-    # 5: "list",
-    # 6: "table",
-    # 7: "caption",
-    # 8: "author",
-    # 9: "abstract",
-    # 10: "footer",
-    # 11: "date",
-    # 12: "figure",
     0: "Title",
     1: "Author",
     2: "Abstract",
