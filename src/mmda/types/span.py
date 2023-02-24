@@ -32,10 +32,10 @@ class Span:
         return Span(start=span_dict['start'], end=span_dict['end'], box=box)
 
     def __lt__(self, other: 'Span'):
-        if self.id and other.id:
-            return self.id < other.id
-        else:
-            return self.start < other.start
+        return self.start < other.start
+
+    def __contains__(self, item: 'Span'):
+        return self.start <= item.start and self.end >= item.end
 
     @classmethod
     def small_spans_to_big_span(cls, spans: List['Span']) -> 'Span':
