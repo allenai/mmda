@@ -8,7 +8,6 @@ All the command are executed in this folder `examples/vila_for_scidoc_parsing`.
     ```bash
     git clone git@github.com:allenai/mmda.git
     cd mmda
-    git checkout -b 'soldni/dp'
     pip install .[heuristic_predictors,lp_predictors,vila_predictors]
     ```
 2. Install poppler for rendering PDF images - the installation methods are different based on your platform:
