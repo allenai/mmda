@@ -1,3 +1,0 @@
-layoutparser[effdet]>=0.3.0
-transformers
-vila

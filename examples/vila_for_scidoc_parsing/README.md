@@ -2,12 +2,14 @@
 
 All the command are executed in this folder `examples/vila_for_scidoc_parsing`.
 
-## Installation 
+## Installation
 
 1. Install the necessary python dependencies
     ```bash
-    pip install mmda # alternatively, you can pip install ../ -e
-    pip install -r requirements.txt
+    git clone git@github.com:allenai/mmda.git
+    cd mmda
+    git checkout -b 'soldni/dp'
+    pip install .[heuristic_predictors,lp_predictors,vila_predictors]
     ```
 2. Install poppler for rendering PDF images - the installation methods are different based on your platform:
 
@@ -17,24 +19,28 @@ All the command are executed in this folder `examples/vila_for_scidoc_parsing`.
 
 3. Download the VILA models
 
-    For now, please contact @shannons for downloading the weights. 
+    For now, please contact @shannons for downloading the weights.
 
 ## Usage
 
 ```bash
 python main.py --pdf-path <path-to-pdf-files> \
-               --vila-type <hvila-or-vila> \
-               --vila-model-path <path-to-vila-models> \
                --export-folder <the-folder-for-saving-visualizations>
-# By default, you could just run 
-# python main.py --pdf-path <path-to-pdf-files>
 ```
 
-It will run PubLayNet-based layout detection models to identify the layout structure, and run
-VILA models based on the detected layouts to perform token classification. All detected layouts
-and token categories will visualized and stored in the export-folder.
+It will run PubLayNet-based layout detection models to identify equations,
+and run VILA models based on the detected layouts to perform section
+identification. All detected equations and section categories will visualized
+and stored in the export-folder, alongside two jsonl files for the detected
+equations and section categories.
 
-If you see an error reading `SSL:CERTIFICATE_VERIFY_FAILED`, then you may need 
-to download a certificate for Python. See [this Stack Overflow 
-answer](https://stackoverflow.com/a/53310545/2096369) for a fix that might work 
+If you see an error reading `SSL:CERTIFICATE_VERIFY_FAILED`, then you may need
+to download a certificate for Python. See [this Stack Overflow
+answer](https://stackoverflow.com/a/53310545/2096369) for a fix that might work
 on Mac, as well as other answers.
+
+## Expected Output
+
+The output of the script should look something like this:
+
+![Preview of output](./preview.png)
