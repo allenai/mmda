@@ -3,6 +3,13 @@ from typing import Optional, List, Dict, Union
 import string
 import pdfplumber
 
+try:
+    # pdfplumber >= 0.8.0
+    import pdfplumber.utils.text as ppu
+except:
+    # pdfplumber <= 0.7.6
+    import pdfplumber.utils as ppu
+
 import itertools
 from mmda.types.span import Span
 from mmda.types.box import Box
