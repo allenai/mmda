@@ -14,6 +14,48 @@ PAGE_JSON = {'spans': [{'start': 0, 'end': 3696,
                         'box': {'left': 0.12100741176470588, 'top': 0.08015236441805225,
                                 'width': 0.7625643173109246, 'height': 0.8289201816627079,
                                 'page': 0}}], 'id': 0, 'metadata': {}}
+FIRST_10_TOKENS_JSON = [{'spans': [{'start': 0, 'end': 5,
+                                    'box': {'left': 0.14541159663865547, 'top': 0.08015236441805225,
+                                            'width': 0.031124640759663848,
+                                            'height': 0.010648907363420378, 'page': 0}}], 'id': 0,
+                         'metadata': {'fontname': 'HXONRZ+NimbusRomNo9L-Regu',
+                                      'size': 8.966379999999958}}, {'spans': [
+    {'start': 6, 'end': 10,
+     'box': {'left': 0.2218368002857143, 'top': 0.08015236441805225, 'width': 0.028109224561344556,
+             'height': 0.010648907363420378, 'page': 0}}], 'id': 1, 'metadata': {
+    'fontname': 'HXONRZ+NimbusRomNo9L-Regu', 'size': 8.966379999999958}}, {'spans': [
+    {'start': 11, 'end': 18,
+     'box': {'left': 0.28294983802016804, 'top': 0.08015236441805225, 'width': 0.04515740219831938,
+             'height': 0.010648907363420378, 'page': 0}}], 'id': 2, 'metadata': {
+    'fontname': 'HXONRZ+NimbusRomNo9L-Regu', 'size': 8.966379999999958}}, {'spans': [
+    {'start': 19, 'end': 23,
+     'box': {'left': 0.5239827089210084, 'top': 0.08015236441805225, 'width': 0.03749755185546227,
+             'height': 0.010648907363420378, 'page': 0}}], 'id': 3, 'metadata': {
+    'fontname': 'HXONRZ+NimbusRomNo9L-Regu', 'size': 8.966379999999958}}, {'spans': [
+    {'start': 24, 'end': 25,
+     'box': {'left': 0.6157472036638656, 'top': 0.08015236441805225, 'width': 0.010051387327731112,
+             'height': 0.010648907363420378, 'page': 0}}], 'id': 4, 'metadata': {
+    'fontname': 'HXONRZ+NimbusRomNo9L-Regu', 'size': 8.966379999999958}}, {'spans': [
+    {'start': 26, 'end': 29,
+     'box': {'left': 0.6266233613445378, 'top': 0.08181785724465564, 'width': 0.02369895794957974,
+             'height': 0.00851912114014249, 'page': 0}}], 'id': 5, 'metadata': {
+    'fontname': 'HXONRZ+NimbusRomNo9L-Regu', 'size': 7.173099999999977}}, {'spans': [
+    {'start': 30, 'end': 31,
+     'box': {'left': 0.6508250420168067, 'top': 0.08015236441805225, 'width': 0.005018158890756309,
+             'height': 0.010648907363420378, 'page': 0}}], 'id': 6, 'metadata': {
+    'fontname': 'HXONRZ+NimbusRomNo9L-Regu', 'size': 8.966379999999958}}, {'spans': [
+    {'start': 31, 'end': 35,
+     'box': {'left': 0.6558673121815126, 'top': 0.08015236441805225, 'width': 0.02927711439327727,
+             'height': 0.010648907363420378, 'page': 0}}], 'id': 7, 'metadata': {
+    'fontname': 'HXONRZ+NimbusRomNo9L-Regu', 'size': 8.966379999999958}}, {'spans': [
+    {'start': 36, 'end': 37,
+     'box': {'left': 0.7629575354285715, 'top': 0.08015236441805225, 'width': 0.008378667697478945,
+             'height': 0.010648907363420378, 'page': 0}}], 'id': 8, 'metadata': {
+    'fontname': 'HXONRZ+NimbusRomNo9L-Regu', 'size': 8.966379999999958}}, {'spans': [
+    {'start': 38, 'end': 40,
+     'box': {'left': 0.7722364705882353, 'top': 0.08181785724465564, 'width': 0.012888674302521032,
+             'height': 0.00851912114014249, 'page': 0}}], 'id': 9, 'metadata': {
+    'fontname': 'HXONRZ+NimbusRomNo9L-Regu', 'size': 7.173099999999977}}]
 
 
 class TestCoreRecipe(unittest.TestCase):
@@ -25,4 +67,4 @@ class TestCoreRecipe(unittest.TestCase):
         doc = recipe.run(pdfpath=self.pdfpath)
         self.assertEqual(doc.symbols[:1000], FIRST_1000_SYMBOLS)
         self.assertDictEqual(doc.pages[0].to_json(), PAGE_JSON)
-
+        self.assertListEqual([t.to_json() for t in doc.tokens[:10]], FIRST_10_TOKENS_JSON)
