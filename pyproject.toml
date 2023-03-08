@@ -61,6 +61,9 @@ dev = [
     'pytest-xdist',
     'pytest-cov',
 ]
+grobid_full_text_parser = [
+    'grobid-client-python==0.0.5'
+]
 spacy_predictors = [
     'spacy',
 ]
