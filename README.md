@@ -9,6 +9,11 @@ conda create -n mmda python=3.8
 pip install -e '.[dev,<extras_require section from setup.py>]'
 ```
 
+For most users, we recommend using recipes:
+```python
+pip install -e '.[dev,recipes]'
+```
+
 ## Unit testing
 Note that pytest is running coverage, which checks the unit test coverage of the code.
 The percent coverage can be found in setup.cfg file.
