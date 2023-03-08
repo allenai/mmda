@@ -158,3 +158,9 @@ class SpanGroup(Annotation):
             box_group=self.box_group.to_mmda()if self.box_group else None,
             id=self.id
         )
+
+
+class Relation(BaseModel):
+    from_id: int
+    to_id: int
+    attributes: Attributes = Attributes()

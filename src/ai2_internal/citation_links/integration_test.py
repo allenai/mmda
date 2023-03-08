@@ -49,7 +49,7 @@ class TestInterfaceIntegration(unittest.TestCase):
     def test__predictions(self, container):
         # single text string representing text contents of pdf
         symbols = "titlexxxx4xxxx16xxx[16] C. Fisch, Centennial of the string galvanometer and the electro- cardiogram4. Wei Zhuo, Qianyi Zhan, Yuan Liu, Zhenping Xie, and Jing Lu. Context attention heterogeneous network embed- ding.37 Urban Taco Collective, Tacos with sauce, 2019"
-        
+
         # text for this span is "4"
         span1 = api.Span(start = 9, end = 10, box = None)
         mention1 = api.SpanGroup(
@@ -105,12 +105,17 @@ class TestInterfaceIntegration(unittest.TestCase):
             Instance(symbols = symbols, mentions = [mention1, mention2], bibs = [bib1, bib2, bib3])
         ]
 
-        
+
         predictions = container.predict_batch(instances)
         self.assertEqual(len(predictions), 1)
 
-        predicted_links = predictions[0].linked_mentions        
+        predicted_links = predictions[0].linked_mentions
         self.assertEqual(len(predicted_links), 2)
         self.assertEqual(predicted_links[0], (str(mention1.id), str(bib2.id)))
         self.assertEqual(predicted_links[1], (str(mention2.id), str(bib1.id)))
-        
+
+        predicted_relations = predictions[0].linked_mention_relations
+        self.assertEqual(len(predicted_relations), 2)
+        self.assertEqual(predicted_relations[0], api.Relation(from_id=mention1.id, to_id=bib2.id))
+        self.assertEqual(predicted_relations[1], api.Relation(from_id=mention2.id, to_id=bib1.id))
+

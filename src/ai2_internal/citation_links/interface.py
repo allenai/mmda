@@ -31,6 +31,7 @@ class Prediction(BaseModel):
     """
     # tuple represents mention.id and bib.id for the linked pair
     linked_mentions: List[Tuple[str, str]]
+    linked_mention_relations: List[api.Relation]
 
 
 class PredictorConfig(BaseSettings):
@@ -65,9 +66,15 @@ class Predictor:
         doc.annotate(mentions=[sg.to_mmda() for sg in inst.mentions])
         doc.annotate(bibs=[sg.to_mmda() for sg in inst.bibs])
 
-        prediction = self._predictor.predict(doc) # returns (mention.id, bib.id)
-        
-        return Prediction(linked_mentions = prediction)
+        prediction = self._predictor.predict(doc) # returns [(mention.id, bib.id)]
+
+        return Prediction(
+            linked_mentions = prediction,
+            linked_mention_relations = [
+                api.Relation(from_id=mention_id, to_id=bib_id)
+                for mention_id, bib_id in prediction
+            ]
+        )
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """
