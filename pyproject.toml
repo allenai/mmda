@@ -126,7 +126,11 @@ figure_table_predictors = [
 ]
 recipes = [
     'layout_parser',
-
+    'transformers',
+    'torch',
+    'torchvision'
+    'effdet',
+    'vila>=0.5,<0.6'
 ]
 
 [tool.pytest.ini_options]
