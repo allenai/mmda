@@ -56,7 +56,7 @@ class GrobidFullTextParser(Parser):
         return doc
 
     def _parse_xml_onto_doc(self, xml: str, doc: Document) -> Document:
-        xml_root = et.parse(io.StringIO(xml)).getroot()
+        xml_root = et.fromstring(xml)
 
         bib_entries = self._get_grobid_bib_box_groups(xml_root)
         
