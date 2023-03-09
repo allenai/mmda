@@ -19,9 +19,14 @@ REQUIRED_DOCUMENT_FIELDS = [PagesField, RowsField, TokensField]
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 
 
-class GrobidFullTextParser(Parser):
-    """Grobid parser that uses grobid python client to convert grobid XML 
-    TEI coordinates into MMDA SpanGroups.
+class GrobidAugmentExistingDocumentParser(Parser):
+    """Grobid parser that uses Grobid python client to hit a running
+     Grobid server and convert resulting grobid XML TEI coordinates into 
+     MMDA BoxGroups to annotate an existing Document.
+     
+     Run a Grobid server (from https://grobid.readthedocs.io/en/latest/Grobid-docker/):
+     > docker pull lfoppiano/grobid:0.7.2
+     > docker run -t --rm -p 8070:8070 lfoppiano/grobid:0.7.2
     """
 
     def __init__(self, config_path: str = "grobid.config", check_server: bool = True):
