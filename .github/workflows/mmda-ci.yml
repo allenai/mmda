@@ -23,7 +23,7 @@ jobs:
 
       - name: Test with Python ${{ matrix.python-version }}
         run: |
-          pip install -e .[dev,pysbd_predictors,hf_predictors,lp_predictors, grobid_full_text_parser]
+          pip install -e .[dev,pysbd_predictors,hf_predictors,lp_predictors,grobid_full_text_parser]
           pytest --cov-fail-under=42 \
             --ignore=tests/test_predictors/test_vila_predictors.py \
             --ignore=tests/test_predictors/test_figure_table_predictors.py \
