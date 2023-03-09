@@ -14,7 +14,7 @@ PDF_PATH = "../fixtures/grobid_full_text_parser/0c027af0ee9c1901c57f6579d903aede
 XML_OK = open("../fixtures/grobid_full_text_parser/0c027af0ee9c1901c57f6579d903aedee7f4.xml").read()
 TEST_CONFIG_PATH =  "../fixtures/grobid_full_text_parser/grobid.config"
 
-def mock_post(*args, **kwargs):
+def mock_request(*args, **kwargs):
     class MockResponse:
         def __init__(self, xml: str, status_code: int) -> None:
             self._xml = xml
@@ -32,8 +32,8 @@ def mock_post(*args, **kwargs):
 
 
 class TestGrobidFullTextParser(unittest.TestCase):
-    @um.patch("requests.post", side_effect=mock_post)
-    def test_processes_full_text(self, mock_post):
+    @um.patch("requests.request", side_effect=mock_request)
+    def test_processes_full_text(self, mock_request):
         logging.getLogger("pdfminer").setLevel(logging.WARNING)
 
         pdf_plumber = PDFPlumberParser()
@@ -42,7 +42,8 @@ class TestGrobidFullTextParser(unittest.TestCase):
 
         config_data = open(TEST_CONFIG_PATH).read()
         with um.patch("builtins.open", um.mock_open(read_data=config_data)):
-            parser = GrobidFullTextParser(config_path=TEST_CONFIG_PATH)
+            parser = GrobidFullTextParser(config_path=TEST_CONFIG_PATH, check_server=False)
+        print("parser initited")
 
         doc = parser.parse(input_pdf_path=PDF_PATH, doc=doc)
         

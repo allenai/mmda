@@ -24,9 +24,9 @@ class GrobidFullTextParser(Parser):
     TEI coordinates into MMDA SpanGroups.
     """
 
-    def __init__(self, config_path: str = "grobid.config"):
+    def __init__(self, config_path: str = "grobid.config", check_server: bool = True):
 
-        self.client = GrobidClient(config_path=config_path)
+        self.client = GrobidClient(config_path=config_path, check_server=check_server)
 
 
     def parse(self, input_pdf_path: str, doc: Document, xml_out_dir: Optional[str] = None) -> Document:
