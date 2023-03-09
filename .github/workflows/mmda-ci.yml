@@ -27,26 +27,9 @@ jobs:
           sudo apt-get -y install poppler-utils
           pip install -e .[dev,pysbd_predictors,hf_predictors,lp_predictors,recipes]
           pytest --cov-fail-under=42 \
-            --ignore=tests/test_recipes/test_core_recipe.py \
             --ignore=tests/test_predictors/test_vila_predictors.py \
             --ignore=tests/test_predictors/test_figure_table_predictors.py \
             --ignore=tests/test_predictors/test_section_nesting_predictor.py
-
-  test_recipes:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.8'
-          architecture: x64
-      - run: |
-          sudo apt-get update
-          sudo apt-get -y install poppler-utils
-      - run: |
-          pip install -e .[dev,recipes]
-          pytest tests/test_recipes/test_core_recipe.py --no-cov
 
   test_vila_predictors:
     runs-on: ubuntu-latest
