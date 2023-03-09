@@ -23,6 +23,8 @@ jobs:
 
       - name: Test with Python ${{ matrix.python-version }}
         run: |
+          sudo apt-get update
+          sudo apt-get -y install poppler-utils
           pip install -e .[dev,pysbd_predictors,hf_predictors,lp_predictors,recipes]
           pytest --cov-fail-under=42 \
             --ignore=tests/test_recipes/test_core_recipe.py \
