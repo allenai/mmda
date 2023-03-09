@@ -36,7 +36,7 @@ class TestCoreRecipe(unittest.TestCase):
     def setUp(self):
         self.pdfpath = os.path.join(os.path.dirname(__file__), '../fixtures/1903.10676.pdf')
         self.recipe = CoreRecipe()
-        self.doc = self.recipe.run(pdfpath=self.pdfpath)
+        self.doc = self.recipe.from_path(pdfpath=self.pdfpath)
 
     def test_correct_output(self):
         self.assertEqual(self.doc.symbols[:1000], FIRST_1000_SYMBOLS)

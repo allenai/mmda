@@ -40,7 +40,7 @@ from mmda.types import Document
 from mmda.recipes.recipe import CoreRecipe
 
 recipe = CoreRecipe()
-doc: Document = recipe.run(pdfpath='...pdf')
+doc: Document = recipe.from_path(pdfpath='...pdf')
 ```
 
 #### 2. Understanding the output: the `Document` class
@@ -146,10 +146,10 @@ If you look at what is happening in `CoreRecipe`, it's basically stitching toget
 * `Predictors` take a `Document` and apply some operation to compute a new set of `SpanGroup` objects that we can insert into our `Document`. These are all built in-house and can be either simple heuristics or full machine-learning models.
 
 
-If we look at how `CoreRecipe` is implemented, what's happening in `.run()` is:
+If we look at how `CoreRecipe` is implemented, what's happening in `.from_path()` is:
 
 ```
-    def run(self, pdfpath: str) -> Document:
+    def from_path(self, pdfpath: str) -> Document:
         logger.info("Parsing document...")
         doc = self.parser.parse(input_pdf_path=pdfpath)
 

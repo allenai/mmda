@@ -17,11 +17,12 @@ from mmda.predictors.lp_predictors import LayoutParserPredictor
 from mmda.predictors.hf_predictors.token_classification_predictor import \
     IVILATokenClassificationPredictor
 
-
 class Recipe:
-    def run(self, doc: Document) -> Document:
+    def from_path(self, pdfpath: str) -> Document:
         raise NotImplementedError
 
+    def from_doc(self, doc: Document) -> Document:
+        raise NotImplementedError
 
 class CoreRecipe(Recipe):
     def __init__(self,
@@ -38,7 +39,7 @@ class CoreRecipe(Recipe):
         self.vila_predictor = IVILATokenClassificationPredictor.from_pretrained(vila_predictor_path)
         logger.info("Finished instantiating recipe")
 
-    def run(self, pdfpath: str) -> Document:
+    def from_path(self, pdfpath: str) -> Document:
         logger.info("Parsing document...")
         doc = self.parser.parse(input_pdf_path=pdfpath)
 
