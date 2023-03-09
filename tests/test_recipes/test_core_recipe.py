@@ -8,7 +8,7 @@ import os
 import unittest
 
 from mmda.types import Document, SpanGroup, PILImage, BoxGroup
-from mmda.recipes.recipe import CoreRecipe
+from mmda.recipes import CoreRecipe
 from tests.test_recipes.core_recipe_fixtures import FIRST_1000_SYMBOLS, PAGE_JSON, \
     BASE64_PAGE_IMAGE, FIRST_10_VILA_JSONS, SEGMENT_OF_WORD_JSONS, FIRST_3_BLOCKS_JSON, \
     FIRST_5_ROWS_JSON, FIRST_10_TOKENS_JSON

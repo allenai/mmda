@@ -37,7 +37,7 @@ pytest -k 'TestFigureCaptionPredictor' --no-cov -n0
 In this example, we use the `CoreRecipe` to convert a PDF into a bunch of text and images.
 ```python
 from mmda.types import Document
-from mmda.recipes.recipe import CoreRecipe
+from mmda.recipes import CoreRecipe
 
 recipe = CoreRecipe()
 doc: Document = recipe.from_path(pdfpath='...pdf')
