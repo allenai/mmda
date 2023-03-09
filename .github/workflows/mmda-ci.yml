@@ -23,7 +23,9 @@ jobs:
 
       - name: Test with Python ${{ matrix.python-version }}
         run: |
-          pip install -e .[dev,pysbd_predictors,hf_predictors,lp_predictors,grobid_augment_existing_document_parser]
+          sudo apt-get update
+          sudo apt-get -y install poppler-utils
+          pip install -e .[dev,pysbd_predictors,hf_predictors,lp_predictors,recipes,grobid_augment_existing_document_parser]
           pytest --cov-fail-under=42 \
             --ignore=tests/test_predictors/test_vila_predictors.py \
             --ignore=tests/test_predictors/test_figure_table_predictors.py \
