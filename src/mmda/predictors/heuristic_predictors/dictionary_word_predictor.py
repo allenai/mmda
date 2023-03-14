@@ -483,8 +483,9 @@ class DictionaryWordPredictor(BasePredictor):
         #             token_id_to_word_id[i] = first_token_id
         #         word_id_to_text[first_token_id] = candidate_text
 
-        # are there any unclassified tokens?
-        assert None not in token_id_to_word_id.values()
+        if any(v is None for v in token_id_to_word_id.values()):
+            raise ValueError("Some tokens are not part of any word.")
+
         return token_id_to_word_id, word_id_to_text
 
     def _convert_to_words(
@@ -493,6 +494,11 @@ class DictionaryWordPredictor(BasePredictor):
             token_id_to_word_id,
             word_id_to_text
     ) -> List[SpanGroup]:
+
+        if len(document.tokens) == 0:
+            # document has no tokens
+            return []
+
         words = []
         tokens_in_word = [document.tokens[0]]
         current_word_id = 0

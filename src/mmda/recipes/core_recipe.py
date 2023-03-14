@@ -51,6 +51,7 @@ class CoreRecipe(Recipe):
         logger.info("Predicting blocks...")
         blocks = self.effdet_publaynet_predictor.predict(document=doc)
         equations = self.effdet_mfd_predictor.predict(document=doc)
+
         doc.annotate(blocks=blocks + equations)
 
         logger.info("Predicting vila...")

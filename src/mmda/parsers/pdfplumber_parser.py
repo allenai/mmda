@@ -195,26 +195,57 @@ class PDFPlumberParser(Parser):
                     fine_tokens=[f["text"] for f in fine_tokens],
                 )
                 assert len(word_ids_of_fine_tokens) == len(fine_tokens)
+
                 # 4) normalize / clean tokens & boxes
-                fine_tokens = [
-                    {
-                        "text": token["text"],
-                        "fontname": token["fontname"],
-                        "size": token["size"],
-                        "bbox": Box.from_pdf_coordinates(
-                            x1=float(token["x0"]),
-                            y1=float(token["top"]),
-                            x2=float(token["x1"]),
-                            y2=float(token["bottom"]),
-                            page_width=float(page.width),
-                            page_height=float(page.height),
-                            page=int(page_id),
-                        ).get_relative(
-                            page_width=float(page.width), page_height=float(page.height)
-                        ),
-                    }
-                    for token in fine_tokens
-                ]
+                if len(fine_tokens) > 0:
+                    fine_tokens = [
+                        {
+                            "text": token["text"],
+                            "fontname": token["fontname"],
+                            "size": token["size"],
+                            "bbox": Box.from_pdf_coordinates(
+                                x1=float(token["x0"]),
+                                y1=float(token["top"]),
+                                x2=float(token["x1"]),
+                                y2=float(token["bottom"]),
+                                page_width=float(page.width),
+                                page_height=float(page.height),
+                                page=int(page_id),
+                            ).get_relative(
+                                page_width=float(page.width),
+                                page_height=float(page.height)
+                            ),
+                        }
+                        for token in fine_tokens
+                    ]
+                else:
+                    # this page does not have tokens, so we add a single
+                    # fictitious token to the page. This is to ensure that
+                    # any element that is on this page gets anchored to
+                    # something
+                    fine_tokens = [
+                        {
+                            # adding one single character: the null character
+                            "text": "\u0000",
+                            "fontname": "",
+                            "size": 0.,
+                            "bbox": Box.from_pdf_coordinates(
+                                x1=0.,
+                                y1=0.,
+                                x2=1.,
+                                y2=1.,
+                                page_width=float(page.width),
+                                page_height=float(page.height),
+                                page=int(page_id),
+                            ).get_relative(
+                                page_width=float(page.width),
+                                page_height=float(page.height)
+                            ),
+                        }
+                    ]
+                    word_ids_of_fine_tokens = [0]
+
+
                 # 5) group tokens into lines
                 # TODO - doesnt belong in parser; should be own predictor
                 line_ids_of_fine_tokens = self._simple_line_detection(
@@ -223,18 +254,25 @@ class PDFPlumberParser(Parser):
                     y_tolerance=self.line_y_tolerance / page.height,
                 )
                 assert len(line_ids_of_fine_tokens) == len(fine_tokens)
+
                 # 6) accumulate
                 all_tokens.extend(fine_tokens)
                 all_row_ids.extend(
                     [i + last_row_id + 1 for i in line_ids_of_fine_tokens]
                 )
+
+                # import ipdb; ipdb.set_trace()
+
+                # 7) Update the last word id and row id for this page
                 last_row_id = all_row_ids[-1]
                 all_word_ids.extend(
                     [i + last_word_id + 1 for i in word_ids_of_fine_tokens]
                 )
                 last_word_id = all_word_ids[-1]
+
                 for _ in fine_tokens:
                     all_page_ids.append(page_id)
+
             # now turn into a beautiful document!
             doc_json = self._convert_nested_text_to_doc_json(
                 token_dicts=all_tokens,
@@ -242,6 +280,8 @@ class PDFPlumberParser(Parser):
                 row_ids=all_row_ids,
                 page_ids=all_page_ids,
             )
+            # import ipdb; ipdb.set_trace()
+
             doc = Document.from_json(doc_json)
             return doc
 
@@ -299,14 +339,15 @@ class PDFPlumberParser(Parser):
                 # new row
                 symbols += "\n"
                 start = end + 1
-        # handle last token
-        symbols += token_dicts[-1]["text"]
-        end = start + len(token_dicts[-1]["text"])
-        token = SpanGroup(
-            spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
-            id=len(token_dicts) - 1,
-        )
-        token_annos.append(token)
+        # handle last token if we have one
+        if len(token_dicts) > 0:
+            symbols += token_dicts[-1]["text"]
+            end = start + len(token_dicts[-1]["text"])
+            last_token = SpanGroup(
+                spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
+                id=len(token_dicts) - 1,
+            )
+            token_annos.append(last_token)
 
         # 2) build rows
         tokens_with_group_ids = [
