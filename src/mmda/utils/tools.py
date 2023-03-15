@@ -1,5 +1,6 @@
-from typing import List, Union, Dict, Any, Tuple, Optional
 from collections import defaultdict
+from itertools import groupby
+from typing import List, Dict, Tuple
 
 from mmda.types.span import Span
 from mmda.types.box import Box
@@ -130,8 +131,13 @@ class MergeSpans:
         merged_spans = []
         for comp in range(number_of_comps):
             if nodes_in_comp[comp]:
-                merged_box = Box.small_boxes_to_big_box([span.box for span in nodes_in_comp[comp]])
-                merged_spans.append(Span(start=min([span.start for span in nodes_in_comp[comp]]),
-                                         end=max([span.end for span in nodes_in_comp[comp]]), box=merged_box))
+                spans_by_page: Dict[int, List[Span]] = defaultdict(list)
+                for pg, page_spans in groupby(nodes_in_comp[comp], lambda s: s.box.page):
+                    for span in page_spans:
+                        spans_by_page[pg].append(span)
+                for page_spans in spans_by_page.values():
+                    merged_box = Box.small_boxes_to_big_box([span.box for span in page_spans])
+                    merged_spans.append(Span(start=min([span.start for span in page_spans]),
+                                             end=max([span.end for span in page_spans]), box=merged_box))
         return merged_spans
 
