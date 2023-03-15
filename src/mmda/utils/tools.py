@@ -131,8 +131,8 @@ class MergeSpans:
         merged_spans = []
         for comp in range(number_of_comps):
             if nodes_in_comp[comp]:
-                spans_by_page: Dict[int, List[Span]] = defaultdict(list)
-                for pg, page_spans in groupby(nodes_in_comp[comp], lambda s: s.box.page):
+                spans_by_page: Dict[any, List[Span]] = defaultdict(list)
+                for pg, page_spans in groupby(nodes_in_comp[comp], lambda s: s.box.page if s.box is not None else None):
                     for span in page_spans:
                         spans_by_page[pg].append(span)
                 for page_spans in spans_by_page.values():
