@@ -29,7 +29,14 @@ class MergeSpans:
     which are index distance apart
     Inspired by https://leetcode.com/problems/merge-intervals/
     """
-    def __init__(self, list_of_spans: List["Span"], w: float = 0, h: float = 0, index_distance: int = 1) -> None:
+
+    def __init__(
+        self,
+        list_of_spans: List["Span"],
+        w: float = 0,
+        h: float = 0,
+        index_distance: int = 1,
+    ) -> None:
         """
         Args
             w (float): The input width between boxes to merge
@@ -50,14 +57,17 @@ class MergeSpans:
         is_neighboring_spans = (
             lambda span1, span2: min(
                 abs(span1.start - span2.end), abs(span1.end - span2.start)
-            ) <= self.index_distance
+            )
+            <= self.index_distance
         )
 
         for i, span_i in enumerate(self.list_of_spans):
             for j in range(i + 1, len(self.list_of_spans)):
                 if is_neighboring_spans(span_i, self.list_of_spans[j]):
                     self.graph[span_i.start, span_i.end].append(self.list_of_spans[j])
-                    self.graph[self.list_of_spans[j].start, self.list_of_spans[j].end].append(span_i)
+                    self.graph[
+                        self.list_of_spans[j].start, self.list_of_spans[j].end
+                    ].append(span_i)
 
     def build_graph_box_overlap(self):
         """
@@ -65,12 +75,15 @@ class MergeSpans:
         boxes given, w, h
         """
         for i, span_i in enumerate(self.list_of_spans):
-            assert hasattr(span_i, 'box'), 'Missing attribute box in a span'
+            assert hasattr(span_i, "box"), "Missing attribute box in a span"
             for j in range(i + 1, len(self.list_of_spans)):
-                assert hasattr(self.list_of_spans[j], 'box'), 'Missing attribute box in a span'
-                if span_i.box.is_overlap(self.list_of_spans[j].box, self.w, self.h):
-                    self.graph[span_i.start, span_i.end].append(self.list_of_spans[j])
-                    self.graph[self.list_of_spans[j].start, self.list_of_spans[j].end].append(span_i)
+                assert hasattr(span_j, "box"), "Missing attribute box in a span"
+                span_j = self.list_of_spans[j]
+                if span_i.box.page == span_j.box.page and span_i.box.is_overlap(
+                    span_j.box, self.w, self.h
+                ):
+                    self.graph[span_i.start, span_i.end].append(span_j)
+                    self.graph[span_j.start, span_j.end].append(span_i)
 
     # gets the connected components of the boxes overlap graph.
     def get_components(self):
@@ -128,10 +141,42 @@ class MergeSpans:
 
         # all intervals in each connected component must be merged.
         merged_spans = []
-        for comp in range(number_of_comps):
-            if nodes_in_comp[comp]:
-                merged_box = Box.small_boxes_to_big_box([span.box for span in nodes_in_comp[comp]])
-                merged_spans.append(Span(start=min([span.start for span in nodes_in_comp[comp]]),
-                                         end=max([span.end for span in nodes_in_comp[comp]]), box=merged_box))
-        return merged_spans
 
+        # connected component should not consider page to allow continuing span merge by index across pages
+        # here, however, we split spans to pages for box merging
+        # FIXME: box method should consider page...
+        for component in nodes_in_comp.values():
+            page_spans = defaultdict(list)
+
+            # If all spans have boxes then split by page
+            if all([span.box for span in component]):
+                for span in component:
+                    page_spans[span.box.page].append(span)
+            else:
+                page_spans[-1] = component
+
+            for page in sorted(page_spans.keys()):
+                merged_box = Box.small_boxes_to_big_box(
+                    [span.box for span in page_spans[page]]
+                )
+                merged_spans.append(
+                    Span(
+                        start=min([span.start for span in page_spans[page]]),
+                        end=max([span.end for span in page_spans[page]]),
+                        box=merged_box,
+                    )
+                )
+
+        # for comp in range(number_of_comps):
+        #    if nodes_in_comp[comp]:
+        #        merged_box = Box.small_boxes_to_big_box(
+        #            [span.box for span in nodes_in_comp[comp]]
+        #        )
+        #        merged_spans.append(
+        #            Span(
+        #                start=min([span.start for span in nodes_in_comp[comp]]),
+        #                end=max([span.end for span in nodes_in_comp[comp]]),
+        #                box=merged_box,
+        #            )
+        #        )
+        return merged_spans
