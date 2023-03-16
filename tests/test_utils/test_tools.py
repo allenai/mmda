@@ -55,15 +55,23 @@ class TestMergeNeighborSpans(unittest.TestCase):
     def test_handling_of_boxes(self):
         spans = [
             Span(start=0, end=10, box=Box(l=0, t=0, w=1, h=1, page=0)),
-            Span(start=11, end=20, box=Box(l=1, t=1, w=2, h=2, page=1)),
-            Span(start=100, end=150, box=Box(l=2, t=2, w=3, h=3, page=2))
+            Span(start=11, end=20, box=Box(l=1, t=1, w=2, h=2, page=0)),
+            Span(start=21, end=150, box=Box(l=2, t=2, w=3, h=3, page=1))
         ]
         merge_spans = MergeSpans(list_of_spans=spans, index_distance=1)
-        with self.assertRaises(ValueError) as context:
-            merge_spans.merge_neighbor_spans_by_symbol_distance()
+        merge_spans.merge_neighbor_spans_by_symbol_distance()
 
-        self.assertTrue('Bboxes not all on same page: [Box(l=0, t=0, w=1, h=1, page=0), '
-                        'Box(l=1, t=1, w=2, h=2, page=1)]' in str(context.exception))
+        out = merge_spans.merge_neighbor_spans_by_symbol_distance()
+        assert len(out) == 2
+        assert isinstance(out[0], Span)
+        assert isinstance(out[1], Span)
+        assert out[0].start == 0
+        assert out[0].end == 20
+        assert out[1].start == 21
+        assert out[1].end == 150
+        assert out[0].box == Box(l=0, t=0, w=3, h=3, page=0)
+        # unmerged spans from separate pages keep their original box
+        assert out[1].box == spans[-1].box
 
         spans = [
             Span(start=0, end=10, box=Box(l=0, t=0, w=1, h=1, page=1)),
@@ -81,7 +89,32 @@ class TestMergeNeighborSpans(unittest.TestCase):
         assert out[1].start == 100
         assert out[1].end == 150
         assert out[0].box == Box(l=0, t=0, w=3, h=3, page=1)
-        assert out[1].box == spans[-1].box  # unmerged spans keep their original box
+        # unmerged spans that were too far apart in symbol distance keep their original box
+        assert out[1].box == spans[-1].box
+
+        spans = [
+            Span(start=0, end=10, box=Box(l=0, t=0, w=1, h=1, page=0)),
+            Span(start=11, end=20),
+            Span(start=21, end=150),
+            Span(start=155, end=200)
+        ]
+        merge_spans = MergeSpans(list_of_spans=spans, index_distance=1)
+        merge_spans.merge_neighbor_spans_by_symbol_distance()
+
+        out = merge_spans.merge_neighbor_spans_by_symbol_distance()
+        assert len(out) == 3
+        assert isinstance(out[0], Span)
+        assert isinstance(out[1], Span)
+        assert out[0].start == 0
+        assert out[0].end == 10
+        assert out[1].start == 11
+        assert out[1].end == 150
+        # spans without boxes are able to group together
+        assert out[1].box is None
+        # or not
+        assert out[2].start == 155
+        assert out[2].end == 200
+        assert out[1].box is None
 
 
 list_of_spans_to_merge = [
