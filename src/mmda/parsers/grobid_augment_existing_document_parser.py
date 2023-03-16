@@ -6,11 +6,11 @@
 from grobid_client.grobid_client import GrobidClient
 from typing import Optional, List
 
-import io
 import os
 import xml.etree.ElementTree as et
 
 from mmda.parsers.parser import Parser
+from mmda.types import Metadata
 from mmda.types.annotation import BoxGroup, Box
 from mmda.types.document import Document
 from mmda.types.names import PagesField, RowsField, TokensField
@@ -65,8 +65,8 @@ class GrobidAugmentExistingDocumentParser(Parser):
 
         bib_entries = self._get_grobid_bib_box_groups(xml_root)
         
-        # if/when adding in relations between mention sources and bib targets, we'll have to 
-        #  re-map the source and target IDs onto their new MMDA SpanGroup IDs
+        # note for if/when adding in relations between mention sources and bib targets:
+        # big_entries metadata contains original grobid id attached to the BoxGroup.
         doc.annotate(
             bib_entries=bib_entries
             )
@@ -109,7 +109,7 @@ class GrobidAugmentExistingDocumentParser(Parser):
             grobid_bibs.append(
                 BoxGroup(
                 boxes=boxes, 
-                id=grobid_id
+                metadata=Metadata(grobid_id=grobid_id)
                 )
             )
 
