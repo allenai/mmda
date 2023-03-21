@@ -37,7 +37,7 @@ import unittest
 
 from .. import api
 from mmda.types.document import Document
-from .interface import Instance
+from .interface import Instance, Prediction
 
 try:
     from timo_interface import with_timo_container
@@ -67,6 +67,27 @@ def read_fixture_doc_and_entries(filename):
 
 @with_timo_container
 class TestInterfaceIntegration(unittest.TestCase):
+    def test__handles_no_bib_entries(self, container):
+        filename = "test_data.json.gz"
+        doc, bib_entry_boxes = read_fixture_doc_and_entries(filename)
+        instance = Instance(
+            symbols=doc.symbols,
+            tokens=[api.SpanGroup.from_mmda(token) for token in doc.tokens],
+            pages=[api.SpanGroup.from_mmda(page) for page in doc.pages],
+            bib_entry_boxes=[]
+        )
+        prediction = container.predict_batch([instance])[0]
+
+        self.assertEqual(prediction, Prediction(
+            bib_entry_number=[],
+            bib_entry_authors=[],
+            bib_entry_title=[],
+            bib_entry_venue_or_event=[],
+            bib_entry_year=[],
+            bib_entry_doi=[],
+            bib_entry_url=[]
+        ))
+
     def test__predictions(self, container):
         # Produced from running upstream models on example paper
         # (000026bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf)

@@ -52,6 +52,9 @@ class BibEntryPredictor(BasePredictor):
         return prediction
 
     def predict_raw(self, bib_entries: List[str]) -> List[BibEntryPredictionWithSpan]:
+        if not bib_entries:
+            return []
+
         res = []
 
         tokenized_inputs = self.tokenizer(bib_entries, padding=True, truncation=True, return_tensors="pt")
