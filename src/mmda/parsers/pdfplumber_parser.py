@@ -1,8 +1,10 @@
+from contextlib import ExitStack
 import itertools
 import string
 from typing import List, Optional, Union
 
 import pdfplumber
+from pdfminer.pdfparser import PDFSyntaxError
 
 try:
     # pdfplumber >= 0.8.0
@@ -20,6 +22,10 @@ from mmda.types.names import PagesField, RowsField, SymbolsField, TokensField
 from mmda.types.span import Span
 
 _TOL = Union[int, float]
+
+
+class PdfParsingError(PDFSyntaxError):
+    ...
 
 
 class WordExtractorWithFontInfo(ppu.WordExtractor):
@@ -76,10 +82,10 @@ class PDFPlumberParser(Parser):
 
     def __init__(
         self,
-        token_x_tolerance: int = 1.5,
-        token_y_tolerance: int = 2,
-        line_x_tolerance: int = 10,
-        line_y_tolerance: int = 10,
+        token_x_tolerance: Union[int, float] = 1.5,
+        token_y_tolerance: Union[int, float] = 2,
+        line_x_tolerance: Union[int, float] = 10,
+        line_y_tolerance: Union[int, float] = 10,
         keep_blank_chars: bool = False,
         use_text_flow: bool = True,
         horizontal_ltr: bool = True,
@@ -157,8 +163,26 @@ class PDFPlumberParser(Parser):
             split_at_punctuation = type(self).DEFAULT_PUNCTUATION_CHARS
         self.split_at_punctuation = split_at_punctuation
 
-    def parse(self, input_pdf_path: str) -> Document:
-        with pdfplumber.open(input_pdf_path) as plumber_pdf_object:
+    def parse(self, input_pdf_path: str, **_) -> Document:
+        """Parse the pdf file and return a Document object.
+
+        Args:
+            input_pdf_path (str): The path to the pdf file.
+        """
+
+        # using a stack so we can detect if the open() fails
+        with ExitStack() as stack:
+
+            try:
+                plumber_pdf_object = stack.enter_context(
+                    pdfplumber.open(input_pdf_path)
+                )
+            except PDFSyntaxError as e:
+                raise PdfParsingError(
+                    f"Failed to open '{input_pdf_path}' with pdfplumber. "
+                    f"Please check if the file is a valid pdf file. "
+                ) from e
+
             all_tokens = []
             all_word_ids = []
             last_word_id = -1
@@ -194,27 +218,64 @@ class PDFPlumberParser(Parser):
                     coarse_tokens=[c["text"] for c in coarse_tokens],
                     fine_tokens=[f["text"] for f in fine_tokens],
                 )
-                assert len(word_ids_of_fine_tokens) == len(fine_tokens)
+                if len(word_ids_of_fine_tokens) != len(fine_tokens):
+                    raise ValueError(
+                        "The length of word_ids_of_fine_tokens and fine_tokens "
+                        f"should be the same on page {page_id}, but got "
+                        f"{len(word_ids_of_fine_tokens)} and {len(fine_tokens)}."
+                        "Please report this issue on Github, and include the "
+                        "pdf file that caused this error."
+                    )
+
                 # 4) normalize / clean tokens & boxes
-                fine_tokens = [
-                    {
-                        "text": token["text"],
-                        "fontname": token["fontname"],
-                        "size": token["size"],
-                        "bbox": Box.from_pdf_coordinates(
-                            x1=float(token["x0"]),
-                            y1=float(token["top"]),
-                            x2=float(token["x1"]),
-                            y2=float(token["bottom"]),
-                            page_width=float(page.width),
-                            page_height=float(page.height),
-                            page=int(page_id),
-                        ).get_relative(
-                            page_width=float(page.width), page_height=float(page.height)
-                        ),
-                    }
-                    for token in fine_tokens
-                ]
+                if len(fine_tokens) > 0:
+                    fine_tokens = [
+                        {
+                            "text": token["text"],
+                            "fontname": token["fontname"],
+                            "size": token["size"],
+                            "bbox": Box.from_pdf_coordinates(
+                                x1=float(token["x0"]),
+                                y1=float(token["top"]),
+                                x2=float(token["x1"]),
+                                y2=float(token["bottom"]),
+                                page_width=float(page.width),
+                                page_height=float(page.height),
+                                page=int(page_id),
+                            ).get_relative(
+                                page_width=float(page.width),
+                                page_height=float(page.height)
+                            ),
+                        }
+                        for token in fine_tokens
+                    ]
+                else:
+                    # this page does not have tokens, so we add a single
+                    # fictitious token to the page. This is to ensure that
+                    # any element that is on this page gets anchored to
+                    # something
+                    fine_tokens = [
+                        {
+                            # adding one single character: the null character
+                            "text": "\u0000",
+                            "fontname": "",
+                            "size": 0.,
+                            "bbox": Box.from_pdf_coordinates(
+                                x1=0.,
+                                y1=0.,
+                                x2=1.,
+                                y2=1.,
+                                page_width=float(page.width),
+                                page_height=float(page.height),
+                                page=int(page_id),
+                            ).get_relative(
+                                page_width=float(page.width),
+                                page_height=float(page.height)
+                            ),
+                        }
+                    ]
+                    word_ids_of_fine_tokens = [0]
+
                 # 5) group tokens into lines
                 # TODO - doesnt belong in parser; should be own predictor
                 line_ids_of_fine_tokens = self._simple_line_detection(
@@ -222,19 +283,31 @@ class PDFPlumberParser(Parser):
                     x_tolerance=self.line_x_tolerance / page.width,
                     y_tolerance=self.line_y_tolerance / page.height,
                 )
-                assert len(line_ids_of_fine_tokens) == len(fine_tokens)
+                if len(line_ids_of_fine_tokens) != len(fine_tokens):
+                    raise ValueError(
+                        "The length of line_ids_of_fine_tokens and fine_tokens "
+                        f"should be the same on page {page_id}, but got "
+                        f"{len(line_ids_of_fine_tokens)} and {len(fine_tokens)}."
+                        "Please report this issue on Github, and include the "
+                        "pdf file that caused this error."
+                    )
+
                 # 6) accumulate
                 all_tokens.extend(fine_tokens)
                 all_row_ids.extend(
                     [i + last_row_id + 1 for i in line_ids_of_fine_tokens]
                 )
+
+                # 7) Update the last word id and row id for this page
                 last_row_id = all_row_ids[-1]
                 all_word_ids.extend(
                     [i + last_word_id + 1 for i in word_ids_of_fine_tokens]
                 )
                 last_word_id = all_word_ids[-1]
+
                 for _ in fine_tokens:
                     all_page_ids.append(page_id)
+
             # now turn into a beautiful document!
             doc_json = self._convert_nested_text_to_doc_json(
                 token_dicts=all_tokens,
@@ -242,6 +315,7 @@ class PDFPlumberParser(Parser):
                 row_ids=all_row_ids,
                 page_ids=all_page_ids,
             )
+
             doc = Document.from_json(doc_json)
             return doc
 
@@ -299,14 +373,15 @@ class PDFPlumberParser(Parser):
                 # new row
                 symbols += "\n"
                 start = end + 1
-        # handle last token
-        symbols += token_dicts[-1]["text"]
-        end = start + len(token_dicts[-1]["text"])
-        token = SpanGroup(
-            spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
-            id=len(token_dicts) - 1,
-        )
-        token_annos.append(token)
+        # handle last token if we have one
+        if len(token_dicts) > 0:
+            symbols += token_dicts[-1]["text"]
+            end = start + len(token_dicts[-1]["text"])
+            last_token = SpanGroup(
+                spans=[Span(start=start, end=end, box=token_dicts[-1]["bbox"])],
+                id=len(token_dicts) - 1,
+            )
+            token_annos.append(last_token)
 
         # 2) build rows
         tokens_with_group_ids = [
@@ -360,7 +435,10 @@ class PDFPlumberParser(Parser):
         }
 
     def _simple_line_detection(
-        self, page_tokens: List[dict], x_tolerance: int = 10, y_tolerance: int = 10
+        self,
+        page_tokens: List[dict],
+        x_tolerance: Union[int, float] = 10,
+        y_tolerance: Union[int, float] = 10
     ) -> List[int]:
         """Get text lines from the page_tokens.
         It will automatically add new lines for 1) line breaks (i.e., the current token
