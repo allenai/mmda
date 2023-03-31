@@ -20,6 +20,14 @@ class TestLevenshteinDistance(unittest.TestCase):
         assert levenshtein("Hello", "heLlo") == 2
         assert levenshtein("Hello", "heLlo", case_sensitive=False) == 0
 
+    def test_strips_spaces(self):
+        assert levenshtein("\nHel lo\r", "Hello") == 3
+        assert levenshtein(" Hel lo ", "Hello", strip_spaces=True) == 0
+
+    def test_normalizes(self):
+        assert levenshtein("\nHel lo\r", "Hello") == 3
+        assert levenshtein(" Hel lo ", "Hello", normalize=True) == 0.375
+
 
 class TestBoxOverlap(unittest.TestCase):
     def _box(self, l, t, w, h):

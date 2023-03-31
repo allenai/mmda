@@ -1,97 +1,107 @@
-from typing import List
+import json
+from typing import Dict, List, Optional
 import argparse
-from copy import copy
 import os
 
 from tqdm import tqdm
-import layoutparser as lp
+import torch
+from layoutparser.elements import TextBlock, Rectangle, Layout
+from layoutparser.visualization import draw_box
+from PIL.Image import Image
 
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from mmda.types.annotation import SpanGroup
 from mmda.predictors.lp_predictors import LayoutParserPredictor
-from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor, HVILAPredictor
+from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor
 
 
 DOCBANK_LABEL_MAP = {
-    "0": "paragraph",
-    "1": "title",
-    "2": "equation",
-    "3": "reference",
-    "4": "section",
-    "5": "list",
-    "6": "table",
-    "7": "caption",
-    "8": "author",
-    "9": "abstract",
-    "10": "footer",
-    "11": "date",
-    "12": "figure",
+    0: "Title",
+    1: "Author",
+    2: "Abstract",
+    3: "Keywords",
+    4: "Section",
+    5: "Paragraph",
+    6: "List",
+    7: "Bibliography",
+    8: "Equation",
+    9: "Algorithm",
+    10: "Figure",
+    11: "Table",
+    12: "Caption",
+    13: "Header",
+    14: "Footer",
+    15: "Footnote"
 }
-DOCBANK_LABEL_MAP = {int(key): val for key, val in DOCBANK_LABEL_MAP.items()}
+
 
 
 def draw_tokens(
-    image,
+    image: Image,
     doc_tokens: List[SpanGroup],
-    color_map=None,
-    token_boundary_width=0,
-    alpha=0.25,
-    **kwargs,
+    color_map: Optional[Dict[int, str]] = None,
+    token_boundary_width: int = 0,
+    alpha: float = 0.25,
+    **lp_draw_box_kwargs,
 ):
+    """Draw MMDA tokens as rectangles on the an image of a page."""
 
     w, h = image.size
     layout = [
-        lp.TextBlock(
-            lp.Rectangle(
+        TextBlock(
+            Rectangle(
                 *token.spans[0]
-                .box.get_absolute(page_height=h, page_width=w)
-                .coordinates
+                .box.get_absolute(  # pyright: ignore
+                    page_height=h,
+                    page_width=w
+                ).coordinates
             ),
             type=token.type,
-            text=token.symbols[0],
+            text=token.text,
         )
         for token in doc_tokens
     ]
-    return lp.draw_box(
+
+    return draw_box(
         image,
-        layout,
+        Layout(blocks=layout),
         color_map=color_map,
         box_width=token_boundary_width,
         box_alpha=alpha,
-        **kwargs,
+        **lp_draw_box_kwargs,
     )
 
 
 def draw_blocks(
-    image,
+    image: Image,
     doc_tokens: List[SpanGroup],
-    color_map=None,
-    token_boundary_width=0,
-    alpha=0.25,
-    **kwargs,
+    color_map: Optional[Dict[int, str]] = None,
+    token_boundary_width: int = 0,
+    alpha: float = 0.25,
+    **lp_draw_box_kwargs,
 ):
 
     w, h = image.size
     layout = [
-        lp.TextBlock(
-            lp.Rectangle(
-                *token.box_group.boxes[0]
+        TextBlock(
+            Rectangle(
+                *token.box_group.boxes[0]   # pyright: ignore
                 .get_absolute(page_height=h, page_width=w)
                 .coordinates
             ),
-            type=token.box_group.type,
-            text=token.symbols[0],
+            type=token.type,
+            text=token.text,
         )
         for token in doc_tokens
     ]
-    return lp.draw_box(
+    return draw_box(
         image,
-        layout,
+        Layout(blocks=layout),
         color_map=color_map,
         box_width=token_boundary_width,
         box_alpha=alpha,
-        **kwargs,
+        **lp_draw_box_kwargs,
     )
 
 
@@ -99,79 +109,99 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--pdf-path", type=str, nargs="+")
-    parser.add_argument("--vila-type", type=str, default="ivila")
     parser.add_argument("--rasterizer-dpi", type=int, default=72)
     parser.add_argument(
         "--vila-model-path",
         type=str,
-        default="docbank/layout_indicator-BLK-block/microsoft-layoutlm-base-uncased/",
+        default="allenai/ivila-row-layoutlm-finetuned-s2vl-v2",
     )
     parser.add_argument(
         "--export-folder",
         type=str,
         default="pdf-predictions",
     )
-
     args = parser.parse_args()
 
-    if args.vila_type == "ivila":
-        vila_predictor = IVILAPredictor.from_pretrained(
-            args.vila_model_path,
-            added_special_sepration_token="[BLK]",
-            agg_level="block",
-        )
-    elif args.vila_type == "hvila":
-        vila_predictor = HVILAPredictor.from_pretrained(
-            args.vila_model_path, agg_level="block", group_bbox_agg="first"
-        )
-
-    layout_predictor = LayoutParserPredictor.from_pretrained(
-        "lp://efficientdet/PubLayNet"
+    # VILA predicts regions on pages, like paragraphs, tables, etc.
+    # for more info, see https://api.semanticscholar.org/CorpusID:245704273
+    vila_predictor = IVILAPredictor.from_pretrained(
+        args.vila_model_path,
+        agg_level="row",
+        added_special_sepration_token="[BLK]",
+        device="cuda" if torch.cuda.is_available() else "cpu",
     )
+
+    # LayoutParser can be used for predicting many layout regions;
+    # here, we use it to find equations. For more info, see
+    # https://api.semanticscholar.org/CorpusID:232404723
     equation_layout_predictor = LayoutParserPredictor.from_pretrained(
-        "lp://efficientdet/MFD"
+        config_path="lp://efficientdet/MFD",
+        device="cuda" if torch.cuda.is_available() else "cpu",
     )
 
+    # these two parsers are used to extract text and images from PDFs
     pdfplumber_parser = PDFPlumberParser()
     rasterizer = PDF2ImageRasterizer()
 
     pbar = tqdm(args.pdf_path)
     for pdf_path in pbar:
+        assert os.path.exists(pdf_path), f"PDF file {pdf_path} does not exist."
+
         pbar.set_description(f"Working on {pdf_path}")
 
         doc = pdfplumber_parser.parse(input_pdf_path=pdf_path)
-        images = rasterizer.rasterize(input_pdf_path=pdf_path, dpi=args.rasterizer_dpi)
+        images = rasterizer.rasterize(
+            input_pdf_path=pdf_path, dpi=args.rasterizer_dpi
+        )
         doc.annotate_images(images)
 
-        # Obtaining Layout Predictions
-        layout_regions = layout_predictor.predict(
-            doc
-        )  # Detect content regions like paragraphs
-        equation_layout_regions = equation_layout_predictor.predict(
-            doc
-        )  # Detect equation regions
-
-        doc.annotate(blocks=layout_regions + equation_layout_regions)
+        # Detect equation regions
+        equation_layout_regions = equation_layout_predictor.predict(doc)
+        doc.annotate(equations=equation_layout_regions)
 
         # Obtaining Textual Predictions
         spans = vila_predictor.predict(doc)
-        doc.annotate(preds=spans)
+        doc.annotate(sections=spans)
 
+        # get location where to save data
         save_folder = os.path.join(
             args.export_folder, os.path.basename(pdf_path).rstrip(".pdf")
         )
         os.makedirs(save_folder, exist_ok=True)
 
-        for pid in range(len(doc.pages)):
-
+        # save images with layout and text predictions
+        for pid, (page, image) in enumerate(zip(doc.pages, doc.images)):
             new_tokens = []
-            for pred in doc.pages[pid].preds:
+            for pred in page.sections:
                 for token in pred.tokens:
-                    _token = copy(token)
-                    _token.type = DOCBANK_LABEL_MAP[pred.type]
-                    new_tokens.append(_token)
+                    new_token = token.from_json(token.to_json())
+                    new_token.type = pred.type
+                    new_token.text = token.text
+                    new_tokens.append(new_token)
 
-            viz = draw_blocks(doc.images[pid], doc.pages[pid].blocks, alpha=0)
-            viz = draw_tokens(viz, new_tokens, alpha=0.6)
+            # draw sections and equations
+            viz = draw_tokens(image, new_tokens, alpha=0.6)
+            viz = draw_blocks(viz, page.equations, alpha=0.2)
 
             viz.save(f"{save_folder}/{pid}.png")
+
+        # Save all text alongside name of section it belongs to
+        with open(f"{save_folder}/sections.jsonl", "w") as f:
+            for pid, page in enumerate(doc.pages):
+                for pred in page.sections:
+                    data = {
+                        "text": str(pred.text),
+                        "type": DOCBANK_LABEL_MAP[int(pred.type)],
+                        "page": int(pid),
+                    }
+                    f.write(f"{json.dumps(data, sort_keys=True)}\n")
+
+        # Save all equations
+        with open(f"{save_folder}/equations.jsonl", "w") as f:
+            for pid, page in enumerate(doc.pages):
+                for pred in page.equations:
+                    data = {
+                        "text": str(pred.text),
+                        "page": int(pid),
+                    }
+                    f.write(f"{json.dumps(data, sort_keys=True)}\n")

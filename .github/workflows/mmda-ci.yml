@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.9", "3.8"]
-    
+
     steps:
       - uses: actions/checkout@v2
       - name: Setup python
@@ -22,9 +22,14 @@ jobs:
           architecture: x64
 
       - name: Test with Python ${{ matrix.python-version }}
-        run: | 
-          pip install -e .[dev,hf_predictors]
-          pytest tests --ignore=tests/test_predictors/test_vila_predictors.py
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install poppler-utils
+          pip install -e .[dev,pysbd_predictors,hf_predictors,lp_predictors,recipes,grobid_augment_existing_document_parser]
+          pytest --cov-fail-under=42 \
+            --ignore=tests/test_predictors/test_vila_predictors.py \
+            --ignore=tests/test_predictors/test_figure_table_predictors.py \
+            --ignore=tests/test_predictors/test_section_nesting_predictor.py
 
   test_vila_predictors:
     runs-on: ubuntu-latest
@@ -36,9 +41,10 @@ jobs:
           python-version: '3.8'
           architecture: x64
       - run: |
-          sudo apt-get update 
-          sudo apt-get -y install poppler-utils 
-      - run: | 
-          pip install -e .[dev]
-          pip install -e .[vila_predictors]
-          pytest tests/test_predictors/test_vila_predictors.py
+          sudo apt-get update
+          sudo apt-get -y install poppler-utils
+      - run: |
+          pip install -e .[dev,vila_predictors,section_nesting]
+          pytest tests/test_predictors/test_vila_predictors.py --no-cov
+          pytest tests/test_predictors/test_figure_table_predictors.py --no-cov
+          pytest tests/test_predictors/test_section_nesting_predictor.py --no-cov
