@@ -110,7 +110,6 @@ class Document:
         self.__fields = [f for f in self.__fields if f != field_name]
         del self.__indexers[field_name]
 
-
     def annotate_images(
         self, images: Iterable[PILImage], is_overwrite: bool = False
     ) -> None:
@@ -160,37 +159,61 @@ class Document:
 
         all_page_tokens = dict()
         derived_span_groups = []
+        token_box_in_box_group = None
 
         for box_id, box_group in enumerate(box_groups):
 
-            all_token_spans_with_box_group = []
+            all_tokens_overlapping_box_group = []
 
             for box in box_group.boxes:
 
                 # Caching the page tokens to avoid duplicated search
                 if box.page not in all_page_tokens:
-                    cur_page_tokens = all_page_tokens[box.page] = list(
-                        itertools.chain.from_iterable(
-                            span_group.spans
-                            for span_group in self.pages[box.page].tokens
+                    cur_page_tokens = all_page_tokens[box.page] = self.pages[
+                        box.page
+                    ].tokens
+                    if token_box_in_box_group is None:
+                        # Determine whether box is stored on token SpanGroup span.box or in the box_group
+                        token_box_in_box_group = all(
+                            [
+                                (
+                                    (hasattr(token.box_group, "boxes") and len(token.box_group.boxes) == 1)
+                                    and token.spans[0].box is None
+                                )
+                                for token in cur_page_tokens
+                            ]
                         )
-                    )
                 else:
                     cur_page_tokens = all_page_tokens[box.page]
 
                 # Find all the tokens within the box
                 tokens_in_box, remaining_tokens = allocate_overlapping_tokens_for_box(
-                    token_spans=cur_page_tokens, box=box
+                    tokens=cur_page_tokens,
+                    box=box,
+                    token_box_in_box_group=token_box_in_box_group,
                 )
                 all_page_tokens[box.page] = remaining_tokens
 
-                all_token_spans_with_box_group.extend(tokens_in_box)
+                all_tokens_overlapping_box_group.extend(tokens_in_box)
+
+            merge_spans = (
+                MergeSpans.from_span_groups_with_box_groups(
+                    span_groups=all_tokens_overlapping_box_group, index_distance=1
+                )
+                if token_box_in_box_group
+                else MergeSpans(
+                    list_of_spans=list(
+                        itertools.chain.from_iterable(
+                            span_group.spans for span_group in all_tokens_overlapping_box_group
+                        )
+                    ),
+                    index_distance=1,
+                )
+            )
 
             derived_span_groups.append(
                 SpanGroup(
-                    spans=MergeSpans(
-                        list_of_spans=all_token_spans_with_box_group, index_distance=1
-                    ).merge_neighbor_spans_by_symbol_distance(),
+                    spans=merge_spans.merge_neighbor_spans_by_symbol_distance(),
                     box_group=box_group,
                     # id = box_id,
                 )
