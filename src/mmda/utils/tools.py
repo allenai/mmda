@@ -21,7 +21,7 @@ def allocate_overlapping_tokens_for_box(
         if token_box_in_box_group and token.box_group.boxes[0].is_overlap(box):
             # The token "box" is stored within the SpanGroup's .box_group
             allocated_tokens.append(token)
-        elif token.box is not None and token.box.is_overlap(box):
+        elif token.spans[0].box is not None and token.spans[0].box.is_overlap(box):
             # default to assuming the token "box" is stored in the SpanGroup .box
             allocated_tokens.append(token)
         else:
