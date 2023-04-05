@@ -177,7 +177,7 @@ class Document:
                         token_box_in_box_group = all(
                             [
                                 (
-                                    len(token.box_group.boxes) == 1
+                                    (hasattr(token.box_group, "boxes") and len(token.box_group.boxes) == 1)
                                     and token.spans[0].box is None
                                 )
                                 for token in cur_page_tokens
