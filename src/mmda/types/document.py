@@ -5,6 +5,7 @@
 """
 
 import itertools
+import logging
 import warnings
 from typing import Dict, Iterable, List, Optional
 
@@ -17,7 +18,6 @@ from mmda.utils.tools import MergeSpans, allocate_overlapping_tokens_for_box
 
 
 class Document:
-
     SPECIAL_FIELDS = [SymbolsField, ImagesField, MetadataField]
     UNALLOWED_FIELD_NAMES = ["fields"]
 
@@ -46,7 +46,7 @@ class Document:
             self.metadata.set(k, value)
 
     def annotate(
-        self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
+            self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
     ) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
@@ -54,7 +54,7 @@ class Document:
         # 1) check validity of field names
         for field_name in kwargs.keys():
             assert (
-                field_name not in self.SPECIAL_FIELDS
+                    field_name not in self.SPECIAL_FIELDS
             ), f"The field_name {field_name} should not be in {self.SPECIAL_FIELDS}."
 
             if field_name in self.fields:
@@ -83,7 +83,7 @@ class Document:
 
             annotation_types = {type(a) for a in annotations}
             assert (
-                len(annotation_types) == 1
+                    len(annotation_types) == 1
             ), f"Annotations in field_name {field_name} more than 1 type: {annotation_types}"
             annotation_type = annotation_types.pop()
 
@@ -111,7 +111,7 @@ class Document:
         del self.__indexers[field_name]
 
     def annotate_images(
-        self, images: Iterable[PILImage], is_overwrite: bool = False
+            self, images: Iterable[PILImage], is_overwrite: bool = False
     ) -> None:
         if not is_overwrite and len(self.images) > 0:
             raise AssertionError(
@@ -133,7 +133,7 @@ class Document:
         self.images = images
 
     def _annotate_span_group(
-        self, span_groups: List[SpanGroup], field_name: str
+            self, span_groups: List[SpanGroup], field_name: str
     ) -> List[SpanGroup]:
         """Annotate the Document using a bunch of span groups.
         It will associate the annotations with the document symbols.
@@ -150,7 +150,7 @@ class Document:
         return span_groups
 
     def _annotate_box_group(
-        self, box_groups: List[BoxGroup], field_name: str
+            self, box_groups: List[BoxGroup], field_name: str
     ) -> List[SpanGroup]:
         """Annotate the Document using a bunch of box groups.
         It will associate the annotations with the document symbols.
@@ -177,8 +177,8 @@ class Document:
                         token_box_in_box_group = all(
                             [
                                 (
-                                    (hasattr(token.box_group, "boxes") and len(token.box_group.boxes) == 1)
-                                    and token.spans[0].box is None
+                                        (hasattr(token.box_group, "boxes") and len(token.box_group.boxes) == 1)
+                                        and token.spans[0].box is None
                                 )
                                 for token in cur_page_tokens
                             ]
@@ -220,6 +220,11 @@ class Document:
                 # TODO Right now we cannot assign the box id, or otherwise running doc.blocks will
                 # generate blocks out-of-the-specified order.
             )
+
+        if not token_box_in_box_group:
+            logging.warning("tokens with box stored in SpanGroup span.box will be deprecated (that is, "
+                            "future Spans wont contain box). Ensure Document is annotated with tokens "
+                            "having box stored in SpanGroup box_group.boxes")
 
         del all_page_tokens
 
