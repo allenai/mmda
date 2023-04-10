@@ -49,9 +49,17 @@ class CoreRecipe(Recipe):
         doc.annotate(words=words)
 
         logger.info("Predicting blocks...")
-        blocks = self.effdet_publaynet_predictor.predict(document=doc)
+        layout = self.effdet_publaynet_predictor.predict(document=doc)
         equations = self.effdet_mfd_predictor.predict(document=doc)
-        doc.annotate(blocks=blocks + equations)
+
+        # we annotate layout info in the document
+        doc.annotate(layout=layout)
+
+        # list annotations separately
+        doc.annotate(equations=equations)
+
+        # blocks are used by IVILA, so we need to annotate them as well
+        doc.annotate(blocks=layout + equations)
 
         logger.info("Predicting vila...")
         vila_span_groups = self.vila_predictor.predict(document=doc)

@@ -1,40 +1,57 @@
-import json
-from typing import Dict, List, Optional
 import argparse
+import contextlib
+import json
 import os
+import re
+import urllib.request
+from tempfile import NamedTemporaryFile
+from typing import Dict, Generator, List, Optional
 
-from tqdm import tqdm
-import torch
-from layoutparser.elements import TextBlock, Rectangle, Layout
+from layoutparser.elements import Layout, Rectangle, TextBlock
 from layoutparser.visualization import draw_box
 from PIL.Image import Image
+from tqdm import tqdm
 
-from mmda.parsers.pdfplumber_parser import PDFPlumberParser
-from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
+from mmda.recipes.core_recipe import CoreRecipe
 from mmda.types.annotation import SpanGroup
-from mmda.predictors.lp_predictors import LayoutParserPredictor
-from mmda.predictors.hf_predictors.vila_predictor import IVILAPredictor
+
+DEFAULT_DEST_DIR = os.path.expanduser("~/mmda_predictions")
 
 
-DOCBANK_LABEL_MAP = {
-    0: "Title",
-    1: "Author",
-    2: "Abstract",
-    3: "Keywords",
-    4: "Section",
-    5: "Paragraph",
-    6: "List",
-    7: "Bibliography",
-    8: "Equation",
-    9: "Algorithm",
-    10: "Figure",
-    11: "Table",
-    12: "Caption",
-    13: "Header",
-    14: "Footer",
-    15: "Footnote"
-}
+def is_url(url: str) -> bool:
+    if os.path.exists(url):
+        return False
 
+    # regex to determine if a string is a valid URL
+    return re.search(r"^(?:http|ftp)s?://", url) is not None
+
+
+def get_dir_name(path: str) -> str:
+    if is_url(path):
+        return path.split("/")[-1].rstrip(".pdf")
+    else:
+        return os.path.basename(path).rstrip(".pdf")
+
+
+@contextlib.contextmanager
+def download_pdf(url: str) -> Generator[str, None, None]:
+    name: Optional[str] = None
+
+    # Create a temporary file
+    with NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+        # Download the file using urllib
+        with urllib.request.urlopen(url) as response:
+            # Save the downloaded data to the temporary file
+            temp_file.write(response.read())
+
+        # Get the name of the temporary file
+        name = temp_file.name
+
+    # return the name of the temporary file
+    yield name
+
+    # Delete the temporary file
+    os.remove(name)
 
 
 def draw_tokens(
@@ -52,10 +69,8 @@ def draw_tokens(
         TextBlock(
             Rectangle(
                 *token.spans[0]
-                .box.get_absolute(  # pyright: ignore
-                    page_height=h,
-                    page_width=w
-                ).coordinates
+                .box.get_absolute(page_height=h, page_width=w)  # pyright: ignore
+                .coordinates
             ),
             type=token.type,
             text=token.text,
@@ -81,12 +96,11 @@ def draw_blocks(
     alpha: float = 0.25,
     **lp_draw_box_kwargs,
 ):
-
     w, h = image.size
     layout = [
         TextBlock(
             Rectangle(
-                *token.box_group.boxes[0]   # pyright: ignore
+                *token.box_group.boxes[0]  # pyright: ignore
                 .get_absolute(page_height=h, page_width=w)
                 .coordinates
             ),
@@ -106,73 +120,48 @@ def draw_blocks(
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pdf-path", type=str, nargs="+")
-    parser.add_argument("--rasterizer-dpi", type=int, default=72)
     parser.add_argument(
-        "--vila-model-path",
+        "-p",
+        "--pdf-path",
         type=str,
-        default="allenai/ivila-row-layoutlm-finetuned-s2vl-v2",
+        nargs="+",
+        required=True,
+        help="Path to PDF file(s) to be processed. Can be a URL.",
     )
     parser.add_argument(
-        "--export-folder",
+        "-d",
+        "--destination",
         type=str,
-        default="pdf-predictions",
+        default=DEFAULT_DEST_DIR,
+        help=(
+            "Path to directory where to save the results. "
+            "A directory will be created for each paper"
+        ),
     )
     args = parser.parse_args()
 
-    # VILA predicts regions on pages, like paragraphs, tables, etc.
-    # for more info, see https://api.semanticscholar.org/CorpusID:245704273
-    vila_predictor = IVILAPredictor.from_pretrained(
-        args.vila_model_path,
-        agg_level="row",
-        added_special_sepration_token="[BLK]",
-        device="cuda" if torch.cuda.is_available() else "cpu",
-    )
-
-    # LayoutParser can be used for predicting many layout regions;
-    # here, we use it to find equations. For more info, see
-    # https://api.semanticscholar.org/CorpusID:232404723
-    equation_layout_predictor = LayoutParserPredictor.from_pretrained(
-        config_path="lp://efficientdet/MFD",
-        device="cuda" if torch.cuda.is_available() else "cpu",
-    )
-
-    # these two parsers are used to extract text and images from PDFs
-    pdfplumber_parser = PDFPlumberParser()
-    rasterizer = PDF2ImageRasterizer()
+    recipe = CoreRecipe()
 
     pbar = tqdm(args.pdf_path)
     for pdf_path in pbar:
-        assert os.path.exists(pdf_path), f"PDF file {pdf_path} does not exist."
-
         pbar.set_description(f"Working on {pdf_path}")
 
-        doc = pdfplumber_parser.parse(input_pdf_path=pdf_path)
-        images = rasterizer.rasterize(
-            input_pdf_path=pdf_path, dpi=args.rasterizer_dpi
-        )
-        doc.annotate_images(images)
-
-        # Detect equation regions
-        equation_layout_regions = equation_layout_predictor.predict(doc)
-        doc.annotate(equations=equation_layout_regions)
-
-        # Obtaining Textual Predictions
-        spans = vila_predictor.predict(doc)
-        doc.annotate(sections=spans)
+        if is_url(pdf_path):
+            with download_pdf(pdf_path) as temp_file:
+                doc = recipe.from_path(temp_file)
+        else:
+            assert os.path.exists(pdf_path), f"PDF file {pdf_path} does not exist."
+            doc = recipe.from_path(pdf_path)
 
         # get location where to save data
-        save_folder = os.path.join(
-            args.export_folder, os.path.basename(pdf_path).rstrip(".pdf")
-        )
+        save_folder = os.path.join(args.destination, get_dir_name(pdf_path))
         os.makedirs(save_folder, exist_ok=True)
 
         # save images with layout and text predictions
         for pid, (page, image) in enumerate(zip(doc.pages, doc.images)):
             new_tokens = []
-            for pred in page.sections:
+            for pred in page.vila_span_groups:
                 for token in pred.tokens:
                     new_token = token.from_json(token.to_json())
                     new_token.type = pred.type
@@ -187,18 +176,18 @@ if __name__ == "__main__":
 
         # Save all text alongside name of section it belongs to
         with open(f"{save_folder}/sections.jsonl", "w") as f:
-            for pid, page in enumerate(doc.pages):
-                for pred in page.sections:
+            for pid, page in enumerate(doc.pages):  # pyright: ignore
+                for pred in page.vila_span_groups:
                     data = {
                         "text": str(pred.text),
-                        "type": DOCBANK_LABEL_MAP[int(pred.type)],
+                        "type": pred.type,
                         "page": int(pid),
                     }
                     f.write(f"{json.dumps(data, sort_keys=True)}\n")
 
         # Save all equations
         with open(f"{save_folder}/equations.jsonl", "w") as f:
-            for pid, page in enumerate(doc.pages):
+            for pid, page in enumerate(doc.pages):  # pyright: ignore
                 for pred in page.equations:
                     data = {
                         "text": str(pred.text),
