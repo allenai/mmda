@@ -30,6 +30,14 @@ class TestPDFPlumberParser(unittest.TestCase):
         for keyword in ["Field", "Task", "SOTA", "Base", "Frozen", "Finetune", "NER"]:
             assert keyword in doc.symbols[:100]
 
+    def test_parse_page_dims(self):
+        parser = PDFPlumberParser()
+        doc = parser.parse(input_pdf_path=self.fixture_path / "1903.10676.pdf")
+
+        for page in doc.pages:
+            self.assertEqual(595.0, page.metadata.width)
+            self.assertEqual(842.0, page.metadata.height)
+
     def test_parse_fontinfo(self):
         parser = PDFPlumberParser()
         doc = parser.parse(input_pdf_path=self.fixture_path / "1903.10676.pdf")
@@ -138,11 +146,13 @@ class TestPDFPlumberParser(unittest.TestCase):
         word_ids = [0, 0, 1, 2, 3, 4, 5, 5]
         row_ids = [0, 0, 1, 1, 2, 2, 3, 3]
         page_ids = [0, 0, 0, 0, 1, 1, 1, 1]
+        page_dims = [(100, 200), (400, 800)]
         out = parser._convert_nested_text_to_doc_json(
             token_dicts=token_dicts,
             word_ids=word_ids,
             row_ids=row_ids,
             page_ids=page_ids,
+            dims=page_dims,
         )
         assert out["symbols"] == "abc\nd ef\ngh i\njkl"
         tokens = [
