@@ -29,7 +29,12 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         self.w_avg, self.h_avg = FigureTablePredictions.get_avg_w_h_of_tokens(self.doc.tokens)
         self.FRACTION_OF_MISCLASSIFIED_VILA_CAPTION_TOKENS = 0.3
 
-    def _create_dict_of_pages_spans_vila(self, span_groups=None):
+    @staticmethod
+    def _create_dict_of_pages_spans_vila(self, span_groups=None) -> Dict[int, List[Span]]:
+        """
+        Create a dictionary of page number to list of spans
+        Returns: Dict[int, List[Span]] dictionary of page number to list of spans
+        """
         vila_dict = defaultdict(list)
         for entry_caption in span_groups:
             for token in entry_caption.tokens:
@@ -40,23 +45,16 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return vila_dict
 
     @staticmethod
-    def get_w_h_of_spans_page(vila_dict):
-        result = defaultdict(list)
-        # TODO keep track of the sum of w, h and num elements
-        for page, span_group in vila_dict.items():
-            for span in span_group:
-                result[page].append([span.box.w, span.box.h])
-
-        return result
-
-    @staticmethod
     def get_avg_w_h_of_tokens(tokens) -> Tuple[float, float]:
+        """
+        Get the average width and height of tokens
+        """
         return np.average([[span.box.w, span.box.h] for token in tokens
                            for span in token.spans], axis=0)
 
     @staticmethod
-    def _create_dict_of_pages_spans_layoutparser(layoutparser_span_groups, types=[], starts_with: str = '',
-                                                 negation=False):
+    def _create_dict_of_pages_spans_layoutparser(layoutparser_span_groups, types: List[str] = [], starts_with: str = '',
+                                                 negation: bool = False):
         span_map = defaultdict(list)
         for span_group in layoutparser_span_groups:
             if not types or span_group.box_group.type in types:
@@ -194,12 +192,12 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         vila_caption = FigureTablePredictions._filter_span_group(
             self.doc.vila_span_groups, caption_content=caption_content, span_group_types=['Caption'])
 
-        self.vila_caption_dict = self._create_dict_of_pages_spans_vila(vila_caption)
+        self.vila_caption_dict = FigureTablePredictions._create_dict_of_pages_spans_vila(vila_caption)
 
         vila_non_caption = FigureTablePredictions._filter_span_group(
             self.doc.vila_span_groups, caption_content='', span_group_types=['Caption'], negation=True)
 
-        vila_non_caption_dict = self._create_dict_of_pages_spans_vila(vila_non_caption)
+        vila_non_caption_dict = FigureTablePredictions._create_dict_of_pages_spans_vila(vila_non_caption)
         return self.update_vila_caption_dict(self.vila_caption_dict, vila_non_caption_dict)
 
     def merge_boxes(self, layoutparser_span_groups: List[api.SpanGroup],
@@ -222,12 +220,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         span_map = FigureTablePredictions._create_dict_of_pages_spans_layoutparser(
             layoutparser_span_groups, types=types)
 
-        print(f'merged_boxes_vila_dict: {merged_boxes_vila_dict.keys()} '
-              f'{[len(entry) for entry in merged_boxes_vila_dict.values()]}')
-
         for page, span_list in span_map.items():
             # Adding vila spans to the layout parser list of the spans
-            print(f'Vila merged spans for page: {page} length: {len(merged_boxes_vila_dict[page])} {types}')
             if merged_boxes_vila_dict[page]:
                 span_list.extend(merged_boxes_vila_dict_left[page])
             merged_spans = (MergeSpans(span_list, w=self.w_avg * 0.5, h=self.h_avg * 1.0)
@@ -235,7 +229,6 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
             # Filtering out vila spans (not merged)
             if len(span_list) != len(merged_spans) and merged_boxes_vila_dict and merged_boxes_vila_dict[page]:
-                print('Attempting to remove unmerged vila spans')
                 for merged_span in merged_spans:
                     for vila_span in merged_boxes_vila_dict[page]:
                         if vila_span.box.to_json() == merged_span.box.to_json():
