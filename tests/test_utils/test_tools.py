@@ -7,6 +7,7 @@
 
 import unittest
 
+from mmda.types.annotation import BoxGroup, SpanGroup
 from mmda.types.span import Span
 from mmda.types.box import Box
 
@@ -321,3 +322,25 @@ def test_merge_neighbor_spans_by_symbol_distance():
 
     assert set([(1, 7)]) == set([(entry.start, entry.end) for entry in result])
     assert [Box(l=0.1, t=0.2, w=0.4, h=0.2, page=11)] == [entry.box for entry in result]
+
+
+def test_from_span_groups_with_box_groups():
+    # convert test fixtures into SpanGroup with BoxGroup format
+    list_of_spans_to_merge_in_span_group_format = []
+    for span in list_of_spans_to_merge:
+        list_of_spans_to_merge_in_span_group_format.append(
+            SpanGroup(
+                spans=[Span(start=span.start, end=span.end)],
+                box_group=BoxGroup(boxes=[span.box])
+            )
+        )
+
+    assert 7 == (len(MergeSpans.from_span_groups_with_box_groups(
+                    list_of_spans_to_merge_in_span_group_format,
+                    index_distance=10).merge_neighbor_spans_by_symbol_distance())
+                 )
+
+    assert len(list_of_spans_to_merge) == (len(MergeSpans.from_span_groups_with_box_groups(
+        list_of_spans_to_merge_in_span_group_format,
+        0,
+        0).merge_neighbor_spans_by_box_coordinate()))

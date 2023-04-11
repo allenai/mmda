@@ -88,6 +88,7 @@ class Predictor:
         Should produce a single Prediction for the provided Instance.
         Leverage your underlying model to perform this inference.
         """
+        # Create class instance for each of the instances here
         predictions_table_figure_list = self._predictor.predict(inst.to_mmda())
         return Prediction(
              figure_list=[api.SpanGroup.from_mmda(sg) for sg in predictions_table_figure_list[0]],

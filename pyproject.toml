@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.2.82'
+version = '0.3.6'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -11,14 +11,12 @@ requires-python = '>=3.7'
 dependencies = [
         'tqdm',
         'pdf2image',
-        'pdfplumber>0.7.1,<=0.7.6',
+        'pdfplumber==0.7.4',
         'requests',
         'pandas',
         'pydantic',
-        'ncls',
+        'ncls==0.0.66',
         'necessary>=0.3.2',
-        'ncls',
-        'Pillow',
 ]
 
 [project.urls]
@@ -62,6 +60,9 @@ dev = [
     'pytest',
     'pytest-xdist',
     'pytest-cov',
+]
+grobid_augment_existing_document_parser = [
+    'grobid-client-python==0.0.5'
 ]
 spacy_predictors = [
     'spacy',
@@ -126,6 +127,16 @@ section_nesting = [
 figure_table_predictors = [
     'scipy',
 ]
+recipes = [
+    'layoutparser',
+    'transformers',
+    'torch',
+    'torchvision',
+    'effdet',
+    'vila>=0.5,<0.6',
+    'smashed==0.1.10'
+]
+
 
 [tool.pytest.ini_options]
 addopts = '-n auto --cov=src/mmda'
