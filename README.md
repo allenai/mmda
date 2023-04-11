@@ -1,12 +1,17 @@
 # MMDA - multimodal document analysis
 
-This is work in progress... Click here for [project status](https://github.com/allenai/mmda/projects/1).
+This is work in progress... 
 
 ## Setup
 
 ```bash
 conda create -n mmda python=3.8
 pip install -e '.[dev,<extras_require section from setup.py>]'
+```
+
+For most users, we recommend using recipes:
+```python
+pip install -e '.[dev,recipes]'
 ```
 
 ## Unit testing
@@ -24,32 +29,23 @@ for specific test name of class name
 pytest -k 'TestFigureCaptionPredictor' --no-cov -n0
 ```
 
-## Quickstart guide
+## Quick start
+
 
 #### 1. Create a Document for the first time from a PDF
 
-In this example, we use the `PdfPlumberParser` to convert a PDF into a bunch of text and `PDF2ImageRasterizer` to convert that same PDF into a bunch of page images.
+In this example, we use the `CoreRecipe` to convert a PDF into a bunch of text and images.
 ```python
-from typing import List
-from mmda.parsers import PDFPlumberParser
-from mmda.rasterizers import PDF2ImageRasterizer 
-from mmda.types import Document, PILImage
+from mmda.types import Document
+from mmda.recipes import CoreRecipe
 
-# PDF to text
-parser = PDFPlumberParser()
-doc: Document = parser.parse(input_pdf_path='...pdf')
-
-# PDF to images
-rasterizer = PDF2ImageRasterizer()
-images: List[PILImage] = rasterizer.rasterize(input_pdf_path='...pdf', dpi=72)
-
-# attach those images to the document
-doc.annotate_images(images=images)
+recipe = CoreRecipe()
+doc: Document = recipe.from_path(pdfpath='...pdf')
 ```
 
-#### 2. Iterating through a Document
+#### 2. Understanding the output: the `Document` class
 
-The minimum requirement for a `Document` is its `.symbols` field, which is just a `<str>`.  For example:
+What is a `Document`? At minimum, it is some text, saved under the `.symbols` field, which is just a `<str>`.  For example:
 
 ```python
 doc.symbols
@@ -126,6 +122,7 @@ A key aspect of using this library is understanding how these different fields a
 
 
 
+
 #### 4. What's in a `SpanGroup`?
 
 Each `SpanGroup` object stores information about its contents and position:
@@ -134,114 +131,80 @@ Each `SpanGroup` object stores information about its contents and position:
 
 * `.box_group: BoxGroup`, A `BoxGroup` object stores `.boxes: List[Box]`.  
 
-* `.metadata: Metadata`, A free 
+* `.metadata: Metadata`, A free form dictionary-like object to store extra metadata about that `SpanGroup`. These are usually empty. 
 
-    * **Span-Box Coupling:** Every `Span` is associated with a single `Box`, and not a `BoxGroup`. In this library, we restrict all of our `Span` to be units that can be represented by a single rectangular box. This is instead of allowing *any* (start, end) which would result in spans that can't necessarily be cleanly represented by a single box.
-    * 
 
-**FAQS**
 
-Q. Why do we need `BoxGroup` if we already have `Box` in each `Span`?
+#### 5. How can I manually create my own `Document`?
 
-A: Let's consider a `SpanGroup` object representing a single sentence in a paper. We know a single `Box` can't properly cover a sentence, because sentences can wrap rows & even cross columns/page:
+If you look at what is happening in `CoreRecipe`, it's basically stitching together 3 types of tools: `Parsers`, `Rasterizers` and `Predictors`.
 
-* One way to represent the visual area of that sentence is to take the Union of all `Box` in every involved `Span` -- This leaves us with many rectangles. 
-* But another way to synthesize all those `Box` into one giant `Box` (which might even overlap other text outside of this sentence). 
-* Finally, a third way is to synthesize all the `Box` of tokens on the same row into one `Box`, but keep `Box` on different rows separate. None of these ways 
-    
+* `Parsers` take a PDF as input and return a `Document` compared of `.symbols` and other fields. The example one we use is a wrapper around [PDFPlumber](https://github.com/jsvine/pdfplumber) - MIT License utility.
 
-#### 5. Adding a new SpanGroup field
+* `Rasterizers` take a PDF as input and return an `Image` per page that is added to `Document.images`. The example one we use is [PDF2Image](https://github.com/Belval/pdf2image) - MIT License. 
 
-Not all Documents will have all segmentations available at creation time. You may need to load new fields to an existing `Document`. This is where `Predictor` comes in:
+* `Predictors` take a `Document` and apply some operation to compute a new set of `SpanGroup` objects that we can insert into our `Document`. These are all built in-house and can be either simple heuristics or full machine-learning models.
 
-```python
-from mmda.predictors.lp_predictors import LayoutParserPredictor
 
-predictor = LayoutParserPredictor(model='lp://efficientdet/PubLayNet')
-
-output = predictor.predict(document=doc)
+If we look at how `CoreRecipe` is implemented, what's happening in `.from_path()` is:
 
 ```
- 
+    def from_path(self, pdfpath: str) -> Document:
+        logger.info("Parsing document...")
+        doc = self.parser.parse(input_pdf_path=pdfpath)
 
+        logger.info("Rasterizing document...")
+        images = self.rasterizer.rasterize(input_pdf_path=pdfpath, dpi=72)
+        doc.annotate_images(images=images)
 
+        logger.info("Predicting words...")
+        words = self.word_predictor.predict(document=doc)
+        doc.annotate(words=words)
 
+        logger.info("Predicting blocks...")
+        blocks = self.effdet_publaynet_predictor.predict(document=doc)
+        equations = self.effdet_mfd_predictor.predict(document=doc)
+        doc.annotate(blocks=blocks + equations)
 
-## Parsers
+        logger.info("Predicting vila...")
+        vila_span_groups = self.vila_predictor.predict(document=doc)
+        doc.annotate(vila_span_groups=vila_span_groups)
 
-* [PDFPlumber](https://github.com/jsvine/pdfplumber) - MIT License    
+        return doc
+```
 
+You can see how the `Document` is first created using the `Parser`, then `Images` are added to the `Document` by using the `Rasterizer` and `.annotate_images()` method. Then we layer on multiple `Predicors` worth of predictions, each added to the `Document` using `.annotate()`.
 
-## Rasterizers
-
-* [PDF2Image](https://github.com/Belval/pdf2image) - MIT License
-
-
-## Predictors
-
-
-## Library walkthrough
-
-
-
-
-#### 2. Saving a Document
-
-You can convert a Document into a JSON object.
+#### 6. How can I save my `Document`?
 
 ```python
-import os
 import json
-
-# usually, you'll probably want to save the text & images separately:
-with open('...json', 'w') as f_out:
-    json.dump(doc.to_json(with_images=False), f_out, indent=4)
-
-os.makedirs('.../', exist_ok=True)
-for i, image in enumerate(doc.images):
-    image.save(os.path.join('.../', f'{i}.png'))
-    
-    
-# you can also save images as base64 strings within the JSON object
-with open('...json', 'w') as f_out:
+with open('filename.json', 'w') as f_out:
     json.dump(doc.to_json(with_images=True), f_out, indent=4)
 ```
 
+will produce something akin to:
+```python
+{
+    "symbols": "Language Models as Knowledge Bases?\nFabio Petroni1 Tim Rockt...",
+    "images": "...",
+    "rows": [...],
+    "tokens": [...],
+    "words": [...],
+    "blocks": [...],
+    "vila_span_groups": [...]
+}
+```
 
-#### 3. Loading a serialized Document
+Note that `Images` are serialized to `base64` if you include `with_images` flag. Otherwise, it's left out of JSON serialization by default.
 
-You can create a Document from its saved output.
+#### 7. How can I load my `Document`?
+
+These can be used to reconstruct a `Document` again via:
 
 ```python
-import json
-import os
-
-from mmda.document import Document
-from typing import List
-from mmda.types.image import PILImage, pilimage
-
-# directly from a JSON.  This should handle also the case where `images` were serialized as base64 strings.
-with open('...json') as f_in:
+with open('filename.json') as f_in:
     doc_dict = json.load(f_in)
-    doc = Document.from_json(doc_dict=doc_dict)
-
-# if you saved your images separately, then you'll want to reconstruct them & re-attach
-images: List[PILImage] = []
-for i, page in enumerate(doc.pages):
-    image_path = os.path.join(outdir, f'{i}.png')
-    assert os.path.exists(image_path), f'Missing file for page {i}'
-    image = pilimage.open(image_path)
-    images.append(image)
-doc.annotate_images(images=images)
-```  
-
-
-
-#### 6. Editing existing fields in the Document
-
-We currently don't support any nice tools for mutating the data in a `Document` once it's been created, aside from loading new data.  Do at your own risk. 
-
-TBD...
-
-
+    doc = Document.from_json(doc_dict)
+```
 
