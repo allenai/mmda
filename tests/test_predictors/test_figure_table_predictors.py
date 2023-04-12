@@ -21,12 +21,14 @@ class TestFigureCaptionPredictor(unittest.TestCase):
             cls.doc = Document.from_json(doc_json)
         assert cls.doc.pages
         assert cls.doc.tokens
+        assert cls.doc.blocks
+        assert cls.doc.vila_span_groups
+        cls.figure_table_predictor = FigureTablePredictions(cls.doc)
 
     def test_merge_boxes(self):
-        result = FigureTablePredictions._merge_boxes(self.doc.layoutparser_span_groups, defaultdict(list))
-        assert isinstance(result, dict)
-        assert list(result.keys()) == [0, 2, 3, 7]
-        assert isinstance(result[0][0], Span)
+        result = self.figure_table_predictor.merge_boxes(self.doc.blocks, defaultdict(list))
+        assert list(result[0].keys()) == [0, 2, 3, 7]
+        assert isinstance(result[0][0][0], Span)
 
     def test_get_figure_caption_distance(self):
         distance = FigureTablePredictions._get_object_caption_distance(
@@ -40,7 +42,7 @@ class TestFigureCaptionPredictor(unittest.TestCase):
         assert distance == pytest.approx(0.15)
 
     def test_predict(self):
-        result = FigureTablePredictions.predict(self.doc)
+        result = self.figure_table_predictor.predict()
         assert isinstance(result, tuple)
         assert [entry.type for entry in result[0]] == ['Figure', 'Figure', 'Figure', 'Figure']
         assert [entry.type for entry in result[1]] == ['Table', 'Table', 'Table', 'Table']
