@@ -61,7 +61,7 @@ def get_test_instance() -> Instance:
     rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
     pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
     vila_span_groups = [api.SpanGroup.from_mmda(sg) for sg in doc.vila_span_groups]
-    layoutparser_span_groups = [api.SpanGroup.from_mmda(sg) for sg in doc.layoutparser_span_groups]
+    blocks = [api.SpanGroup.from_mmda(sg) for sg in doc.blocks]
 
     return Instance(
         symbols=doc.symbols,
@@ -70,7 +70,7 @@ def get_test_instance() -> Instance:
         rows=rows,
         pages=pages,
         vila_span_groups=vila_span_groups,
-        layoutparser_span_groups=layoutparser_span_groups,
+        blocks=blocks,
     )
 
 
