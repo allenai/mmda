@@ -51,12 +51,13 @@ class Prediction(BaseModel):
     """
     Describes the outcome of inference for one Instance
     """
-    {'figures': List[api.BoxGroup],
-     'figure_captions': List[api.SpanGroup],
-     'figure_to_figure_captions': List[api.Relation],
-     'tables': List[api.BoxGroup],
-     'table_captions': List[api.SpanGroup],
-     'table_to_table_captions': List[api.Relation]}
+    figures: List[api.BoxGroup]
+    figure_captions: List[api.SpanGroup]
+    figure_to_figure_captions: List[api.Relation]
+    tables: List[api.BoxGroup]
+    table_captions: List[api.SpanGroup]
+    table_to_table_captions: List[api.Relation]
+
 
 class PredictorConfig(BaseSettings):
     """
@@ -91,14 +92,14 @@ class Predictor:
         Leverage your underlying model to perform this inference.
         """
         predictions_table_figure_dict = FigureTablePredictions(instance.to_mmda()).predict()
-        return Prediction({
-            'figures': [api.SpanGroup(sg) for sg in predictions_table_figure_dict['figures']],
-            'figure_captions': [api.BoxGroup(bg) for bg in predictions_table_figure_dict['figure_captions']],
-            'figure_to_figure_captions': predictions_table_figure_dict['figure_to_figure_captions'],
-            'tables': [api.SpanGroup(sg) for sg in predictions_table_figure_dict['tables']],
-            'table_captions': [api.BoxGroup(bg) for bg in predictions_table_figure_dict['table_captions']],
-            'table_to_table_captions': predictions_table_figure_dict['table_to_table_captions'],
-        })
+        return Prediction(
+            figures=[api.BoxGroup.from_mmda(sg) for sg in predictions_table_figure_dict['figures']],
+            figure_captions=[api.SpanGroup.from_mmda(bg) for bg in predictions_table_figure_dict['figure_captions']],
+            figure_to_figure_captions=predictions_table_figure_dict['figure_to_figure_captions'],
+            tables=[api.BoxGroup.from_mmda(sg) for sg in predictions_table_figure_dict['tables']],
+            table_captions=[api.SpanGroup.from_mmda(bg) for bg in predictions_table_figure_dict['table_captions']],
+            table_to_table_captions=predictions_table_figure_dict['table_to_table_captions']
+        )
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """
