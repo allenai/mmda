@@ -38,7 +38,7 @@ from .. import api
 from mmda.types.document import Document
 from mmda.types.image import tobase64
 from .interface import Instance
-from ..api import SpanGroup, BoxGroup
+from ..api import SpanGroup, BoxGroup, Relation
 
 try:
     from timo_interface import with_timo_container
@@ -79,5 +79,11 @@ class TestInterfaceIntegration(unittest.TestCase):
     def test__predictions(self, container):
         instances = [get_test_instance()]
         predictions = container.predict_batch(instances)
-        assert isinstance(predictions['figures'][0], SpanGroup)
-        assert isinstance(predictions['figure_captions'][0], BoxGroup)
+        assert isinstance(predictions[0].figures[0], BoxGroup)
+        assert isinstance(predictions[0].figure_captions[0], SpanGroup)
+        assert isinstance(predictions[0].figure_to_figure_captions[0], Relation)
+        assert isinstance(predictions[0].tables[0], BoxGroup)
+        assert isinstance(predictions[0].table_captions[0], SpanGroup)
+        assert isinstance(predictions[0].table_to_table_captions[0], Relation)
+        assert len(predictions[0].figures) == 5
+        assert len(predictions[0].tables) == 6
