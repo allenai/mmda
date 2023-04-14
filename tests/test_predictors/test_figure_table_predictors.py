@@ -4,11 +4,11 @@ from collections import defaultdict
 import pathlib
 import pytest
 
+from ai2_internal.api import Relation
 from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureTablePredictions
 from mmda.types import Document
 from mmda.types.box import Box
 from mmda.types.span import Span
-
 
 
 class TestFigureCaptionPredictor(unittest.TestCase):
@@ -43,6 +43,11 @@ class TestFigureCaptionPredictor(unittest.TestCase):
 
     def test_predict(self):
         result = self.figure_table_predictor.predict()
-        assert isinstance(result, tuple)
-        assert [entry.type for entry in result[0]] == ['Figure', 'Figure', 'Figure', 'Figure']
-        assert [entry.type for entry in result[1]] == ['Table', 'Table', 'Table', 'Table']
+        assert isinstance(result, dict)
+        assert list(result.keys()) == ['figures', 'figure_captions', 'figure_to_figure_captions', 'tables',
+                                       'table_captions',
+                                       'table_to_table_captions', ]
+        assert len(result['figures']) == 4
+        assert len(result['tables']) == 4
+        assert isinstance(result['figure_to_figure_captions'][0], Relation)
+        assert isinstance(result['table_to_table_captions'][0], Relation)
