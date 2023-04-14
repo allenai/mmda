@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
@@ -13,6 +13,7 @@ from mmda.types import SpanGroup, BoxGroup, Metadata
 from mmda.types.document import Document
 from mmda.types.span import Span
 from mmda.utils.tools import MergeSpans
+from ai2_internal.api import Relation
 
 
 class FigureTablePredictions(BaseHeuristicPredictor):
@@ -334,7 +335,9 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return (merged_boxes_caption_fig_tab_dict['fig'], merged_boxes_fig_tab_dict['Figure'],
                 merged_boxes_caption_fig_tab_dict['tab'], merged_boxes_fig_tab_dict['Table'])
 
-    def _predict(self, merged_boxes_caption_dict, merged_boxes_fig_tab_dict, caption_type) -> List[SpanGroup]:
+    def _predict(
+            self, merged_boxes_caption_dict, merged_boxes_fig_tab_dict, caption_type
+    ) -> Dict[str, Union[SpanGroup, BoxGroup, Relation]]:
         """
         Merges boxes corresponding to tokens of table, figure captions. For each page each caption/object create cost
         matrix which is distance based on get_object_caption_distance. Using linear_sum_assignment find corresponding
@@ -343,10 +346,12 @@ class FigureTablePredictions(BaseHeuristicPredictor):
             doc (Document): document to make predictions on, it has to have fields layoutparser_span_groups and
             vila_span_groups
             caption_type (str): caption type to make prediction for can be Figure or Table
-        Returns: Returns list of spanGroups predictions
+        Returns: Returns dictionary with keys 'predictions', 'predictions_captions', 'predictions_relations'
 
         """
         predictions = []
+        predictions_captions = []
+        predictions_relations = []
         for page in range(len(tqdm(self.doc.pages))):
             if merged_boxes_caption_dict.get(page) and merged_boxes_fig_tab_dict.get(page):
                 cost_matrix = np.zeros(
@@ -374,10 +379,16 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                     )
                     span_group.text = self.doc.symbols[span_group.start: span_group.end]
                     if span_group.text.lower().startswith(caption_type.lower()[:3]):
+                        span_group.id = hash(json.dumps(span_group.to_json()))
                         predictions.append(span_group)
-        return predictions
+                        box_group = span_group.box_group
+                        box_group.id = hash(json.dumps(box_group.to_json()))
+                        predictions_captions.append(box_group)
+                        predictions_relations.append(Relation(from_id=span_group.id, to_id=box_group.id))
+        return {f'{caption_type.lower()}s': predictions, f'{caption_type.lower()}_captions': predictions_captions,
+                f'{caption_type.lower()}_to_{caption_type.lower()}_captions': predictions_relations}
 
-    def predict(self) -> Tuple[List[SpanGroup], List[SpanGroup]]:
+    def predict(self) -> Dict[str, Union[SpanGroup, BoxGroup, Relation]]:
         """
         Return tuple caption -> figure, caption -> table
         Args:
@@ -389,5 +400,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         """
         (merged_boxes_caption_fig_dict,
          merged_boxes_fig_dict, merged_boxes_caption_tab_dict, merged_boxes_tab_dict) = self.generate_candidates()
-        return (self._predict(merged_boxes_caption_fig_dict, merged_boxes_fig_dict, caption_type='Figure'),
-                self._predict(merged_boxes_caption_tab_dict, merged_boxes_tab_dict, caption_type='Table'))
+        result_dict = {}
+        result_dict.update(self._predict(merged_boxes_caption_fig_dict, merged_boxes_fig_dict, caption_type='Figure'))
+        result_dict.update(self._predict(merged_boxes_caption_tab_dict, merged_boxes_tab_dict, caption_type='Table'))
+        return result_dict
