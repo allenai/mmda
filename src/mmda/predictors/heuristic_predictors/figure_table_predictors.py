@@ -385,10 +385,10 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                     span_group.text = self.doc.symbols[span_group.start: span_group.end]
                     if span_group.text.lower().startswith(caption_type.lower()[:3]):
                         span_group.id = hash(json.dumps(span_group.to_json()))
-                        predictions.append(span_group)
                         box_group = span_group.box_group
                         box_group.id = hash(json.dumps(box_group.to_json()))
-                        predictions_captions.append(box_group)
+                        predictions.append(box_group)
+                        predictions_captions.append(span_group)
                         predictions_relations.append(Relation(from_id=span_group.id, to_id=box_group.id))
         return {f'{caption_type.lower()}s': predictions, f'{caption_type.lower()}_captions': predictions_captions,
                 f'{caption_type.lower()}_to_{caption_type.lower()}_captions': predictions_relations}
