@@ -28,6 +28,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         self.vila_spans_all_dict = None
         self.width_heights_dict = None
         self.w_avg, self.h_avg = FigureTablePredictions.get_avg_w_h_of_tokens(self.doc.tokens)
+        # Parameteer for the fraction of the tokens classified as non-caption that are probably caption in same
+        # Layoutparser span group
         self.FRACTION_OF_MISCLASSIFIED_VILA_CAPTION_TOKENS = 0.3
 
     @staticmethod
@@ -57,7 +59,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
     def _create_dict_of_pages_spans_layoutparser(layoutparser_span_groups, types: List[str] = [], starts_with: str = '',
                                                  negation: bool = False) -> Dict[int, List[SpanGroup]]:
         """
-        Create a dictionary of page number to list of spans
+        Create a dictionary of page number to list of spans, filtering or negating to the types and starts_with
         """
         span_map = defaultdict(list)
         for span_group in layoutparser_span_groups:
@@ -89,6 +91,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                         created_span = api.Span(start=span.start,
                                                 end=span.end,
                                                 box=box_api).to_mmda()
+                        # Note that hash output is changing everytime it is called
                         created_span.span_id = hash(json.dumps(created_span.to_json()))
                         created_span.box_group_type = span_group.box_group.type
                         span_map[span.box.page].append(created_span)
@@ -99,7 +102,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
             vila_dict, layout_parser_overlap, dict_of_pages_layoutparser,
             key='caption') -> Dict[int, Dict]:
         """
-        Generate a map of layoutparser tokens to vila tokens
+        Generate a map of layoutparser entries to the list of vila tokens with the type = key vs type != key
         """
         for page in vila_dict.keys():
             for span in vila_dict[page]:
@@ -111,7 +114,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return layout_parser_overlap
 
     @staticmethod
-    def generate_map_of_layout_to_tokens_for_page(vila_list: List, layout_parser_list: List, key='caption'):
+    def generate_map_of_layout_to_tokens_for_page(
+            vila_list: List, layout_parser_list: List, key='caption') -> Dict[int, Dict]:
         """
         Generate a map of layoutparser tokens ids to the count of vila tokens with the type = key
         """
@@ -157,9 +161,9 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
     @staticmethod
     def _filter_span_group(vila_span_groups: List[api.SpanGroup], caption_content: str, span_group_types: List[str],
-                           negation=False):
+                           negation=False) -> List[api.SpanGroup]:
         """
-        Helper function which filters out span groups
+        Helper function which filters out span groups based on the caption content and span group type
         """
         result = []
         for span_group in vila_span_groups:
@@ -191,6 +195,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
         merged_boxes_list = defaultdict(list)
         for page, list_of_boxes in vila_caption_dict.items():
+            # Merge spans if they are sufficiently close to each other
             merged_boxes_list[page] = MergeSpans(list_of_spans=list_of_boxes, w=self.w_avg * 1.5,
                                                  h=self.h_avg * 1).merge_neighbor_spans_by_box_coordinate()
         return merged_boxes_list
@@ -249,7 +254,6 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                 for merged_span in merged_spans:
                     for vila_span in merged_boxes_vila_dict[page]:
                         if vila_span.box.to_json() == merged_span.box.to_json():
-                            print('Removing unmerged vila span')
                             merged_spans.remove(merged_span)
                             merged_boxes_vila_dict_left[page].append(vila_span)
 
@@ -297,7 +301,10 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                     vila_span)
         return layout_parser_span_groups_dict
 
-    def generate_candidates(self):
+    def generate_candidates(self) -> Tuple[Union[SpanGroup, BoxGroup]]:
+        """
+        Generates candidates for the figure and table captions
+        """
         assert self.doc.vila_span_groups
 
         merged_boxes_caption_fig_tab_dict = {}
@@ -319,8 +326,6 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         # merged_boxes_vila_dict is used in figure, table boxes derivation
         merged_boxes_vila_dict = self.merge_vila_token_spans(
             caption_content='', span_group_type=['Text', 'Paragraph', 'Table', 'Figure'])
-        print(f'merged_boxes_vila_dict: {merged_boxes_vila_dict.keys()} '
-              f'{[len(entry) for entry in merged_boxes_vila_dict.values()]}')
         # Create dictionary of layoutparser span groups merging boxgroups and boxes
         merged_boxes_vila_dict_left = None
         merged_boxes_fig_tab_dict = {}
@@ -390,13 +395,10 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
     def predict(self) -> Dict[str, Union[SpanGroup, BoxGroup, Relation]]:
         """
-        Return tuple caption -> figure, caption -> table
-        Args:
-            document ():
-
-        Returns: List[SpanGroup], SpanGroup has start, end corresponding to caption start, end indexes and box
+        Returns: Dictionary List[SpanGroup], SpanGroup has start, end corresponding to caption start, end indexes and box
         corresponding to merged boxes of the tokens of the caption. Type is one of ['Figure', 'Table']. BoxGroup stores
-        information about the boundaries of figure or table.
+        information about the boundaries of figure or table. Relation stores information about the relation between
+        caption and the object it corresponds to
         """
         (merged_boxes_caption_fig_dict,
          merged_boxes_fig_dict, merged_boxes_caption_tab_dict, merged_boxes_tab_dict) = self.generate_candidates()
