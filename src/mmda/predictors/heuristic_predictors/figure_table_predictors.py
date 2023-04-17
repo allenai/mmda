@@ -92,7 +92,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                                                 end=span.end,
                                                 box=box_api).to_mmda()
                         # Note that hash output is changing everytime it is called
-                        created_span.span_id = hash(json.dumps(created_span.to_json()))
+                        created_span.span_id = f'LP_span_group_{span.box.page}_{len(span_map[span.box.page])}'
                         created_span.box_group_type = span_group.box_group.type
                         span_map[span.box.page].append(created_span)
         return span_map
