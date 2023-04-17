@@ -375,21 +375,19 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
                 row_ind, col_ind = linear_sum_assignment(cost_matrix)
                 for row, col in zip(row_ind, col_ind):
-                    span_group = SpanGroup(spans=[Span(
-                        start=merged_boxes_caption_dict[page][col].start,
-                        end=merged_boxes_caption_dict[page][col].end,
-                        box=merged_boxes_caption_dict[page][col].box)],
-                        box_group=BoxGroup(boxes=[merged_boxes_fig_tab_dict[page][row].box]),
-                        metadata=Metadata(type=caption_type)
-                    )
-                    span_group.text = self.doc.symbols[span_group.start: span_group.end]
-                    if span_group.text.lower().startswith(caption_type.lower()[:3]):
-                        span_group.id = len(predictions_captions)
-                        box_group = span_group.box_group
-                        box_group.id = len(predictions)
+                    # Check that caption starts with tab or fig
+                    if self.doc.symbols[
+                       merged_boxes_caption_dict[page][col].start:
+                       merged_boxes_caption_dict[page][col].end].lower().startswith(caption_type.lower()[:3]):
+                        span_group = SpanGroup(spans=[Span(
+                            start=merged_boxes_caption_dict[page][col].start,
+                            end=merged_boxes_caption_dict[page][col].end)],
+                            id=len(predictions_captions)
+                        )
+                        box_group = BoxGroup(boxes=[merged_boxes_fig_tab_dict[page][row].box], id=len(predictions))
                         predictions.append(box_group)
                         predictions_captions.append(span_group)
-                        predictions_relations.append(Relation(from_id=span_group.id, to_id=box_group.id))
+                        predictions_relations.append(Relation(from_id=box_group.id, to_id=span_group.id))
         return {f'{caption_type.lower()}s': predictions, f'{caption_type.lower()}_captions': predictions_captions,
                 f'{caption_type.lower()}_to_{caption_type.lower()}_captions': predictions_relations}
 
