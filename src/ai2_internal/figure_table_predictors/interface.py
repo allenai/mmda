@@ -33,7 +33,7 @@ class Instance(BaseModel):
     rows: List[api.SpanGroup]
     pages: List[api.SpanGroup]
     vila_span_groups: List[api.SpanGroup]
-    layoutparser_span_groups: List[api.SpanGroup]
+    blocks: List[api.SpanGroup]
     images: List[str] = Field(description="List of base64-encoded page images")
 
     def to_mmda(self):
@@ -42,7 +42,7 @@ class Instance(BaseModel):
         doc.annotate(rows=[sg.to_mmda() for sg in self.rows])
         doc.annotate(pages=[sg.to_mmda() for sg in self.pages])
         doc.annotate_images([frombase64(img) for img in self.images])
-        doc.annotate(layoutparser_span_groups=[sg.to_mmda() for sg in self.layoutparser_span_groups])
+        doc.annotate(blocks=[sg.to_mmda() for sg in self.blocks])
         doc.annotate(vila_span_groups=[sg.to_mmda() for sg in self.vila_span_groups])
         return doc
 
@@ -51,8 +51,12 @@ class Prediction(BaseModel):
     """
     Describes the outcome of inference for one Instance
     """
-    figure_list: List[api.SpanGroup]
-    table_list: List[api.SpanGroup]
+    figures: List[api.BoxGroup]
+    figure_captions: List[api.SpanGroup]
+    figure_to_figure_captions: List[api.Relation]
+    tables: List[api.BoxGroup]
+    table_captions: List[api.SpanGroup]
+    table_to_table_captions: List[api.Relation]
 
 
 class PredictorConfig(BaseSettings):
@@ -81,17 +85,20 @@ class Predictor:
     def __init__(self, config: PredictorConfig, artifacts_dir: str):
         self._config = config
         self._artifacts_dir = artifacts_dir
-        self._predictor = FigureTablePredictions()
 
-    def predict_one(self, inst: Instance) -> Prediction:
+    def predict_one(self, instance: Instance) -> Prediction:
         """
         Should produce a single Prediction for the provided Instance.
         Leverage your underlying model to perform this inference.
         """
-        predictions_table_figure_list = self._predictor.predict(inst.to_mmda())
+        predictions_table_figure_dict = FigureTablePredictions(instance.to_mmda()).predict()
         return Prediction(
-             figure_list=[api.SpanGroup.from_mmda(sg) for sg in predictions_table_figure_list[0]],
-             table_list=[api.SpanGroup.from_mmda(sg) for sg in predictions_table_figure_list[1]]
+            figures=[api.BoxGroup.from_mmda(sg) for sg in predictions_table_figure_dict['figures']],
+            figure_captions=[api.SpanGroup.from_mmda(bg) for bg in predictions_table_figure_dict['figure_captions']],
+            figure_to_figure_captions=predictions_table_figure_dict['figure_to_figure_captions'],
+            tables=[api.BoxGroup.from_mmda(sg) for sg in predictions_table_figure_dict['tables']],
+            table_captions=[api.SpanGroup.from_mmda(bg) for bg in predictions_table_figure_dict['table_captions']],
+            table_to_table_captions=predictions_table_figure_dict['table_to_table_captions']
         )
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
