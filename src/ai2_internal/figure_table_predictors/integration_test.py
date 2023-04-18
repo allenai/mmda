@@ -38,7 +38,7 @@ from .. import api
 from mmda.types.document import Document
 from mmda.types.image import tobase64
 from .interface import Instance
-from ..api import SpanGroup
+from ..api import SpanGroup, BoxGroup, Relation
 
 try:
     from timo_interface import with_timo_container
@@ -61,7 +61,7 @@ def get_test_instance() -> Instance:
     rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
     pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
     vila_span_groups = [api.SpanGroup.from_mmda(sg) for sg in doc.vila_span_groups]
-    layoutparser_span_groups = [api.SpanGroup.from_mmda(sg) for sg in doc.layoutparser_span_groups]
+    blocks = [api.SpanGroup.from_mmda(sg) for sg in doc.blocks]
 
     return Instance(
         symbols=doc.symbols,
@@ -70,7 +70,7 @@ def get_test_instance() -> Instance:
         rows=rows,
         pages=pages,
         vila_span_groups=vila_span_groups,
-        layoutparser_span_groups=layoutparser_span_groups,
+        blocks=blocks,
     )
 
 
@@ -79,10 +79,11 @@ class TestInterfaceIntegration(unittest.TestCase):
     def test__predictions(self, container):
         instances = [get_test_instance()]
         predictions = container.predict_batch(instances)
-        assert isinstance(predictions[0].figure_list[0], SpanGroup)
-        assert isinstance(predictions[0].table_list[0], SpanGroup)
-        assert [span_group.type for prediction in predictions for span_group in prediction.figure_list] == [
-            'Figure', 'Figure', 'Figure', 'Figure', 'Figure']
-        assert [span_group.type for prediction in predictions for span_group in prediction.table_list] == [
-            'Table', 'Table', 'Table', 'Table', 'Table', 'Table',
-        ]
+        assert isinstance(predictions[0].figures[0], BoxGroup)
+        assert isinstance(predictions[0].figure_captions[0], SpanGroup)
+        assert isinstance(predictions[0].figure_to_figure_captions[0], Relation)
+        assert isinstance(predictions[0].tables[0], BoxGroup)
+        assert isinstance(predictions[0].table_captions[0], SpanGroup)
+        assert isinstance(predictions[0].table_to_table_captions[0], Relation)
+        assert len(predictions[0].figures) == 5
+        assert len(predictions[0].tables) == 6
