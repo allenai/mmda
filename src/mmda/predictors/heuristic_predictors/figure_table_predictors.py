@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
@@ -13,12 +13,13 @@ from mmda.types import SpanGroup, BoxGroup, Metadata
 from mmda.types.document import Document
 from mmda.types.span import Span
 from mmda.utils.tools import MergeSpans
+from ai2_internal.api import Relation
 
 
 class FigureTablePredictions(BaseHeuristicPredictor):
     """Class for creating a map of figure boxes to figure captions
     """
-    REQUIRED_DOCUMENT_FIELDS = ['pages', 'tokens', 'rows', 'vila_span_groups']
+    REQUIRED_DOCUMENT_FIELDS = ['pages', 'tokens', 'rows', 'vila_span_groups', 'blocks', ]
 
     def __init__(self, document: Document) -> None:
         self.doc = document
@@ -27,6 +28,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         self.vila_spans_all_dict = None
         self.width_heights_dict = None
         self.w_avg, self.h_avg = FigureTablePredictions.get_avg_w_h_of_tokens(self.doc.tokens)
+        # Parameteer for the fraction of the tokens classified as non-caption that are probably caption in same
+        # Layoutparser span group
         self.FRACTION_OF_MISCLASSIFIED_VILA_CAPTION_TOKENS = 0.3
 
     @staticmethod
@@ -56,7 +59,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
     def _create_dict_of_pages_spans_layoutparser(layoutparser_span_groups, types: List[str] = [], starts_with: str = '',
                                                  negation: bool = False) -> Dict[int, List[SpanGroup]]:
         """
-        Create a dictionary of page number to list of spans
+        Create a dictionary of page number to list of spans, filtering or negating to the types and starts_with
         """
         span_map = defaultdict(list)
         for span_group in layoutparser_span_groups:
@@ -88,7 +91,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                         created_span = api.Span(start=span.start,
                                                 end=span.end,
                                                 box=box_api).to_mmda()
-                        created_span.span_id = hash(json.dumps(created_span.to_json()))
+                        # Note that hash output is changing everytime it is called
+                        created_span.span_id = f'LP_span_group_{span.box.page}_{len(span_map[span.box.page])}'
                         created_span.box_group_type = span_group.box_group.type
                         span_map[span.box.page].append(created_span)
         return span_map
@@ -98,7 +102,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
             vila_dict, layout_parser_overlap, dict_of_pages_layoutparser,
             key='caption') -> Dict[int, Dict]:
         """
-        Generate a map of layoutparser tokens to vila tokens
+        Generate a map of layoutparser entries to the list of vila tokens with the type = key vs type != key
         """
         for page in vila_dict.keys():
             for span in vila_dict[page]:
@@ -110,7 +114,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return layout_parser_overlap
 
     @staticmethod
-    def generate_map_of_layout_to_tokens_for_page(vila_list: List, layout_parser_list: List, key='caption'):
+    def generate_map_of_layout_to_tokens_for_page(
+            vila_list: List, layout_parser_list: List, key='caption') -> Dict[int, Dict]:
         """
         Generate a map of layoutparser tokens ids to the count of vila tokens with the type = key
         """
@@ -156,9 +161,9 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
     @staticmethod
     def _filter_span_group(vila_span_groups: List[api.SpanGroup], caption_content: str, span_group_types: List[str],
-                           negation=False):
+                           negation=False) -> List[api.SpanGroup]:
         """
-        Helper function which filters out span groups
+        Helper function which filters out span groups based on the caption content and span group type
         """
         result = []
         for span_group in vila_span_groups:
@@ -190,6 +195,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
         merged_boxes_list = defaultdict(list)
         for page, list_of_boxes in vila_caption_dict.items():
+            # Merge spans if they are sufficiently close to each other
             merged_boxes_list[page] = MergeSpans(list_of_spans=list_of_boxes, w=self.w_avg * 1.5,
                                                  h=self.h_avg * 1).merge_neighbor_spans_by_box_coordinate()
         return merged_boxes_list
@@ -248,7 +254,6 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                 for merged_span in merged_spans:
                     for vila_span in merged_boxes_vila_dict[page]:
                         if vila_span.box.to_json() == merged_span.box.to_json():
-                            print('Removing unmerged vila span')
                             merged_spans.remove(merged_span)
                             merged_boxes_vila_dict_left[page].append(vila_span)
 
@@ -296,7 +301,10 @@ class FigureTablePredictions(BaseHeuristicPredictor):
                     vila_span)
         return layout_parser_span_groups_dict
 
-    def generate_candidates(self):
+    def generate_candidates(self) -> Tuple[Union[SpanGroup, BoxGroup]]:
+        """
+        Generates candidates for the figure and table captions
+        """
         assert self.doc.vila_span_groups
 
         merged_boxes_caption_fig_tab_dict = {}
@@ -318,12 +326,11 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         # merged_boxes_vila_dict is used in figure, table boxes derivation
         merged_boxes_vila_dict = self.merge_vila_token_spans(
             caption_content='', span_group_type=['Text', 'Paragraph', 'Table', 'Figure'])
-        print(f'merged_boxes_vila_dict: {merged_boxes_vila_dict.keys()} '
-              f'{[len(entry) for entry in merged_boxes_vila_dict.values()]}')
         # Create dictionary of layoutparser span groups merging boxgroups and boxes
         merged_boxes_vila_dict_left = None
         merged_boxes_fig_tab_dict = {}
-        for layout_parser_box_type in ([['Figure', 'Equation'], ['Table']]):
+        # List of types to be merged from layoutparser, note that sometimes figures are marked as Equations
+        for layout_parser_box_type in ([['Figure'], ['Table']]):
             merged_boxes_vila_dict = (merged_boxes_vila_dict_left
                                       if merged_boxes_vila_dict_left is not None else merged_boxes_vila_dict)
             merged_boxes_fig_tab_dict[layout_parser_box_type[0]], merged_boxes_vila_dict_left = self.merge_boxes(
@@ -334,7 +341,9 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         return (merged_boxes_caption_fig_tab_dict['fig'], merged_boxes_fig_tab_dict['Figure'],
                 merged_boxes_caption_fig_tab_dict['tab'], merged_boxes_fig_tab_dict['Table'])
 
-    def _predict(self, merged_boxes_caption_dict, merged_boxes_fig_tab_dict, caption_type) -> List[SpanGroup]:
+    def _predict(
+            self, merged_boxes_caption_dict, merged_boxes_fig_tab_dict, caption_type
+    ) -> Dict[str, Union[SpanGroup, BoxGroup, Relation]]:
         """
         Merges boxes corresponding to tokens of table, figure captions. For each page each caption/object create cost
         matrix which is distance based on get_object_caption_distance. Using linear_sum_assignment find corresponding
@@ -343,10 +352,12 @@ class FigureTablePredictions(BaseHeuristicPredictor):
             doc (Document): document to make predictions on, it has to have fields layoutparser_span_groups and
             vila_span_groups
             caption_type (str): caption type to make prediction for can be Figure or Table
-        Returns: Returns list of spanGroups predictions
+        Returns: Returns dictionary with keys 'predictions', 'predictions_captions', 'predictions_relations'
 
         """
         predictions = []
+        predictions_captions = []
+        predictions_relations = []
         for page in range(len(tqdm(self.doc.pages))):
             if merged_boxes_caption_dict.get(page) and merged_boxes_fig_tab_dict.get(page):
                 cost_matrix = np.zeros(
@@ -365,29 +376,32 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
                 row_ind, col_ind = linear_sum_assignment(cost_matrix)
                 for row, col in zip(row_ind, col_ind):
-                    span_group = SpanGroup(spans=[Span(
-                        start=merged_boxes_caption_dict[page][col].start,
-                        end=merged_boxes_caption_dict[page][col].end,
-                        box=merged_boxes_caption_dict[page][col].box)],
-                        box_group=BoxGroup(boxes=[merged_boxes_fig_tab_dict[page][row].box]),
-                        metadata=Metadata(type=caption_type)
-                    )
-                    span_group.text = self.doc.symbols[span_group.start: span_group.end]
-                    if span_group.text.lower().startswith(caption_type.lower()[:3]):
-                        predictions.append(span_group)
-        return predictions
+                    # Check that caption starts with tab or fig
+                    if self.doc.symbols[
+                       merged_boxes_caption_dict[page][col].start:
+                       merged_boxes_caption_dict[page][col].end].lower().startswith(caption_type.lower()[:3]):
+                        span_group = SpanGroup(spans=[Span(
+                            start=merged_boxes_caption_dict[page][col].start,
+                            end=merged_boxes_caption_dict[page][col].end)],
+                            id=len(predictions_captions)
+                        )
+                        box_group = BoxGroup(boxes=[merged_boxes_fig_tab_dict[page][row].box], id=len(predictions))
+                        predictions.append(box_group)
+                        predictions_captions.append(span_group)
+                        predictions_relations.append(Relation(from_id=box_group.id, to_id=span_group.id))
+        return {f'{caption_type.lower()}s': predictions, f'{caption_type.lower()}_captions': predictions_captions,
+                f'{caption_type.lower()}_to_{caption_type.lower()}_captions': predictions_relations}
 
-    def predict(self) -> Tuple[List[SpanGroup], List[SpanGroup]]:
+    def predict(self) -> Dict[str, Union[SpanGroup, BoxGroup, Relation]]:
         """
-        Return tuple caption -> figure, caption -> table
-        Args:
-            document ():
-
-        Returns: List[SpanGroup], SpanGroup has start, end corresponding to caption start, end indexes and box
+        Returns: Dictionary List[SpanGroup], SpanGroup has start, end corresponding to caption start, end indexes and box
         corresponding to merged boxes of the tokens of the caption. Type is one of ['Figure', 'Table']. BoxGroup stores
-        information about the boundaries of figure or table.
+        information about the boundaries of figure or table. Relation stores information about the relation between
+        caption and the object it corresponds to
         """
         (merged_boxes_caption_fig_dict,
          merged_boxes_fig_dict, merged_boxes_caption_tab_dict, merged_boxes_tab_dict) = self.generate_candidates()
-        return (self._predict(merged_boxes_caption_fig_dict, merged_boxes_fig_dict, caption_type='Figure'),
-                self._predict(merged_boxes_caption_tab_dict, merged_boxes_tab_dict, caption_type='Table'))
+        result_dict = {}
+        result_dict.update(self._predict(merged_boxes_caption_fig_dict, merged_boxes_fig_dict, caption_type='Figure'))
+        result_dict.update(self._predict(merged_boxes_caption_tab_dict, merged_boxes_tab_dict, caption_type='Table'))
+        return result_dict
