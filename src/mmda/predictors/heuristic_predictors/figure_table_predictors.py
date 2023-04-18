@@ -329,7 +329,8 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         # Create dictionary of layoutparser span groups merging boxgroups and boxes
         merged_boxes_vila_dict_left = None
         merged_boxes_fig_tab_dict = {}
-        for layout_parser_box_type in ([['Figure', 'Equation'], ['Table']]):
+        # List of types to be merged from layoutparser, note that sometimes figures are marked as Equations
+        for layout_parser_box_type in ([['Figure'], ['Table']]):
             merged_boxes_vila_dict = (merged_boxes_vila_dict_left
                                       if merged_boxes_vila_dict_left is not None else merged_boxes_vila_dict)
             merged_boxes_fig_tab_dict[layout_parser_box_type[0]], merged_boxes_vila_dict_left = self.merge_boxes(
