@@ -13,7 +13,7 @@ dependencies = [
         'pdf2image',
         'pdfplumber==0.7.4',
         'requests',
-        'pandas',
+        'pandas==1.5.3',
         'pydantic',
         'ncls==0.0.66',
         'necessary>=0.3.2',

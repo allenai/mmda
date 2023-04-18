@@ -168,7 +168,8 @@ class PDFPlumberParser(Parser):
             all_page_dims = []
 
             for page_id, page in enumerate(plumber_pdf_object.pages):
-                all_page_dims.append((float(page.width), float(page.height)))
+                page_unit = float(page.page_obj.attrs.get("UserUnit", 1.0))
+                all_page_dims.append((float(page.width), float(page.height), page_unit))
 
                 # 1) tokens we use for Document.symbols
                 coarse_tokens = page.extract_words(
@@ -343,7 +344,7 @@ class PDFPlumberParser(Parser):
             iterable=tokens_with_group_ids, key=lambda tup: tup[2]
         ):
             page_tokens = [token for token, _, _ in tups]
-            page_w, page_h = dims[page_id]
+            page_w, page_h, page_unit = dims[page_id]
             page = SpanGroup(
                 spans=[
                     Span(
@@ -355,7 +356,7 @@ class PDFPlumberParser(Parser):
                     )
                 ],
                 id=page_id,
-                metadata=Metadata(width=page_w, height=page_h),
+                metadata=Metadata(width=page_w, height=page_h, user_unit=page_unit),
             )
             page_annos.append(page)
 

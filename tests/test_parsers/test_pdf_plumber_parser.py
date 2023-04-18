@@ -37,6 +37,17 @@ class TestPDFPlumberParser(unittest.TestCase):
         for page in doc.pages:
             self.assertEqual(595.0, page.metadata.width)
             self.assertEqual(842.0, page.metadata.height)
+            self.assertEqual(1.0, page.metadata.user_unit)
+
+    def test_non_default_user_unit(self):
+        parser = PDFPlumberParser()
+        doc = parser.parse(input_pdf_path=self.fixture_path / "test-uu.pdf")
+
+        for page in doc.pages:
+            self.assertEqual(595.0, page.metadata.width)
+            self.assertEqual(842.0, page.metadata.height)
+            self.assertEqual(2.0, page.metadata.user_unit)
+
 
     def test_parse_fontinfo(self):
         parser = PDFPlumberParser()
@@ -146,7 +157,7 @@ class TestPDFPlumberParser(unittest.TestCase):
         word_ids = [0, 0, 1, 2, 3, 4, 5, 5]
         row_ids = [0, 0, 1, 1, 2, 2, 3, 3]
         page_ids = [0, 0, 0, 0, 1, 1, 1, 1]
-        page_dims = [(100, 200), (400, 800)]
+        page_dims = [(100, 200, 1.), (400, 800, 1.)]
         out = parser._convert_nested_text_to_doc_json(
             token_dicts=token_dicts,
             word_ids=word_ids,
