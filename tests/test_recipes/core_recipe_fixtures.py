@@ -4,7 +4,7 @@ BASE64_PAGE_IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAAlMAAANKCAIAAAAhjVxYAAEAAElEQVR4nOy
 PAGE_JSON = {'spans': [{'start': 0, 'end': 3696,
                         'box': {'left': 0.12100741176470588, 'top': 0.08015236441805225,
                                 'width': 0.7625643173109246, 'height': 0.8289201816627079,
-                                'page': 0}}], 'id': 0, 'metadata': {'width': 595.0, 'height': 842.0}}
+                                'page': 0}}], 'id': 0, 'metadata': {'width': 595.0, 'height': 842.0, 'user_unit': 1.0}}
 FIRST_10_TOKENS_JSON = [
     {'spans': [{'start': 0, 'end': 5,
                 'box': {'left': 0.14541159663865547, 'top': 0.08015236441805225,
