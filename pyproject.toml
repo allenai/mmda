@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.3.7'
+version = '0.3.8'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -13,7 +13,7 @@ dependencies = [
         'pdf2image',
         'pdfplumber==0.7.4',
         'requests',
-        'pandas',
+        'pandas<2',
         'pydantic',
         'ncls==0.0.66',
         'necessary>=0.3.2',

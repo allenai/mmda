@@ -1,6 +1,6 @@
 import itertools
 import string
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 import pdfplumber
 
@@ -62,7 +62,7 @@ class WordExtractorWithFontInfo(ppu.WordExtractor):
         return word
 
     def extract(self, chars: ppu.T_obj_list) -> ppu.T_obj_list:
-        if hasattr(super(), 'extract'):
+        if hasattr(super(), "extract"):
             # pdfplumber <= 0.7.6
             return super().extract(chars)
         else:
@@ -165,7 +165,12 @@ class PDFPlumberParser(Parser):
             all_row_ids = []
             last_row_id = -1
             all_page_ids = []
+            all_page_dims = []
+
             for page_id, page in enumerate(plumber_pdf_object.pages):
+                page_unit = float(page.page_obj.attrs.get("UserUnit", 1.0))
+                all_page_dims.append((float(page.width), float(page.height), page_unit))
+
                 # 1) tokens we use for Document.symbols
                 coarse_tokens = page.extract_words(
                     x_tolerance=self.token_x_tolerance,
@@ -241,6 +246,7 @@ class PDFPlumberParser(Parser):
                 word_ids=all_word_ids,
                 row_ids=all_row_ids,
                 page_ids=all_page_ids,
+                dims=all_page_dims,
             )
             doc = Document.from_json(doc_json)
             return doc
@@ -251,6 +257,7 @@ class PDFPlumberParser(Parser):
         word_ids: List[int],
         row_ids: List[int],
         page_ids: List[int],
+        dims: List[Tuple[float, float]],
     ) -> dict:
         """For a single page worth of text"""
 
@@ -259,7 +266,6 @@ class PDFPlumberParser(Parser):
         token_annos: List[SpanGroup] = []
         start = 0
         for token_id in range(len(token_dicts) - 1):
-
             token_dict = token_dicts[token_id]
             current_word_id = word_ids[token_id]
             next_word_id = word_ids[token_id + 1]
@@ -338,6 +344,7 @@ class PDFPlumberParser(Parser):
             iterable=tokens_with_group_ids, key=lambda tup: tup[2]
         ):
             page_tokens = [token for token, _, _ in tups]
+            page_w, page_h, page_unit = dims[page_id]
             page = SpanGroup(
                 spans=[
                     Span(
@@ -349,6 +356,7 @@ class PDFPlumberParser(Parser):
                     )
                 ],
                 id=page_id,
+                metadata=Metadata(width=page_w, height=page_h, user_unit=page_unit),
             )
             page_annos.append(page)
 
@@ -388,7 +396,6 @@ class PDFPlumberParser(Parser):
                 prev_x = cur_x
 
             if abs(cur_y - prev_y) <= y_tolerance and cur_x - prev_x <= x_tolerance:
-
                 lines.append(cur_line_id)
                 if n == 0:
                     prev_y = cur_y
@@ -397,7 +404,6 @@ class PDFPlumberParser(Parser):
                 n += 1
 
             else:
-
                 cur_line_id += 1
 
                 lines.append(cur_line_id)
