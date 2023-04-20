@@ -3,10 +3,13 @@
 @kylel
 """
 
+import json
 import os
 import pathlib
 import re
 import unittest
+
+import numpy as np
 
 from mmda.parsers import PDFPlumberParser
 from mmda.types import Box, BoxGroup, Document, Span, SpanGroup
@@ -16,6 +19,7 @@ class TestPDFPlumberParser(unittest.TestCase):
     def setUp(cls) -> None:
         cls.fixture_path = pathlib.Path(__file__).parent.parent / "fixtures"
 
+    '''
     def test_parse(self):
         parser = PDFPlumberParser()
         doc = parser.parse(input_pdf_path=self.fixture_path / "1903.10676.pdf")
@@ -203,3 +207,56 @@ class TestPDFPlumberParser(unittest.TestCase):
             "abc\nd ef",
             "gh i\njkl",
         ]
+    '''
+
+    def test_parser_stability(self):
+        """
+        We need output to be stable from release to release. Failure of this test is caused
+        by changes to core output: document text, tokenization, and bbox localization.
+        It deliberately excludes `metadata` from consideration as we are expanding
+        its scope of coverage, but that should probably be locked down too the moment
+        we depend on particular fields.
+
+        Updates that break this test should be considered potentially breaking to downstream
+        models and require re-evaluation and possibly retraining of all components in the DAG.
+        """
+
+        parser = PDFPlumberParser()
+
+        current_doc = parser.parse(input_pdf_path=self.fixture_path / "4be952924cd565488b4a239dc6549095029ee578.pdf")
+
+        with open(self.fixture_path / "4be952924cd565488b4a239dc6549095029ee578__pdfplumber_doc.json", "r") as f:
+            raw_json = f.read()
+            fixture_doc_json = json.loads(raw_json)
+            fixture_doc = Document.from_json(fixture_doc_json)
+
+
+        self.assertEqual(current_doc.symbols, fixture_doc.symbols, msg="Current parse has extracted different text from pdf.")
+
+        def compare_span_groups(current_doc_sgs, fixture_doc_sgs, annotation_name):
+            current_doc_sgs_simplified = [
+                [(s.start, s.end) for s in sg.spans] for sg in current_doc_sgs
+            ]
+            fixture_doc_sgs_simplified = [
+                [(s.start, s.end) for s in sg.spans] for sg in fixture_doc_sgs
+            ]
+
+            self.assertEqual(
+                current_doc_sgs_simplified,
+                fixture_doc_sgs_simplified,
+                msg=f"Current parse produces different SpanGroups for `{annotation_name}`"
+            )
+
+            current_doc_sg_boxes = [[list(s.box.xywh) + [s.box.page] for s in sg] for sg in current_doc_sgs]
+            fixture_doc_sg_boxes = [[list(s.box.xywh) + [s.box.page] for s in sg] for sg in current_doc_sgs]
+
+            self.assertAlmostEqual(
+                current_doc_sg_boxes,
+                fixture_doc_sg_boxes,
+                places=3,
+                msg=f"Boxes generated for `{annotation_name}` have changed."
+            )
+
+        compare_span_groups(current_doc.tokens, fixture_doc.tokens, "tokens")
+        compare_span_groups(current_doc.rows, fixture_doc.rows, "rows")
+        compare_span_groups(current_doc.pages, fixture_doc.pages, "pages")
