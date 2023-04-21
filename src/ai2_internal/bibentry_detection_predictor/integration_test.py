@@ -93,9 +93,10 @@ class TestInterfaceIntegration(unittest.TestCase):
         for raw_box in predictions[0].raw_bib_entry_boxes:
             self.assertEqual(raw_box.type, "raw_model_prediction")
 
-        expected_bib_count = 31
+        expected_bib_count = 33
+        expected_raw_bib_count = 35
         self.assertEqual(len(predictions[0].bib_entries), expected_bib_count)
-        self.assertEqual(len(predictions[0].raw_bib_entry_boxes), expected_bib_count)
+        self.assertEqual(len(predictions[0].raw_bib_entry_boxes), expected_raw_bib_count)
 
     def test__no_resulting_bibs(self, container):
         pdf = "no_bibs.pdf"
@@ -155,8 +156,8 @@ class TestInterfaceIntegration(unittest.TestCase):
         predictions = container.predict_batch(instances)
 
         # several bib boxes overlapped others, causing them to end up with no spans
-        expected_bib_count = 99
-        expected_raw_bib_count = 102
+        expected_bib_count = 118
+        expected_raw_bib_count = 119
 
         self.assertEqual(len(predictions[0].bib_entries), expected_bib_count)
         self.assertEqual(len(predictions[0].raw_bib_entry_boxes), expected_raw_bib_count)
