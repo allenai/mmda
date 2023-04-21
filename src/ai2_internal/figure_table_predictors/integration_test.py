@@ -31,14 +31,12 @@ import logging
 import os
 import sys
 import unittest
-from pathlib import Path
 
-from PIL import Image
 from .. import api
 from mmda.types.document import Document
 from mmda.types.image import tobase64
 from .interface import Instance
-from ..api import SpanGroup, BoxGroup, Relation
+import mmda.types as mmda_types
 
 try:
     from timo_interface import with_timo_container
@@ -55,13 +53,15 @@ def resolve(file: str) -> str:
 def get_test_instance() -> Instance:
     doc_file = resolve('test_doc_sha_d0450478c38dda61f9943f417ab9fcdb2ebeae0a.json')
     with open(doc_file) as f:
-        doc = Document.from_json(json.load(f))
+        dic_json = json.load(f)
+    doc = Document.from_json(dic_json['doc'])
+    layout_equations = [mmda_types.BoxGroup.from_json(entry) for entry in dic_json['layout_equations']]
 
     tokens = [api.SpanGroup.from_mmda(sg) for sg in doc.tokens]
     rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
     pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
     vila_span_groups = [api.SpanGroup.from_mmda(sg) for sg in doc.vila_span_groups]
-    blocks = [api.SpanGroup.from_mmda(sg) for sg in doc.blocks]
+    blocks = [api.BoxGroup.from_mmda(bg) for bg in layout_equations]
 
     return Instance(
         symbols=doc.symbols,
@@ -79,11 +79,11 @@ class TestInterfaceIntegration(unittest.TestCase):
     def test__predictions(self, container):
         instances = [get_test_instance()]
         predictions = container.predict_batch(instances)
-        assert isinstance(predictions[0].figures[0], BoxGroup)
-        assert isinstance(predictions[0].figure_captions[0], SpanGroup)
-        assert isinstance(predictions[0].figure_to_figure_captions[0], Relation)
-        assert isinstance(predictions[0].tables[0], BoxGroup)
-        assert isinstance(predictions[0].table_captions[0], SpanGroup)
-        assert isinstance(predictions[0].table_to_table_captions[0], Relation)
+        assert isinstance(predictions[0].figures[0], api.BoxGroup)
+        assert isinstance(predictions[0].figure_captions[0], api.SpanGroup)
+        assert isinstance(predictions[0].figure_to_figure_captions[0], api.Relation)
+        assert isinstance(predictions[0].tables[0], api.BoxGroup)
+        assert isinstance(predictions[0].table_captions[0], api.SpanGroup)
+        assert isinstance(predictions[0].table_to_table_captions[0], api.Relation)
         assert len(predictions[0].figures) == 5
         assert len(predictions[0].tables) == 6
