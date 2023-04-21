@@ -52,8 +52,8 @@ class PredictorConfig(BaseSettings):
     vars the consuming application needs to set.
     """
 
-    BIB_ENTRY_DETECTION_PREDICTOR_SCORE_THRESHOLD: float = Field(default=0.88, description="Prediction accuracy score used to determine threshold of returned predictions")
-    BIB_ENTRY_DETECTION_MIN_VILA_BIB_ROWS: int = Field(default=2, description="Minimum number of rows in a Bibliography VILA SpanGroup required to qualify as a Bibliography section")
+    BIB_ENTRY_DETECTION_PREDICTOR_SCORE_THRESHOLD: float = Field(default=0.6, description="Prediction accuracy score used to determine threshold of returned predictions")
+    BIB_ENTRY_DETECTION_MIN_VILA_BIB_ROWS: int = Field(default=0, description="Minimum number of rows in a Bibliography VILA SpanGroup required to qualify as a Bibliography section")
 
 
 class Predictor:
