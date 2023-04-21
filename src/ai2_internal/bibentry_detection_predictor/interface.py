@@ -53,7 +53,6 @@ class PredictorConfig(BaseSettings):
     """
 
     BIB_ENTRY_DETECTION_PREDICTOR_SCORE_THRESHOLD: float = Field(default=0.6, description="Prediction accuracy score used to determine threshold of returned predictions")
-    BIB_ENTRY_DETECTION_MIN_VILA_BIB_ROWS: int = Field(default=0, description="Minimum number of rows in a Bibliography VILA SpanGroup required to qualify as a Bibliography section")
 
 
 class Predictor:
@@ -99,8 +98,7 @@ class Predictor:
         doc.annotate(vila_span_groups=[sg.to_mmda() for sg in inst.vila_span_groups])
 
         processed_bib_entry_box_groups, original_box_groups = self._predictor.predict(
-            doc,
-            self._config.BIB_ENTRY_DETECTION_MIN_VILA_BIB_ROWS
+            doc
         )
 
         # generate SpanGroups
