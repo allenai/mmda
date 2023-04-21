@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from ai2_internal import api
 from mmda.predictors.base_predictors.base_heuristic_predictor import BaseHeuristicPredictor
-from mmda.types import SpanGroup, BoxGroup, Metadata
+from mmda.types import SpanGroup, BoxGroup
 from mmda.types.document import Document
 from mmda.types.span import Span
 from mmda.utils.tools import MergeSpans
