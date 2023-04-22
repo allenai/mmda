@@ -5,9 +5,10 @@
 """
 
 
-from typing import List, Dict, Tuple, Union
-from dataclasses import dataclass
 import warnings
+from dataclasses import dataclass
+from typing import Dict, List, Tuple, Union
+
 import numpy as np
 
 
@@ -129,3 +130,29 @@ class Box:
         x21, y21, x22, y22 = other.coordinates
 
         return is_overlap_1d(x11, x12, x21, x22, x) and is_overlap_1d(y11, y12, y21, y22, y)
+
+    @classmethod
+    def cluster_boxes(cls, boxes: List["Box"]) -> List[List["Box"]]:
+        """
+        Cluster boxes into groups based on any overlap. Assumes all boxes are on the same page.
+        """
+        if not boxes:
+            return []
+
+        if len({box.page for box in boxes}) != 1:
+            raise ValueError(f"Bboxes not all on same page: {boxes}")
+
+        clusters: List[List[Box]] = [[boxes[0]]]
+        cluster_id_to_big_box: Dict[int, Box] = {0: boxes[0]}
+        for box in boxes[1:]:
+            for cluster_id, big_box in cluster_id_to_big_box.items():
+                if box.is_overlap(big_box, x=0, y=0):
+                    clusters[cluster_id].append(box)
+                    cluster_id_to_big_box[cluster_id] = cls.small_boxes_to_big_box(clusters[cluster_id])
+                    break
+            else:
+                clusters.append([box])
+                cluster_id_to_big_box[len(clusters) - 1] = box
+
+        return clusters
+        
