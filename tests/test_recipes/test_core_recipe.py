@@ -7,11 +7,16 @@
 import os
 import unittest
 
-from mmda.types import Document, SpanGroup, PILImage, BoxGroup
 from mmda.recipes import CoreRecipe
-from tests.test_recipes.core_recipe_fixtures import FIRST_1000_SYMBOLS, PAGE_JSON, \
-    BASE64_PAGE_IMAGE, FIRST_10_VILA_JSONS, SEGMENT_OF_WORD_JSONS, FIRST_3_BLOCKS_JSON, \
-    FIRST_5_ROWS_JSON, FIRST_10_TOKENS_JSON
+from mmda.types import BoxGroup, Document, PILImage, SpanGroup
+from tests.test_recipes.core_recipe_fixtures import (BASE64_PAGE_IMAGE,
+                                                     FIRST_3_BLOCKS_JSON,
+                                                     FIRST_5_ROWS_JSON,
+                                                     FIRST_10_TOKENS_JSON,
+                                                     FIRST_10_VILA_JSONS,
+                                                     FIRST_1000_SYMBOLS,
+                                                     PAGE_JSON,
+                                                     SEGMENT_OF_WORD_JSONS)
 
 
 def round_all_floats(d: dict):
@@ -99,3 +104,15 @@ class TestCoreRecipe(unittest.TestCase):
         doc2.annotate(blocks=blocks)
         assert [b.to_json() for b in doc2.blocks] == doc_json['blocks'] == \
                [b.to_json() for b in self.doc.blocks]
+
+    def test_no_fail_pdfs_in_fixtures(self):
+        pdfpath = os.path.join(os.path.dirname(__file__), '../fixtures/56c0a25e7bd3f220df8f9939f23c1982c2cb5fc4.pdf')
+        doc = self.recipe.from_path(pdfpath=pdfpath)
+        
+        pdfpath = os.path.join(os.path.dirname(__file__), '../fixtures/72b37044a17c9210ed56c2cc7b9a737b1385311b.pdf')
+        doc = self.recipe.from_path(pdfpath=pdfpath)
+
+        pdfpath = os.path.join(os.path.dirname(__file__), '../fixtures/faa06090392e9633e608516b8c35f163f4a8f38a.pdf')
+        doc = self.recipe.from_path(pdfpath=pdfpath)
+
+        

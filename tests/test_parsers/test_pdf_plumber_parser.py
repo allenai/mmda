@@ -260,9 +260,3 @@ class TestPDFPlumberParser(unittest.TestCase):
         compare_span_groups(current_doc.tokens, fixture_doc.tokens, "tokens")
         compare_span_groups(current_doc.rows, fixture_doc.rows, "rows")
         compare_span_groups(current_doc.pages, fixture_doc.pages, "pages")
-
-    def test_no_fail_pdfs_in_fixtures(self):
-        parser = PDFPlumberParser()
-        doc = parser.parse(input_pdf_path=self.fixture_path / "56c0a25e7bd3f220df8f9939f23c1982c2cb5fc4.pdf")
-        doc = parser.parse(input_pdf_path=self.fixture_path / "72b37044a17c9210ed56c2cc7b9a737b1385311b.pdf")
-        doc = parser.parse(input_pdf_path=self.fixture_path / "faa06090392e9633e608516b8c35f163f4a8f38a.pdf")
