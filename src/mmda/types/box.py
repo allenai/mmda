@@ -12,12 +12,16 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 
 
-def is_overlap_1d(start1: float, end1: float, start2: float, end2: float, x: float = 0) -> bool:
+def is_overlap_1d(
+    start1: float, end1: float, start2: float, end2: float, x: float = 0
+) -> bool:
     """Return whether two 1D intervals overlaps given x"""
     assert start1 <= end1
     assert start2 <= end2
 
-    return not (start1 - x > end2 or start1 > end2 + x or end1 + x < start2 or end1 < start2 - x)  # ll  # rr
+    return not (
+        start1 - x > end2 or start1 > end2 + x or end1 + x < start2 or end1 < start2 - x
+    )  # ll  # rr
 
 
 @dataclass
@@ -29,12 +33,23 @@ class Box:
     page: int
 
     def to_json(self) -> Dict[str, float]:
-        return {'left': self.l, 'top': self.t, 'width': self.w, 'height': self.h, 'page': self.page}
+        return {
+            "left": self.l,
+            "top": self.t,
+            "width": self.w,
+            "height": self.h,
+            "page": self.page,
+        }
 
     @classmethod
     def from_json(cls, box_dict: Dict[str, Union[float, int]]) -> "Box":
-        return Box(l=box_dict['left'], t=box_dict['top'], w=box_dict['width'], h=box_dict['height'],
-                   page=box_dict['page'])
+        return Box(
+            l=box_dict["left"],
+            t=box_dict["top"],
+            w=box_dict["width"],
+            h=box_dict["height"],
+            page=box_dict["page"],
+        )
 
     @classmethod
     def from_coordinates(cls, x1: float, y1: float, x2: float, y2: float, page: int):
@@ -75,10 +90,6 @@ class Box:
     @classmethod
     def small_boxes_to_big_box(cls, boxes: List["Box"]) -> "Box":
         """Computes one big box that tightly encapsulates all smaller input boxes"""
-        boxes = [box for box in boxes if box is not None]
-        if not boxes:
-            return None
-
         if len({box.page for box in boxes}) != 1:
             raise ValueError(f"Bboxes not all on same page: {boxes}")
         x1 = min([bbox.l for bbox in boxes])
@@ -129,10 +140,12 @@ class Box:
         x11, y11, x12, y12 = self.coordinates
         x21, y21, x22, y22 = other.coordinates
 
-        return is_overlap_1d(x11, x12, x21, x22, x) and is_overlap_1d(y11, y12, y21, y22, y)
+        return is_overlap_1d(x11, x12, x21, x22, x) and is_overlap_1d(
+            y11, y12, y21, y22, y
+        )
 
     @classmethod
-    def cluster_boxes(cls, boxes: List["Box"]) -> List[List["Box"]]:
+    def cluster_boxes(cls, boxes: List["Box"]) -> List[List[int]]:
         """
         Cluster boxes into groups based on any overlap. Assumes all boxes are on the same page.
         """
@@ -142,17 +155,31 @@ class Box:
         if len({box.page for box in boxes}) != 1:
             raise ValueError(f"Bboxes not all on same page: {boxes}")
 
-        clusters: List[List[Box]] = [[boxes[0]]]
+        clusters: List[List[int]] = [[0]]
         cluster_id_to_big_box: Dict[int, Box] = {0: boxes[0]}
-        for box in boxes[1:]:
+        for box_id in range(1, len(boxes)):
+            box = boxes[box_id]
+
+            # check all the clusters to see if the box overlaps with any of them
+            is_overlap = False
             for cluster_id, big_box in cluster_id_to_big_box.items():
                 if box.is_overlap(big_box, x=0, y=0):
-                    clusters[cluster_id].append(box)
-                    cluster_id_to_big_box[cluster_id] = cls.small_boxes_to_big_box(clusters[cluster_id])
+                    is_overlap = True
                     break
+
+            # resolve
+            if is_overlap:
+                clusters[cluster_id].append(box_id)
+                cluster_id_to_big_box[cluster_id] = cls.small_boxes_to_big_box(
+                    [box, big_box]
+                )
             else:
-                clusters.append([box])
+                clusters.append([box_id])
                 cluster_id_to_big_box[len(clusters) - 1] = box
 
+        # sort clusters
+        for cluster in clusters:
+            cluster.sort()
+        clusters.sort(key=lambda x: x[0])
+
         return clusters
-        

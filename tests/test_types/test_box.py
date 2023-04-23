@@ -22,18 +22,20 @@ class TestBox(unittest.TestCase):
 
     def test_cluster_boxes(self):
         # overlapping boxes
-        boxes = [self.box, self.box, self.box]
-        self.assertListEqual(self.box.cluster_boxes(boxes), [boxes])
+        boxes = [
+            mmda_box.Box(l=0.2, t=0.09, w=0.095, h=0.017, page=0),
+            mmda_box.Box(l=0.2, t=0.09, w=0.095, h=0.017, page=0),
+            mmda_box.Box(l=0.2, t=0.09, w=0.095, h=0.017, page=0),
+        ]
+        self.assertListEqual(mmda_box.Box.cluster_boxes(boxes), [[0, 1, 2]])
 
-        # non-overlapping boxes
+        # on-overlapping boxes
         boxes = [
             mmda_box.Box(l=0.2, t=0.09, w=0.095, h=0.017, page=0),
             mmda_box.Box(l=0.3, t=0.20, w=0.095, h=0.017, page=0),
             mmda_box.Box(l=0.4, t=0.30, w=0.095, h=0.017, page=0),
         ]
-        self.assertListEqual(
-            self.box.cluster_boxes(boxes), [[boxes[0]], [boxes[1]], [boxes[2]]]
-        )
+        self.assertListEqual(mmda_box.Box.cluster_boxes(boxes), [[0], [1], [2]])
 
         # partially overlapping boxes
         boxes = [
@@ -41,6 +43,6 @@ class TestBox(unittest.TestCase):
             mmda_box.Box(l=0.3, t=0.20, w=0.095, h=0.017, page=0),
             mmda_box.Box(l=0.301, t=0.201, w=0.095, h=0.017, page=0),
         ]
-        self.assertListEqual(
-            self.box.cluster_boxes(boxes), [[boxes[0]], [boxes[1], boxes[2]]]
-        )
+        self.assertListEqual(mmda_box.Box.cluster_boxes(boxes), [[0], [1, 2]])
+
+    
