@@ -83,8 +83,16 @@ class BoxGroup(Annotation):
         id: Optional[int] = None,
         doc: Optional["Document"] = None,
         metadata: Optional[Metadata] = None,
+        allow_overlap: Optional[bool] = False,
     ):
         self.boxes = boxes
+        if not allow_overlap:
+            clusters = Box.cluster_boxes(boxes=boxes)
+            if any([len(cluster) > 1 for cluster in clusters]):
+                raise ValueError(
+                    "BoxGroup does not allow overlapping boxes. "
+                    "Consider setting allow_overlap=True."
+                )
         super().__init__(id=id, doc=doc, metadata=metadata)
 
     def to_json(self) -> Dict:
@@ -152,8 +160,16 @@ class SpanGroup(Annotation):
         id: Optional[int] = None,
         doc: Optional["Document"] = None,
         metadata: Optional[Metadata] = None,
+        allow_overlap: Optional[bool] = False,
     ):
         self.spans = spans
+        if not allow_overlap:
+            clusters = Span.cluster_spans(spans=spans)
+            if any([len(cluster) > 1 for cluster in clusters]):
+                raise ValueError(
+                    "SpanGroup does not allow overlapping spans. "
+                    "Consider setting allow_overlap=True."
+                )
         self.box_group = box_group
         super().__init__(id=id, doc=doc, metadata=metadata)
 

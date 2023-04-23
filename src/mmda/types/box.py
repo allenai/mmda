@@ -12,7 +12,7 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 
 
-def is_overlap_1d(
+def _is_overlap_1d(
     start1: float, end1: float, start2: float, end2: float, x: float = 0
 ) -> bool:
     """Return whether two 1D intervals overlaps given x"""
@@ -137,23 +137,23 @@ class Box:
         Whether self overlaps with the other Box object.
         x, y distances
         """
+        if self.page != other.page:
+            return False
+
         x11, y11, x12, y12 = self.coordinates
         x21, y21, x22, y22 = other.coordinates
 
-        return is_overlap_1d(x11, x12, x21, x22, x) and is_overlap_1d(
+        return _is_overlap_1d(x11, x12, x21, x22, x) and _is_overlap_1d(
             y11, y12, y21, y22, y
         )
 
     @classmethod
     def cluster_boxes(cls, boxes: List["Box"]) -> List[List[int]]:
         """
-        Cluster boxes into groups based on any overlap. Assumes all boxes are on the same page.
+        Cluster boxes into groups based on any overlap.
         """
         if not boxes:
             return []
-
-        if len({box.page for box in boxes}) != 1:
-            raise ValueError(f"Bboxes not all on same page: {boxes}")
 
         clusters: List[List[int]] = [[0]]
         cluster_id_to_big_box: Dict[int, Box] = {0: boxes[0]}
