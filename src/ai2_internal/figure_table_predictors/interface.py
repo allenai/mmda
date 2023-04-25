@@ -33,7 +33,7 @@ class Instance(BaseModel):
     rows: List[api.SpanGroup]
     pages: List[api.SpanGroup]
     vila_span_groups: List[api.SpanGroup]
-    blocks: List[api.SpanGroup]
+    blocks: List[api.BoxGroup]
     images: List[str] = Field(description="List of base64-encoded page images")
 
     def to_mmda(self):
