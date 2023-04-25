@@ -134,16 +134,13 @@ class BibEntryDetectionPredictor(BasePredictor):
 
         return processed_box_groups, original_box_groups
 
-    def predict(self, doc: Document, min_vila_bib_rows: int) -> (List[BoxGroup], List[BoxGroup]):
-        """Returns a list of BoxGroups for the detected bibentry boxes for pages identified as bib containing pages
-        via VILA heuristic (pages with "Bibliography" Vila SpanGroups that span more rows than min_vila_bib_rows),
+    def predict(self, doc: Document) -> (List[BoxGroup], List[BoxGroup]):
+        """Returns a list of BoxGroups for the detected bibentry boxes for all pages of a document
         and second list of BoxGroups for original model output boxes from those same pages.
 
         Args:
             doc (Document):
                 The input document object containing all required annotations
-            min_vila_bib_rows (int):
-                Minimum number of rows in a Bibliography VILA SpanGroup required to qualify as a Bibliography section
 
         Returns:
             (List[BoxGroup], List[BoxGroup]):
@@ -153,14 +150,9 @@ class BibEntryDetectionPredictor(BasePredictor):
         bib_entries: List[BoxGroup] = []
         original_model_output: List[BoxGroup] = []
 
-        vila_bib_sgs = [sg for sg in doc.vila_span_groups if
-                        sg.type == "Bibliography" and (len(sg.rows) > min_vila_bib_rows)]
-        vila_bib_pgs = set([sg.rows[0].spans[0].box.page for sg in vila_bib_sgs])
-        vila_bib_pg_to_image = {page_index: doc.images[page_index] for page_index in vila_bib_pgs}
-
         id_counter = itertools.count()
 
-        for page_index, image in vila_bib_pg_to_image.items():
+        for page_index, image in enumerate(doc.images):
             model_outputs: lp.Layout = self.model.detect(image)
             page_tokens: List[Span] = list(
                 itertools.chain.from_iterable(

@@ -219,7 +219,7 @@ model_variants:
     predictor_config: ai2_internal.bibentry_detection_predictor.interface.PredictorConfig
 
     # Full S3 path to tar.gz'ed artifacts archive, nullable
-    artifacts_s3_path: s3://ai2-s2-mmda/models/bibliography-entries/outputs/p3_2xl/bibs/silver_dataset_8k/one_category/pln_mask_rcnn_X_101_32x8d_FPN_3x/archive.tar.gz
+    artifacts_s3_path: s3://ai2-s2-analytics/danyh/extract-stuff-from-pdfs/artifacts/anchor/archive.tar.gz
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
     python_version: "3.8"
