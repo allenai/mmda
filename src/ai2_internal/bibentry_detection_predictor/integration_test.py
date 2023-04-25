@@ -155,7 +155,7 @@ class TestInterfaceIntegration(unittest.TestCase):
         # should not error
         predictions = container.predict_batch(instances)
 
-        # several bib boxes overlapped others, causing them to end up with no spans
+        # A bib box overlapped others, causing it to end up with no spans
         expected_bib_count = 118
         expected_raw_bib_count = 119
 
