@@ -5,6 +5,7 @@ Indexes for Annotations
 """
 
 from abc import abstractmethod
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import List
 
@@ -116,9 +117,9 @@ class BoxGroupIndexer(Indexer):
     """
 
     def __init__(self, box_groups: List[BoxGroup]) -> None:
-        self._box_id_to_box_group_id = {}
-
         self._bgs = box_groups
+
+        self._box_id_to_box_group_id = {}
         self._boxes = []
         box_id = 0
         for bg_id, bg in enumerate(box_groups):
@@ -131,6 +132,7 @@ class BoxGroupIndexer(Indexer):
         self._np_boxes_y1 = np.array([b.t for b in self._boxes])
         self._np_boxes_x2 = np.array([b.l + b.w for b in self._boxes])
         self._np_boxes_y2 = np.array([b.t + b.h for b in self._boxes])
+        self._np_boxes_page = np.array([b.page for b in self._boxes])
 
         self._ensure_disjoint()
 
@@ -141,6 +143,7 @@ class BoxGroupIndexer(Indexer):
             & (self._np_boxes_x2 >= x1)
             & (self._np_boxes_y1 <= y2)
             & (self._np_boxes_y2 >= y1)
+            & (self._np_boxes_page == query.page)
         )
         return np.where(mask)[0].tolist()
 

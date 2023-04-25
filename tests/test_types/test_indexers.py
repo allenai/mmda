@@ -78,3 +78,28 @@ class TestBoxGroupIndexer(unittest.TestCase):
 
         self.assertEqual(len(matches), 2)
         self.assertEqual(matches, [box_groups_to_index[0], box_groups_to_index[1]])
+
+    def test_finds_matching_groups_accounts_for_pages(self):
+        box_groups_to_index = [
+            BoxGroup(id=1, boxes=[Box(0, 0, 1, 1, page=0), Box(2, 2, 1, 1, page=1)]),
+            BoxGroup(id=2, boxes=[Box(4, 4, 1, 1, page=1)]),
+            BoxGroup(id=3, boxes=[Box(100, 100, 1, 1, page=0)]),
+        ]
+
+        index = BoxGroupIndexer(box_groups_to_index)
+
+        # shouldnt intersect any given page 0
+        probe = BoxGroup(id=4, boxes=[Box(1, 1, 5, 5, page=0), Box(9, 9, 5, 5, page=0)])
+        matches = index.find(probe)
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches, [box_groups_to_index[0]])
+
+        # shoudl intersect after switching to page 1 (and the page 2 box doesnt intersect)
+        probe = BoxGroup(
+            id=4, boxes=[Box(1, 1, 5, 5, page=1), Box(100, 100, 1, 1, page=2)]
+        )
+        matches = index.find(probe)
+
+        self.assertEqual(len(matches), 2)
+        self.assertEqual(matches, [box_groups_to_index[0], box_groups_to_index[1]])
