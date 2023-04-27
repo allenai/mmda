@@ -8,7 +8,7 @@ as a definition of the objects it expects, and those it returns.
 
 from typing import List
 
-from pydantic import BaseModel, Field, BaseSettings
+from pydantic import BaseModel, BaseSettings
 
 from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureTablePredictions
 from mmda.types.document import Document
@@ -33,11 +33,12 @@ class Instance(BaseModel):
     blocks: List[api.BoxGroup]
 
     def to_mmda(self):
+        """
+        Convert this Instance to an mmda.types.Document
+        """
         doc = Document(symbols=self.symbols)
         doc.annotate(tokens=[sg.to_mmda() for sg in self.tokens])
-        doc.annotate(rows=[sg.to_mmda() for sg in self.rows])
         doc.annotate(pages=[sg.to_mmda() for sg in self.pages])
-        doc.annotate_images([frombase64(img) for img in self.images])
         doc.annotate(blocks=[sg.to_mmda() for sg in self.blocks])
         doc.annotate(vila_span_groups=[sg.to_mmda() for sg in self.vila_span_groups])
         return doc
