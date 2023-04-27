@@ -50,24 +50,20 @@ except ImportError as e:
 def resolve(file: str) -> str:
     return os.path.join(os.path.dirname(__file__), 'test_fixtures', file)
 
-def get_test_instance() -> Instance:
-    doc_file = resolve('test_doc_sha_d0450478c38dda61f9943f417ab9fcdb2ebeae0a.json')
+def get_test_instance(sha) -> Instance:
+    doc_file = resolve(f'test_doc_sha_{sha}.json')
     with open(doc_file) as f:
         dic_json = json.load(f)
     doc = Document.from_json(dic_json['doc'])
     layout_equations = [mmda_types.BoxGroup.from_json(entry) for entry in dic_json['layout_equations']]
-
     tokens = [api.SpanGroup.from_mmda(sg) for sg in doc.tokens]
-    rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
     pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
     vila_span_groups = [api.SpanGroup.from_mmda(sg) for sg in doc.vila_span_groups]
     blocks = [api.BoxGroup.from_mmda(bg) for bg in layout_equations]
 
     return Instance(
         symbols=doc.symbols,
-        images=[tobase64(image) for image in doc.images],
         tokens=tokens,
-        rows=rows,
         pages=pages,
         vila_span_groups=vila_span_groups,
         blocks=blocks,
@@ -76,8 +72,8 @@ def get_test_instance() -> Instance:
 
 @with_timo_container
 class TestInterfaceIntegration(unittest.TestCase):
-    def test__predictions(self, container):
-        instances = [get_test_instance()]
+    def test__predictions_test_doc_sha_d045(self, container):
+        instances = [get_test_instance('d0450478c38dda61f9943f417ab9fcdb2ebeae0a')]
         predictions = container.predict_batch(instances)
         assert isinstance(predictions[0].figures[0], api.BoxGroup)
         assert isinstance(predictions[0].figure_captions[0], api.SpanGroup)
@@ -87,3 +83,15 @@ class TestInterfaceIntegration(unittest.TestCase):
         assert isinstance(predictions[0].table_to_table_captions[0], api.Relation)
         assert len(predictions[0].figures) == 5
         assert len(predictions[0].tables) == 6
+
+    def test__predictions_test_doc_sha_08f05(self, container):
+        instances = [get_test_instance('08f02e7888f140a76a00ed23fce2f2fc303a')]
+        predictions = container.predict_batch(instances)
+        assert isinstance(predictions[0].figures[0], api.BoxGroup)
+        assert isinstance(predictions[0].figure_captions[0], api.SpanGroup)
+        assert isinstance(predictions[0].figure_to_figure_captions[0], api.Relation)
+        assert isinstance(predictions[0].tables[0], api.BoxGroup)
+        assert isinstance(predictions[0].table_captions[0], api.SpanGroup)
+        assert isinstance(predictions[0].table_to_table_captions[0], api.Relation)
+        assert len(predictions[0].figures) == 4
+        assert len(predictions[0].tables) == 3

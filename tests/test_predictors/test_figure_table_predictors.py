@@ -41,6 +41,16 @@ class TestFigureCaptionPredictor(unittest.TestCase):
 
         assert distance == pytest.approx(0.15)
 
+    def test_generate_map_of_layout_to_tokens(self):
+        vila_caption = FigureTablePredictions._filter_span_group(
+            self.doc.vila_span_groups, caption_content='fig', span_group_types=['Caption'])
+
+        vila_caption_dict = FigureTablePredictions._create_dict_of_pages_spans_vila(vila_caption)
+        result = self.figure_table_predictor.generate_map_of_layout_to_tokens(
+            vila_caption_dict,
+            defaultdict(list), defaultdict(list))
+        assert list(result.keys()) == []
+
     def test_predict(self):
         result = self.figure_table_predictor.predict()
         assert isinstance(result, dict)

@@ -1,4 +1,3 @@
-import json
 from collections import defaultdict
 
 from typing import List, Dict, Tuple, Union
@@ -19,11 +18,10 @@ from ai2_internal.api import Relation
 class FigureTablePredictions(BaseHeuristicPredictor):
     """Class for creating a map of figure boxes to figure captions
     """
-    REQUIRED_DOCUMENT_FIELDS = ['pages', 'tokens', 'rows', 'vila_span_groups', 'blocks', ]
+    REQUIRED_DOCUMENT_FIELDS = ['pages', 'tokens', 'vila_span_groups', 'blocks', ]
 
     def __init__(self, document: Document) -> None:
         self.doc = document
-        self.dict_of_pages_layoutparser = None
         self.vila_caption_dict = None
         self.vila_spans_all_dict = None
         self.width_heights_dict = None
@@ -106,7 +104,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         """
         for page in vila_dict.keys():
             for span in vila_dict[page]:
-                for layout_span in dict_of_pages_layoutparser.get(page):
+                for layout_span in dict_of_pages_layoutparser.get(page, []):
                     if span.box.is_overlap(layout_span.box):
                         id_dict = layout_parser_overlap.get(layout_span.span_id, {'caption': [], 'non_caption': []})
                         id_dict[key].append(span.span_id)
