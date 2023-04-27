@@ -3,6 +3,8 @@ from collections import defaultdict
 from itertools import groupby
 from typing import List, Dict, Tuple
 
+import numpy as np
+
 from mmda.types.span import Span
 from mmda.types.box import Box
 
@@ -78,20 +80,28 @@ class MergeSpans:
         Build graph, each node is represented by (start, end) of tuple, with the list of spans. Spans are considered
         overlapping if they are index_distance apart
         """
-        is_neighboring_spans = (
-            lambda span1, span2: min(
-                abs(span1.start - span2.end), abs(span1.end - span2.start)
-            )
-            <= self.index_distance
+        starts_matrix = np.full(
+            (len(self.list_of_spans), len(self.list_of_spans)),
+            [span.start for span in self.list_of_spans]
+        )
+        ends_matrix = np.full(
+            (len(self.list_of_spans), len(self.list_of_spans)),
+            [span.end for span in self.list_of_spans]
         )
 
-        for i, span_i in enumerate(self.list_of_spans):
-            for j in range(i + 1, len(self.list_of_spans)):
-                if is_neighboring_spans(span_i, self.list_of_spans[j]):
-                    self.graph[span_i.start, span_i.end].append(self.list_of_spans[j])
-                    self.graph[
-                        self.list_of_spans[j].start, self.list_of_spans[j].end
-                    ].append(span_i)
+        starts_minus_ends = np.abs(starts_matrix - ends_matrix.T)
+        ends_minus_starts = np.abs(ends_matrix - starts_matrix.T)
+        are_neighboring_spans = np.minimum(starts_minus_ends, ends_minus_starts) <= self.index_distance
+        neighboring_spans =  np.transpose(are_neighboring_spans.nonzero())
+
+        if len(neighboring_spans) > 0:
+            neighboring_spans_no_dupes = neighboring_spans[np.where(neighboring_spans[:,1] < neighboring_spans[:,0])]
+
+            for j, i in neighboring_spans_no_dupes:
+                span_i = self.list_of_spans[i]
+                span_j = self.list_of_spans[j]
+                self.graph[span_i.start, span_i.end].append(span_j)
+                self.graph[span_j.start, span_j.end].append(span_i)
 
     def build_graph_box_overlap(self):
         """
