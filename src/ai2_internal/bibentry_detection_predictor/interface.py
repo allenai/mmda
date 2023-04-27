@@ -104,9 +104,19 @@ class Predictor:
         # generate SpanGroups
         if len(processed_bib_entry_box_groups) > 0:
             doc.annotate(bib_entries=processed_bib_entry_box_groups)
+            # remove boxes from spans to create entity-like SpanGroups with BoxGroups
+            # (where the only set of boxes is on SpanGroup.box_group)
+            no_span_box_span_groups = [
+                api.SpanGroup(
+                    # omit s.box when generating list of spans
+                    spans=[api.Span(start=s.start, end=s.end) for s in sg.spans],
+                    box_group=api.BoxGroup.from_mmda(sg.box_group)
+                )
+                for sg in doc.bib_entries
+            ]
             prediction = Prediction(
-                # filter out span-less SpanGroups
-                bib_entries=[api.SpanGroup.from_mmda(sg) for sg in doc.bib_entries if len(sg.spans) != 0],
+                # filter out span-less SpanGroups which occasionally occur
+                bib_entries=[sg for sg in no_span_box_span_groups if len(sg.spans) != 0],
                 # retain the original model output
                 raw_bib_entry_boxes=[api.SpanGroup(spans=[], box_group=api.BoxGroup.from_mmda(bg)) for bg in original_box_groups]
             )
