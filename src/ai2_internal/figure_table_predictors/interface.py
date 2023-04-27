@@ -12,8 +12,6 @@ from pydantic import BaseModel, Field, BaseSettings
 
 from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureTablePredictions
 from mmda.types.document import Document
-from mmda.types.image import frombase64
-
 from ai2_internal import api
 
 
@@ -30,11 +28,9 @@ class Instance(BaseModel):
 
     symbols: str
     tokens: List[api.SpanGroup]
-    rows: List[api.SpanGroup]
     pages: List[api.SpanGroup]
     vila_span_groups: List[api.SpanGroup]
     blocks: List[api.BoxGroup]
-    images: List[str] = Field(description="List of base64-encoded page images")
 
     def to_mmda(self):
         doc = Document(symbols=self.symbols)
