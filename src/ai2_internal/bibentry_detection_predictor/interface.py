@@ -40,7 +40,7 @@ class Prediction(BaseModel):
     Describes the outcome of inference for one Instance
     """
     bib_entries: List[api.SpanGroup]
-    raw_bib_entry_boxes: List[api.BoxGroup]
+    raw_bib_entry_boxes: List[api.SpanGroup]
 
 
 class PredictorConfig(BaseSettings):
@@ -108,7 +108,7 @@ class Predictor:
                 # filter out span-less SpanGroups
                 bib_entries=[api.SpanGroup.from_mmda(sg) for sg in doc.bib_entries if len(sg.spans) != 0],
                 # retain the original model output
-                raw_bib_entry_boxes=[api.BoxGroup.from_mmda(bg) for bg in original_box_groups]
+                raw_bib_entry_boxes=[api.SpanGroup(spans=[], box_group=api.BoxGroup.from_mmda(bg)) for bg in original_box_groups]
             )
         else:
             prediction = Prediction(
