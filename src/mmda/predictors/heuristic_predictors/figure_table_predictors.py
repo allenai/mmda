@@ -1,4 +1,3 @@
-import json
 from collections import defaultdict
 
 from typing import List, Dict, Tuple, Union
@@ -19,7 +18,7 @@ from ai2_internal.api import Relation
 class FigureTablePredictions(BaseHeuristicPredictor):
     """Class for creating a map of figure boxes to figure captions
     """
-    REQUIRED_DOCUMENT_FIELDS = ['pages', 'tokens', 'rows', 'vila_span_groups', 'blocks', ]
+    REQUIRED_DOCUMENT_FIELDS = ['pages', 'tokens', 'vila_span_groups', 'blocks', ]
 
     def __init__(self, document: Document) -> None:
         self.doc = document
