@@ -104,7 +104,7 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         """
         for page in vila_dict.keys():
             for span in vila_dict[page]:
-                for layout_span in dict_of_pages_layoutparser[page]:
+                for layout_span in dict_of_pages_layoutparser.get(page, []):
                     if span.box.is_overlap(layout_span.box):
                         id_dict = layout_parser_overlap.get(layout_span.span_id, {'caption': [], 'non_caption': []})
                         id_dict[key].append(span.span_id)
