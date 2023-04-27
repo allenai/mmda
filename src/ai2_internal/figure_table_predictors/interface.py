@@ -7,8 +7,6 @@ as a definition of the objects it expects, and those it returns.
 """
 
 from typing import List
-import time
-import logging
 
 from pydantic import BaseModel, Field, BaseSettings
 
@@ -16,7 +14,6 @@ from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureT
 from mmda.types.document import Document
 from ai2_internal import api
 
-logger = logging.getLogger(__name__)
 
 class Instance(BaseModel):
     """
@@ -36,21 +33,13 @@ class Instance(BaseModel):
     blocks: List[api.BoxGroup]
 
     def to_mmda(self):
-        start = time.time()
         doc = Document(symbols=self.symbols)
-        logger.debug(f"Instantiating document with symbols {(time.time() - start):.3f} seconds")
-        start = time.time()
         doc.annotate(tokens=[sg.to_mmda() for sg in self.tokens])
-        logger.debug(f"Tokens annotation {(time.time() - start):.3f} seconds")
-        start = time.time()
+        doc.annotate(rows=[sg.to_mmda() for sg in self.rows])
         doc.annotate(pages=[sg.to_mmda() for sg in self.pages])
-        logger.debug(f"Pages annotation {(time.time() - start):.3f} seconds")
-        start = time.time()
+        doc.annotate_images([frombase64(img) for img in self.images])
         doc.annotate(blocks=[sg.to_mmda() for sg in self.blocks])
-        logger.debug(f"Blocks annotation {(time.time() - start):.3f} seconds")
-        start = time.time()
         doc.annotate(vila_span_groups=[sg.to_mmda() for sg in self.vila_span_groups])
-        logger.debug(f"Vila span_groups annotation {(time.time() - start):.3f} seconds")
         return doc
 
 
