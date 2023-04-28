@@ -110,7 +110,8 @@ class Predictor:
                 api.SpanGroup(
                     # omit s.box when generating list of spans
                     spans=[api.Span(start=s.start, end=s.end) for s in sg.spans],
-                    box_group=api.BoxGroup.from_mmda(sg.box_group)
+                    box_group=api.BoxGroup.from_mmda(sg.box_group),
+                    id=sg.id
                 )
                 for sg in doc.bib_entries
             ]
@@ -118,7 +119,7 @@ class Predictor:
                 # filter out span-less SpanGroups which occasionally occur
                 bib_entries=[sg for sg in no_span_box_span_groups if len(sg.spans) != 0],
                 # retain the original model output
-                raw_bib_entry_boxes=[api.SpanGroup(spans=[], box_group=api.BoxGroup.from_mmda(bg)) for bg in original_box_groups]
+                raw_bib_entry_boxes=[api.SpanGroup(spans=[], box_group=api.BoxGroup.from_mmda(bg), id=bg.id) for bg in original_box_groups]
             )
         else:
             prediction = Prediction(
