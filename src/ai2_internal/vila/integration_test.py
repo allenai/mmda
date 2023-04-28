@@ -68,9 +68,6 @@ def get_test_instance() -> Instance:
     rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
     pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
 
-    with open(resolve("test_blocks.json")) as f:
-        blocks = [api.BoxGroup(**bg) for bg in json.load(f)["groups"]]
-
     images = [tobase64(Image.open(resolve_image("page0.png")))]
 
     return Instance(
@@ -78,8 +75,7 @@ def get_test_instance() -> Instance:
         images=images,
         tokens=tokens,
         rows=rows,
-        pages=pages,
-        blocks=blocks,
+        pages=pages
     )
 
 
