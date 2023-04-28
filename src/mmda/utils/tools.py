@@ -80,24 +80,19 @@ class MergeSpans:
         Build graph, each node is represented by (start, end) of tuple, with the list of spans. Spans are considered
         overlapping if they are index_distance apart
         """
-        starts_matrix = np.full(
-            (len(self.list_of_spans), len(self.list_of_spans)),
-            [span.start for span in self.list_of_spans]
-        )
-        ends_matrix = np.full(
-            (len(self.list_of_spans), len(self.list_of_spans)),
-            [span.end for span in self.list_of_spans]
-        )
+        span_starts = np.array([span.start for span in self.list_of_spans])
+        span_ends = np.array([span.end for span in self.list_of_spans])
 
-        starts_minus_ends = np.abs(starts_matrix - ends_matrix.T)
-        ends_minus_starts = np.abs(ends_matrix - starts_matrix.T)
-        are_neighboring_spans = np.minimum(starts_minus_ends, ends_minus_starts) <= self.index_distance
-        neighboring_spans =  np.transpose(are_neighboring_spans.nonzero())
+        # Compute the distance matrix
+        start_diff = np.abs(span_starts[:, np.newaxis] - span_ends)
+        end_diff = np.abs(span_ends[:, np.newaxis] - span_starts)
+        min_diff = np.minimum(start_diff, end_diff)
 
-        if len(neighboring_spans) > 0:
-            neighboring_spans_no_dupes = neighboring_spans[np.where(neighboring_spans[:,1] < neighboring_spans[:,0])]
+        # Find neighboring spans
+        neighboring_spans = np.where(min_diff <= self.index_distance)
 
-            for j, i in neighboring_spans_no_dupes:
+        for i, j in zip(*neighboring_spans):
+            if i != j:
                 span_i = self.list_of_spans[i]
                 span_j = self.list_of_spans[j]
                 self.graph[span_i.start, span_i.end].append(span_j)
