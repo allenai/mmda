@@ -2,6 +2,7 @@ import json
 import unittest
 import os
 
+from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.types.names import MetadataField, SymbolsField
 
@@ -9,7 +10,7 @@ from ai2_internal import api
 
 
 def resolve(file: str) -> str:
-    return os.path.join(os.path.dirname(__file__), "../fixtures", file)
+    return os.path.join(os.path.dirname(__file__), "../fixtures/types", file)
 
 
 class TestDocument(unittest.TestCase):
@@ -73,3 +74,35 @@ class TestDocument(unittest.TestCase):
 
         doc.annotate(new_span_groups=box_groups)
         assert doc.new_span_groups[0].text.startswith("Gutman G, Rosenzweig D, Golan J")
+
+    def test_annotate_box_groups_allocates_all_overlapping_tokens(self):
+        # basic doc annotated with pages and tokens, from pdfplumber parser split at punctuation
+        with open(resolve("20fdafb68d0e69d193527a9a1cbe64e7e69a3798__pdfplumber_doc.json"), "r") as f:
+            raw_json = f.read()
+            fixture_doc_json = json.loads(raw_json)
+            doc = Document.from_json(fixture_doc_json)
+
+        # spangroups derived from boxgroups of boxes drawn neatly around bib entries by calling `.annotate` on
+        # list of BoxGroups
+        fixture_span_groups = []
+        with open(resolve("20fdafb68d0e69d193527a9a1cbe64e7e69a3798__bib_entry_span_groups_from_box_groups.json"), "r") as f:
+            raw_json = f.read()
+            fixture_bib_entries_json = json.loads(raw_json)["bib_entry_span_groups_from_box_groups"]
+
+        # make box_groups to annotate from test fixture bib entry span groups, and save the
+        for bib_entry in fixture_bib_entries_json:
+            fixture_span_groups.append(SpanGroup.from_json(bib_entry))
+
+        fixture_box_groups = [sg.box_group for sg in fixture_span_groups]
+
+        # confirm we get the same SpanGroup spans by calling `.annotate` on the list of BoxGroups
+        # annotate fixture_span_groups to extract texts
+        doc.annotate(fixture_span_groups=fixture_span_groups)
+        # annotate fixture_box_groups to generate span_groups
+        doc.annotate(fixture_box_groups=fixture_box_groups)
+
+        for sg1, sg2 in zip(fixture_span_groups, doc.fixture_box_groups):
+            print(sg1.text, sg2.text)
+            assert sg1.spans == sg2.spans
+            assert sg1.text == sg2.text
+
