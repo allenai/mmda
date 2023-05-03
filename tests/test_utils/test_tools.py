@@ -434,4 +434,3 @@ def test_box_groups_to_span_groups():
 
     # original box_group boxes are saved
     assert all([sg.box_group is not None for sg in doc.overlap_at_token_center_span_groups])
-    assert 1 == 0
