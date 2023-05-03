@@ -14,7 +14,7 @@ from mmda.types.span import Span
 
 
 def allocate_overlapping_tokens_for_box(
-        tokens: List[SpanGroup], box, token_box_in_box_group: bool = False #, center: bool = False
+        tokens: List[SpanGroup], box, token_box_in_box_group: bool = False, x: float = 0.0, y: float = 0.0, center: bool = False
 ) -> Tuple[List[Span], List[Span]]:
     """Finds overlap of tokens for given box
     Args
@@ -27,13 +27,12 @@ def allocate_overlapping_tokens_for_box(
         `allocated_tokens` is a list of token SpanGroups where their boxes overlap with the input box,
         `remaining_tokens` is a list of token SpanGroups where they don't overlap with the input box.
     """
-
     allocated_tokens, remaining_tokens = [], []
-    for token in tokens:
-        if token_box_in_box_group and token.box_group.boxes[0].is_overlap(box):
+    for i, token in enumerate(tokens):
+        if token_box_in_box_group and token.box_group.boxes[0].is_overlap(other=box, x=x, y=y, center=center):
             # The token "box" is stored within the SpanGroup's .box_group
             allocated_tokens.append(token)
-        elif token.spans[0].box is not None and token.spans[0].box.is_overlap(box):
+        elif token.spans[0].box is not None and token.spans[0].box.is_overlap(other=box, x=x, y=y, center=center):
             # default to assuming the token "box" is stored in the SpanGroup .box
             allocated_tokens.append(token)
         else:
@@ -42,7 +41,7 @@ def allocate_overlapping_tokens_for_box(
 
 
 def box_groups_to_span_groups(
-        box_groups: List[BoxGroup], doc: Document#, center: bool = True
+        box_groups: List[BoxGroup], doc: Document, center: bool = True
 ) -> List[SpanGroup]:
     """Generate SpanGroups from BoxGroups.
     Args
@@ -53,10 +52,10 @@ def box_groups_to_span_groups(
         List[SpanGroup] with each SpanGroup.spans corresponding to spans (sans boxes) of allocated tokens per box_group,
         and each SpanGroup.box_group containing original box_groups
     """
-    print("beginning box_groups to span_groups, using old build graph index overlap")
     assert all([isinstance(group, BoxGroup) for group in box_groups])
 
     all_page_tokens = dict()
+    avg_token_widths = dict()
     derived_span_groups = []
     token_box_in_box_group = None
 
@@ -82,6 +81,12 @@ def box_groups_to_span_groups(
                             for token in cur_page_tokens
                         ]
                     )
+                    # Determine average width of tokens on this page
+                    if token_box_in_box_group and box.page not in avg_token_widths:
+                        avg_token_widths[box.page] = np.average([t.box_group.boxes[0].w for t in cur_page_tokens])
+                    elif not token_box_in_box_group and box.page not in avg_token_widths:
+                        avg_token_widths[box.page] = np.average([t.spans[0].box.w for t in cur_page_tokens])
+
             else:
                 cur_page_tokens = all_page_tokens[box.page]
 
@@ -90,6 +95,10 @@ def box_groups_to_span_groups(
                 tokens=cur_page_tokens,
                 box=box,
                 token_box_in_box_group=token_box_in_box_group,
+                # pad a small amount so that extra narrow token boxes (when split at punctuation) are not missed
+                x=avg_token_widths.get(box.page, 0.0) * 0.5,
+                y=0.0,
+                center=center
             )
             all_page_tokens[box.page] = remaining_tokens
 
@@ -133,8 +142,6 @@ def box_groups_to_span_groups(
     # ensure they are ordered based on span indices
 
     for box_id, span_group in enumerate(derived_span_groups):
-        print("sorted derived spangroup: ", span_group.to_json())
-        print()
         span_group.id = box_id
 
     # return self._annotate_span_group(

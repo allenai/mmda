@@ -386,11 +386,13 @@ def test_from_span_groups_with_box_groups():
 
 
 def test_box_groups_to_span_groups():
+    # basic doc annotated with pages, tokens, rows, split at punctuation
     with open(fixture_path / "20fdafb68d0e69d193527a9a1cbe64e7e69a3798__pdfplumber_doc.json", "r") as f:
         raw_json = f.read()
         fixture_doc_json = json.loads(raw_json)
         doc = Document.from_json(fixture_doc_json)
 
+    # boxes drawn neatly around bib entries
     with open(fixture_path / "20fdafb68d0e69d193527a9a1cbe64e7e69a3798__bib_entries.json", "r") as f:
         raw_json = f.read()
         fixture_bib_entries_json = json.loads(raw_json)["bib_entries"]
@@ -400,8 +402,8 @@ def test_box_groups_to_span_groups():
     for bib_entry in fixture_bib_entries_json:
         box_groups.append(BoxGroup.from_json(bib_entry["box_group"]))
 
-    overlap_span_groups = box_groups_to_span_groups(box_groups, doc) #, center=False)
-    overlap_at_token_center_span_groups = box_groups_to_span_groups(box_groups, doc) #, center=True)
+    overlap_span_groups = box_groups_to_span_groups(box_groups, doc, center=False)
+    overlap_at_token_center_span_groups = box_groups_to_span_groups(box_groups, doc, center=True)
 
     assert (len(box_groups) == len(overlap_span_groups) == len(overlap_at_token_center_span_groups))
 
@@ -410,15 +412,26 @@ def test_box_groups_to_span_groups():
     doc.annotate(overlap_at_token_center_span_groups=overlap_at_token_center_span_groups)
 
     # when center=False, any token overlap with BoxGroup becomes part of the SpanGroup
-    print(doc.overlap_span_groups[29].text)
+    # in this example, tokens from bib entry '29 and '31' overlap with the box drawn neatly around '30'
+    """
+    Recommendation with Hypergraph Attention Networks. In SDM’21 .
+    [30] Meirui Wang, Pengjie Ren, Lei Mei, Zhumin Chen, Jun Ma, and Maarten de Rijke. 2019. A Collaborative Session-Based Recommendation Approach with
+    Parallel Memory Modules. In SIGIR’19 . 345–354. [31] Pengfei Wang, Jiafeng Guo, Yanyan Lan, Jun Xu, Shengxian Wan, and Xueqi
+    """
     assert "[30]" in doc.overlap_span_groups[29].text
     assert "[31]" in doc.overlap_span_groups[29].text
+    # and the starting text includes tokens from actual bib entry 29
     assert not doc.overlap_span_groups[29].text.startswith("[30]")
     assert not doc.overlap_span_groups[29].text.startswith("[30]")
 
+    # better text for same box when `center=True`:
+    """
+    [30] Meirui Wang, Pengjie Ren, Lei Mei, Zhumin Chen, Jun Ma, and Maarten de Rijke. 2019. A Collaborative Session-Based Recommendation Approach with
+    Parallel Memory Modules. In SIGIR’19 . 345–354.
+    """
     assert doc.overlap_at_token_center_span_groups[29].text.startswith("[30]")
-    assert "[31]" not in doc.overlap_span_groups[29].text
+    assert "[31]" not in doc.overlap_at_token_center_span_groups[29].text
 
-    # SpanGroup span boxes are not saved, original box_group boxes are saved
-    assert all([sg.spans[0].box is None for sg in doc.overlap_at_token_center_span_groups])
+    # original box_group boxes are saved
     assert all([sg.box_group is not None for sg in doc.overlap_at_token_center_span_groups])
+    assert 1 == 0
