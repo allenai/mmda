@@ -28,7 +28,7 @@ def allocate_overlapping_tokens_for_box(
         `remaining_tokens` is a list of token SpanGroups where they don't overlap with the input box.
     """
     allocated_tokens, remaining_tokens = [], []
-    for i, token in enumerate(tokens):
+    for token in tokens:
         if token_box_in_box_group and token.box_group.boxes[0].is_overlap(other=box, x=x, y=y, center=center):
             # The token "box" is stored within the SpanGroup's .box_group
             allocated_tokens.append(token)
