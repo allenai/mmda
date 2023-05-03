@@ -386,7 +386,7 @@ def test_from_span_groups_with_box_groups():
 
 
 def test_box_groups_to_span_groups():
-    # basic doc annotated with pages, tokens, rows, split at punctuation
+    # basic doc annotated with pages and tokens, from pdfplumber parser split at punctuation
     with open(fixture_path / "20fdafb68d0e69d193527a9a1cbe64e7e69a3798__pdfplumber_doc.json", "r") as f:
         raw_json = f.read()
         fixture_doc_json = json.loads(raw_json)
