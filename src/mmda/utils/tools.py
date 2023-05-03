@@ -41,7 +41,7 @@ def allocate_overlapping_tokens_for_box(
 
 
 def box_groups_to_span_groups(
-        box_groups: List[BoxGroup], doc: Document, center: bool = False
+        box_groups: List[BoxGroup], doc: Document, pad_x: bool = False, center: bool = False
 ) -> List[SpanGroup]:
     """Generate SpanGroups from BoxGroups.
     Args
@@ -81,11 +81,12 @@ def box_groups_to_span_groups(
                             for token in cur_page_tokens
                         ]
                     )
-                    # Determine average width of tokens on this page
-                    if token_box_in_box_group and box.page not in avg_token_widths:
-                        avg_token_widths[box.page] = np.average([t.box_group.boxes[0].w for t in cur_page_tokens])
-                    elif not token_box_in_box_group and box.page not in avg_token_widths:
-                        avg_token_widths[box.page] = np.average([t.spans[0].box.w for t in cur_page_tokens])
+                    # Determine average width of tokens on this page if we are going to pad x
+                    if pad_x:
+                        if token_box_in_box_group and box.page not in avg_token_widths:
+                            avg_token_widths[box.page] = np.average([t.box_group.boxes[0].w for t in cur_page_tokens])
+                        elif not token_box_in_box_group and box.page not in avg_token_widths:
+                            avg_token_widths[box.page] = np.average([t.spans[0].box.w for t in cur_page_tokens])
 
             else:
                 cur_page_tokens = all_page_tokens[box.page]
@@ -95,8 +96,8 @@ def box_groups_to_span_groups(
                 tokens=cur_page_tokens,
                 box=box,
                 token_box_in_box_group=token_box_in_box_group,
-                # pad a small amount so that extra narrow token boxes (when split at punctuation) are not missed
-                x=avg_token_widths.get(box.page, 0.0) * 0.5,
+                # optionally pad x a small amount so that extra narrow token boxes (when split at punctuation) are not missed
+                x=avg_token_widths.get(box.page, 0.0) * 0.5 if pad_x else 0.0,
                 y=0.0,
                 center=center
             )

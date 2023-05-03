@@ -402,14 +402,17 @@ def test_box_groups_to_span_groups():
     for bib_entry in fixture_bib_entries_json:
         box_groups.append(BoxGroup.from_json(bib_entry["box_group"]))
 
+    # generate span_groups with different settings
     overlap_span_groups = box_groups_to_span_groups(box_groups, doc, center=False)
     overlap_at_token_center_span_groups = box_groups_to_span_groups(box_groups, doc, center=True)
+    overlap_at_token_center_span_groups_x_padded = box_groups_to_span_groups(box_groups, doc, center=True, pad_x=True)
 
-    assert (len(box_groups) == len(overlap_span_groups) == len(overlap_at_token_center_span_groups))
+    assert (len(box_groups) == len(overlap_span_groups) == len(overlap_at_token_center_span_groups) == len(overlap_at_token_center_span_groups_x_padded))
 
-    # annotate both onto doc to extract texts:
+    # annotate all onto doc to extract texts:
     doc.annotate(overlap_span_groups=overlap_span_groups)
     doc.annotate(overlap_at_token_center_span_groups=overlap_at_token_center_span_groups)
+    doc.annotate(overlap_at_token_center_span_groups_x_padded=overlap_at_token_center_span_groups_x_padded)
 
     # when center=False, any token overlap with BoxGroup becomes part of the SpanGroup
     # in this example, tokens from bib entry '29 and '31' overlap with the box drawn neatly around '30'
@@ -431,6 +434,14 @@ def test_box_groups_to_span_groups():
     """
     assert doc.overlap_at_token_center_span_groups[29].text.startswith("[30]")
     assert "[31]" not in doc.overlap_at_token_center_span_groups[29].text
+
+    # same results for padded version on this bib entry
+    assert doc.overlap_at_token_center_span_groups_x_padded[29].text.startswith("[30]")
+    assert "[31]" not in doc.overlap_at_token_center_span_groups_x_padded[29].text
+
+    # without padding, starting "[" is missed from some bib entries
+    assert doc.overlap_at_token_center_span_groups[6].text.startswith("6]")
+    assert doc.overlap_at_token_center_span_groups_x_padded[6].text.startswith("[6]")
 
     # original box_group boxes are saved
     assert all([sg.box_group is not None for sg in doc.overlap_at_token_center_span_groups])
