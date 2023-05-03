@@ -14,7 +14,7 @@ from mmda.types.image import PILImage
 from mmda.types.indexers import Indexer, SpanGroupIndexer
 from mmda.types.metadata import Metadata
 from mmda.types.names import ImagesField, MetadataField, SymbolsField
-from mmda.utils.tools import MergeSpans, allocate_overlapping_tokens_for_box
+from mmda.utils.tools import MergeSpans, allocate_overlapping_tokens_for_box, box_groups_to_span_groups
 
 
 class Document:
@@ -93,8 +93,8 @@ class Document:
                 )
             elif annotation_type == BoxGroup:
                 # TODO: not good. BoxGroups should be stored on their own, not auto-generating SpanGroups.
-                span_groups = self._annotate_box_group(
-                    box_groups=annotations, field_name=field_name
+                span_groups = self._annotate_span_group(
+                    span_groups=box_groups_to_span_groups(annotations, self), field_name=field_name
                 )
             else:
                 raise NotImplementedError(
