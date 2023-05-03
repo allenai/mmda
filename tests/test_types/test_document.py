@@ -102,7 +102,6 @@ class TestDocument(unittest.TestCase):
         doc.annotate(fixture_box_groups=fixture_box_groups)
 
         for sg1, sg2 in zip(fixture_span_groups, doc.fixture_box_groups):
-            print(sg1.text, sg2.text)
             assert sg1.spans == sg2.spans
             assert sg1.text == sg2.text
 
