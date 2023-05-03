@@ -41,13 +41,13 @@ def allocate_overlapping_tokens_for_box(
 
 
 def box_groups_to_span_groups(
-        box_groups: List[BoxGroup], doc: Document, center: bool = True
+        box_groups: List[BoxGroup], doc: Document, center: bool = False
 ) -> List[SpanGroup]:
     """Generate SpanGroups from BoxGroups.
     Args
         `box_groups` (List[BoxGroup])
         `doc` (Document) base document annotated with pages, tokens, rows to
-        `center` (bool) defaults to True, considers tokens to be overlapping with boxes only if their centers overlap
+        `center` (bool) if True, considers tokens to be overlapping with boxes only if their centers overlap
     Returns
         List[SpanGroup] with each SpanGroup.spans corresponding to spans (sans boxes) of allocated tokens per box_group,
         and each SpanGroup.box_group containing original box_groups
