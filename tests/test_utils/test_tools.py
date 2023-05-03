@@ -5,16 +5,23 @@
 
 """
 
+import json
+import pathlib
 import unittest
 
 from mmda.types.annotation import BoxGroup, SpanGroup
 from mmda.types.span import Span
 from mmda.types.box import Box
+from mmda.types.document import Document
 
 from mmda.utils.tools import MergeSpans
+from mmda.utils.tools import box_groups_to_span_groups
+
+fixture_path = pathlib.Path(__file__).parent.parent / "fixtures" / "utils"
 
 
 class TestMergeNeighborSpans(unittest.TestCase):
+
     def test_merge_multiple_neighbor_spans(self):
         spans = [Span(start=0, end=10), Span(start=11, end=20), Span(start=21, end=30)]
         merge_spans = MergeSpans(list_of_spans=spans, index_distance=1)
@@ -322,7 +329,6 @@ def test_merge_spans():
     assert len(list_of_spans_to_merge) == (len(MergeSpans(list_of_spans_to_merge, 0, 0)
                                                .merge_neighbor_spans_by_box_coordinate()))
 
-
     assert 4 == len(MergeSpans(list_of_spans_to_merge, 0.04387334, 0.01421097).merge_neighbor_spans_by_box_coordinate())
 
     merge_spans = MergeSpans(list_of_spans_to_merge_2, 0.04387334, 0.01421097)
@@ -377,3 +383,42 @@ def test_from_span_groups_with_box_groups():
         list_of_spans_to_merge_in_span_group_format,
         0,
         0).merge_neighbor_spans_by_box_coordinate()))
+
+
+def test_box_groups_to_span_groups():
+    with open(fixture_path / "20fdafb68d0e69d193527a9a1cbe64e7e69a3798__pdfplumber_doc.json", "r") as f:
+        raw_json = f.read()
+        fixture_doc_json = json.loads(raw_json)
+        doc = Document.from_json(fixture_doc_json)
+
+    with open(fixture_path / "20fdafb68d0e69d193527a9a1cbe64e7e69a3798__bib_entries.json", "r") as f:
+        raw_json = f.read()
+        fixture_bib_entries_json = json.loads(raw_json)["bib_entries"]
+
+    box_groups = []
+    # make box_groups from test fixture bib entry span groups (we will test the method to generate better spans)
+    for bib_entry in fixture_bib_entries_json:
+        box_groups.append(BoxGroup.from_json(bib_entry["box_group"]))
+
+    overlap_span_groups = box_groups_to_span_groups(box_groups, doc) #, center=False)
+    overlap_at_token_center_span_groups = box_groups_to_span_groups(box_groups, doc) #, center=True)
+
+    assert (len(box_groups) == len(overlap_span_groups) == len(overlap_at_token_center_span_groups))
+
+    # annotate both onto doc to extract texts:
+    doc.annotate(overlap_span_groups=overlap_span_groups)
+    doc.annotate(overlap_at_token_center_span_groups=overlap_at_token_center_span_groups)
+
+    # when center=False, any token overlap with BoxGroup becomes part of the SpanGroup
+    print(doc.overlap_span_groups[29].text)
+    assert "[30]" in doc.overlap_span_groups[29].text
+    assert "[31]" in doc.overlap_span_groups[29].text
+    assert not doc.overlap_span_groups[29].text.startswith("[30]")
+    assert not doc.overlap_span_groups[29].text.startswith("[30]")
+
+    assert doc.overlap_at_token_center_span_groups[29].text.startswith("[30]")
+    assert "[31]" not in doc.overlap_span_groups[29].text
+
+    # SpanGroup span boxes are not saved, original box_group boxes are saved
+    assert all([sg.spans[0].box is None for sg in doc.overlap_at_token_center_span_groups])
+    assert all([sg.box_group is not None for sg in doc.overlap_at_token_center_span_groups])
