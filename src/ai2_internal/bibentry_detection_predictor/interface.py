@@ -14,6 +14,7 @@ from ai2_internal import api
 from mmda.predictors.d2_predictors.bibentry_detection_predictor import BibEntryDetectionPredictor
 from mmda.types import image
 from mmda.types.document import Document
+from mmda.utils.tools import box_groups_to_span_groups
 
 
 class Instance(BaseModel):
@@ -31,7 +32,6 @@ class Instance(BaseModel):
     tokens: List[api.SpanGroup]
     rows: List[api.SpanGroup]
     pages: List[api.SpanGroup]
-    vila_span_groups: List[api.SpanGroup]
     page_images: List[str] = Field(description="List of base64-encoded page images")
 
 
@@ -95,7 +95,6 @@ class Predictor:
         doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
         images = [image.frombase64(im) for im in inst.page_images]
         doc.annotate_images(images)
-        doc.annotate(vila_span_groups=[sg.to_mmda() for sg in inst.vila_span_groups])
 
         processed_bib_entry_box_groups, original_box_groups = self._predictor.predict(
             doc
@@ -103,7 +102,8 @@ class Predictor:
 
         # generate SpanGroups
         if len(processed_bib_entry_box_groups) > 0:
-            doc.annotate(bib_entries=processed_bib_entry_box_groups)
+            bib_entry_span_groups = box_groups_to_span_groups(processed_bib_entry_box_groups, doc, pad_x=True, center=True)
+            doc.annotate(bib_entries=bib_entry_span_groups)
             # remove boxes from spans to create entity-like SpanGroups with BoxGroups
             # (where the only set of boxes is on SpanGroup.box_group)
             no_span_box_span_groups = [
