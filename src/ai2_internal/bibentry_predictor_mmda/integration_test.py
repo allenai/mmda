@@ -125,21 +125,18 @@ class TestInterfaceIntegration(unittest.TestCase):
         self.assertEqual(final_doc.bib_entries[1].bib_entry_title[0].text, "Effect of ecological factors on the silk producing\npotential of the mulberry silkworm ( Bombyx mori\nLinn. )")
         self.assertEqual(final_doc.bib_entries[1].bib_entry_venue_or_event[0].text, "Malays. Appl. Biol.")
 
-    # def test__spanless_bibs_pass(self, container):
-    #     # Produced from getting annotation store data from running upstream models on example paper
-    #     # Upstream bib detector model produces annotations which result in SpanGroups with empty spans
-    #     # See https://github.com/allenai/mmda/pull/186
-    #     # (3cf45514384bbb7d083ae53e19bdc22300e648ab.pdf)
-    #     # TODO delete this one
-    #     # filename = "test_data_v2_boxes_turn_into_empty_span_groups.json.gz"
-    #     # TODO make this one
-    #     filename = "test_data_v2_bibs_with_empty_span_groups.json.gz"
-    #     doc = read_fixture_doc(filename)
-    #     instance = Instance(
-    #         symbols=doc.symbols,
-    #         tokens=[api.SpanGroup.from_mmda(token) for token in doc.tokens],
-    #         pages=[api.SpanGroup.from_mmda(page) for page in doc.pages],
-    #         bib_entries=[api.SpanGroup.from_mmda(bib_entry) for bib_entry in doc.bib_entries]
-    #     )
-    #     prediction = container.predict_batch([instance])[0]
-    #
+    def test__spanless_bibs_pass(self, container):
+        # Produced from getting annotation store data from running upstream models on example paper
+        # Upstream bib detector model produces annotations which result in SpanGroups with empty spans
+        # See https://github.com/allenai/mmda/pull/186
+        # (3cf45514384bbb7d083ae53e19bdc22300e648ab.pdf)
+        filename = "test_data_v2_first_2_bibs_have_empty_span_groups.json.gz"
+        doc = read_fixture_doc(filename)
+        instance = Instance(
+            symbols=doc.symbols,
+            tokens=[api.SpanGroup.from_mmda(token) for token in doc.tokens],
+            pages=[api.SpanGroup.from_mmda(page) for page in doc.pages],
+            bib_entries=[api.SpanGroup.from_mmda(bib_entry) for bib_entry in doc.bib_entries]
+        )
+        # doesn't fail
+        prediction = container.predict_batch([instance])[0]
