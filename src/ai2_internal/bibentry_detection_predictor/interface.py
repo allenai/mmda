@@ -31,7 +31,6 @@ class Instance(BaseModel):
     tokens: List[api.SpanGroup]
     rows: List[api.SpanGroup]
     pages: List[api.SpanGroup]
-    vila_span_groups: List[api.SpanGroup]
     page_images: List[str] = Field(description="List of base64-encoded page images")
 
 
@@ -95,7 +94,6 @@ class Predictor:
         doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
         images = [image.frombase64(im) for im in inst.page_images]
         doc.annotate_images(images)
-        doc.annotate(vila_span_groups=[sg.to_mmda() for sg in inst.vila_span_groups])
 
         processed_bib_entry_box_groups, original_box_groups = self._predictor.predict(
             doc

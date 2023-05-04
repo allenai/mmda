@@ -74,16 +74,12 @@ class TestInterfaceIntegration(unittest.TestCase):
 
         doc.annotate_images(page_images)
 
-        with open(resolve("vila_span_groups.json")) as f:
-            vila_span_groups = [api.SpanGroup(**sg) for sg in json.load(f)["vila_span_groups"]]
-
         instances = [Instance(
             symbols=doc.symbols,
             tokens=tokens,
             rows=rows,
             pages=pages,
-            page_images=encoded_page_images,
-            vila_span_groups=vila_span_groups)]
+            page_images=encoded_page_images)]
 
         predictions = container.predict_batch(instances)
 
@@ -112,16 +108,12 @@ class TestInterfaceIntegration(unittest.TestCase):
 
         doc.annotate_images(page_images)
 
-        with open(resolve("no_bibs_vila_span_groups.json")) as f:
-            vila_span_groups = [api.SpanGroup(**sg) for sg in json.load(f)["vila_span_groups"]]
-
         instances = [Instance(
             symbols=doc.symbols,
             tokens=tokens,
             rows=rows,
             pages=pages,
-            page_images=encoded_page_images,
-            vila_span_groups=vila_span_groups)]
+            page_images=encoded_page_images)]
 
         # should not error
         predictions = container.predict_batch(instances)
@@ -142,16 +134,12 @@ class TestInterfaceIntegration(unittest.TestCase):
 
         doc.annotate_images(page_images)
 
-        with open(resolve("spanless_bibs_vila_span_groups.json")) as f:
-            vila_span_groups = [api.SpanGroup.from_mmda(MmdaSpanGroup.from_json(sg)) for sg in json.load(f)["vila_span_groups"]]
-
         instances = [Instance(
             symbols=doc.symbols,
             tokens=tokens,
             rows=rows,
             pages=pages,
-            page_images=encoded_page_images,
-            vila_span_groups=vila_span_groups)]
+            page_images=encoded_page_images)]
 
         # should not error
         predictions = container.predict_batch(instances)
