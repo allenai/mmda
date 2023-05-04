@@ -76,6 +76,9 @@ class TestDocument(unittest.TestCase):
         assert doc.new_span_groups[0].text.startswith("Gutman G, Rosenzweig D, Golan J")
 
     def test_annotate_box_groups_allocates_all_overlapping_tokens(self):
+        """Regression test to verify annotating box groups onto a doc produces the same output as
+        a last-known-good fixture
+        """
         # basic doc annotated with pages and tokens, from pdfplumber parser split at punctuation
         with open(resolve("20fdafb68d0e69d193527a9a1cbe64e7e69a3798__pdfplumber_doc.json"), "r") as f:
             raw_json = f.read()
