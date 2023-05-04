@@ -21,7 +21,7 @@ from mmda.types.document import Document
 class BibEntryPredictor(BasePredictor):
 
     REQUIRED_BACKENDS = ["transformers", "torch"]
-    REQUIRED_DOCUMENT_FIELDS = ["tokens", "pages", "bib_entry_boxes"]
+    REQUIRED_DOCUMENT_FIELDS = ["tokens", "pages", "bib_entries"]
 
     def __init__(self, model_name_or_path: str):
         self.config = AutoConfig.from_pretrained(model_name_or_path)
@@ -47,7 +47,7 @@ class BibEntryPredictor(BasePredictor):
         raw_predictions = self.predict_raw(bib_entry_strings)
 
         # Map raw predictions back into valid annotations for passed document
-        prediction = utils.map_raw_predictions_to_mmda(document.bib_entry_boxes, raw_predictions)
+        prediction = utils.map_raw_predictions_to_mmda(document.bib_entries, raw_predictions)
 
         return prediction
 

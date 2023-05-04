@@ -53,28 +53,27 @@ def resolve(file: str) -> str:
     return os.path.join(pathlib.Path(os.path.dirname(__file__)), "data", file)
 
 
-def read_fixture_doc_and_entries(filename):
+def read_fixture_doc(filename):
     path = resolve(filename)
 
     with gzip.open(path, "r") as f:
-        raw = json.loads(f.read())
+        doc_json = json.loads(f.read())
 
-    doc = Document.from_json(raw["doc"])
-    bib_entry_boxes = raw["bib_entry_boxes"]
+    doc = Document.from_json(doc_json)
 
-    return doc, bib_entry_boxes
+    return doc
 
 
 @with_timo_container
 class TestInterfaceIntegration(unittest.TestCase):
     def test__handles_no_bib_entries(self, container):
         filename = "test_data.json.gz"
-        doc, bib_entry_boxes = read_fixture_doc_and_entries(filename)
+        doc = read_fixture_doc(filename)
         instance = Instance(
             symbols=doc.symbols,
             tokens=[api.SpanGroup.from_mmda(token) for token in doc.tokens],
             pages=[api.SpanGroup.from_mmda(page) for page in doc.pages],
-            bib_entry_boxes=[]
+            bib_entries=[]
         )
         prediction = container.predict_batch([instance])[0]
 
@@ -92,12 +91,12 @@ class TestInterfaceIntegration(unittest.TestCase):
         # Produced from running upstream models on example paper
         # (000026bab3c52aa8ff37dc3e155ffbcb506aa1f6.pdf)
         filename = "test_data.json.gz"
-        doc, bib_entry_boxes = read_fixture_doc_and_entries(filename)
+        doc = read_fixture_doc(filename)
         instance = Instance(
             symbols=doc.symbols,
             tokens=[api.SpanGroup.from_mmda(token) for token in doc.tokens],
             pages=[api.SpanGroup.from_mmda(page) for page in doc.pages],
-            bib_entry_boxes=[api.BoxGroup(**bib_entry) for bib_entry in bib_entry_boxes]
+            bib_entries=[api.SpanGroup.from_mmda(bib_entry) for bib_entry in doc.bib_entries]
         )
         prediction = container.predict_batch([instance])[0]
 
@@ -113,31 +112,34 @@ class TestInterfaceIntegration(unittest.TestCase):
         # Make some assertions about a couple arbitrary entries in the bibliography
 
         # First entry is technically number "10" based on symbol start position only. Order came out of pdf oddly.
-        self.assertEqual(final_doc.bib_entry_boxes[0].bib_entry_number[0].text, "10")
-        self.assertEqual(final_doc.bib_entry_boxes[0].bib_entry_authors[0].text, "Srivastava, K.")
-        self.assertEqual(final_doc.bib_entry_boxes[0].bib_entry_authors[1].text, "V.B. Upadhyay")
-        self.assertEqual(final_doc.bib_entry_boxes[0].bib_entry_title[0].text, "Effect of Phytoecdysteroid on Length of Silk Filament and\nNon-Breakable Filament Length of Multivoltine\nMulberry Silkworm B. mori Linn")
+        self.assertEqual(final_doc.bib_entries[0].bib_entry_number[0].text, "10")
+        self.assertEqual(final_doc.bib_entries[0].bib_entry_authors[0].text, "Srivastava, K.")
+        self.assertEqual(final_doc.bib_entries[0].bib_entry_authors[1].text, "V.B. Upadhyay")
+        self.assertEqual(final_doc.bib_entries[0].bib_entry_title[0].text, "Effect of Phytoecdysteroid on Length of Silk Filament and\nNon-Breakable Filament Length of Multivoltine\nMulberry Silkworm B. mori Linn")
 
         # *Actual* first entry
-        self.assertEqual(final_doc.bib_entry_boxes[1].bib_entry_number[0].text, "1")
-        self.assertEqual(final_doc.bib_entry_boxes[1].bib_entry_authors[0].text, "Upadhyay, V.B.")
-        self.assertEqual(final_doc.bib_entry_boxes[1].bib_entry_authors[1].text, "K.P. Gaur")
-        self.assertEqual(final_doc.bib_entry_boxes[1].bib_entry_authors[2].text, "S.K. Gupta")
-        self.assertEqual(final_doc.bib_entry_boxes[1].bib_entry_title[0].text, "Effect of ecological factors on the silk producing\npotential of the mulberry silkworm ( Bombyx mori\nLinn. )")
-        self.assertEqual(final_doc.bib_entry_boxes[1].bib_entry_venue_or_event[0].text, "Malays. Appl. Biol.")
+        self.assertEqual(final_doc.bib_entries[1].bib_entry_number[0].text, "1")
+        self.assertEqual(final_doc.bib_entries[1].bib_entry_authors[0].text, "Upadhyay, V.B.")
+        self.assertEqual(final_doc.bib_entries[1].bib_entry_authors[1].text, "K.P. Gaur")
+        self.assertEqual(final_doc.bib_entries[1].bib_entry_authors[2].text, "S.K. Gupta")
+        self.assertEqual(final_doc.bib_entries[1].bib_entry_title[0].text, "Effect of ecological factors on the silk producing\npotential of the mulberry silkworm ( Bombyx mori\nLinn. )")
+        self.assertEqual(final_doc.bib_entries[1].bib_entry_venue_or_event[0].text, "Malays. Appl. Biol.")
 
-    def test__empty_boxes_passes(self, container):
-        # Produced from getting annotation store data from running upstream models on example paper
-        # Upstream bib detector model produces annotations which result in SpanGroups with empty spans
-        # See https://github.com/allenai/mmda/pull/186
-        # (3cf45514384bbb7d083ae53e19bdc22300e648ab.pdf)
-        filename = "test_data_v2_boxes_turn_into_empty_span_groups.json.gz"
-        doc, bib_entry_boxes = read_fixture_doc_and_entries(filename)
-        instance = Instance(
-            symbols=doc.symbols,
-            tokens=[api.SpanGroup.from_mmda(token) for token in doc.tokens],
-            pages=[api.SpanGroup.from_mmda(page) for page in doc.pages],
-            bib_entry_boxes=[api.BoxGroup(**bib_entry) for bib_entry in bib_entry_boxes]
-        )
-        prediction = container.predict_batch([instance])[0]
-
+    # def test__spanless_bibs_pass(self, container):
+    #     # Produced from getting annotation store data from running upstream models on example paper
+    #     # Upstream bib detector model produces annotations which result in SpanGroups with empty spans
+    #     # See https://github.com/allenai/mmda/pull/186
+    #     # (3cf45514384bbb7d083ae53e19bdc22300e648ab.pdf)
+    #     # TODO delete this one
+    #     # filename = "test_data_v2_boxes_turn_into_empty_span_groups.json.gz"
+    #     # TODO make this one
+    #     filename = "test_data_v2_bibs_with_empty_span_groups.json.gz"
+    #     doc = read_fixture_doc(filename)
+    #     instance = Instance(
+    #         symbols=doc.symbols,
+    #         tokens=[api.SpanGroup.from_mmda(token) for token in doc.tokens],
+    #         pages=[api.SpanGroup.from_mmda(page) for page in doc.pages],
+    #         bib_entries=[api.SpanGroup.from_mmda(bib_entry) for bib_entry in doc.bib_entries]
+    #     )
+    #     prediction = container.predict_batch([instance])[0]
+    #

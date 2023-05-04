@@ -10,7 +10,7 @@ _SPAN_JOINER = " "
 
 
 def mk_bib_entry_strings(document: Document) -> List[str]:
-    return [_SPAN_JOINER.join(bib_entry.symbols) for bib_entry in document.bib_entry_boxes]
+    return [_SPAN_JOINER.join(bib_entry.symbols) for bib_entry in document.bib_entries]
 
 
 def map_raw_predictions_to_mmda(
