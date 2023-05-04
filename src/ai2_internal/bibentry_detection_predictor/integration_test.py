@@ -90,7 +90,7 @@ class TestInterfaceIntegration(unittest.TestCase):
             # raw_bib_entry_boxes are SpanGroups but all data is within the box_group
             self.assertEqual(raw_box.box_group.type, "raw_model_prediction")
 
-        expected_bib_count = 33
+        expected_bib_count = 34
         expected_raw_bib_count = 35
         self.assertEqual(len(predictions[0].bib_entries), expected_bib_count)
         self.assertEqual(len(predictions[0].raw_bib_entry_boxes), expected_raw_bib_count)
