@@ -14,6 +14,7 @@ from mmda.types import Metadata
 from mmda.types.annotation import BoxGroup, Box
 from mmda.types.document import Document
 from mmda.types.names import PagesField, RowsField, TokensField
+from mmda.utils.tools import box_groups_to_span_groups
 
 REQUIRED_DOCUMENT_FIELDS = [PagesField, RowsField, TokensField]
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
@@ -63,12 +64,15 @@ class GrobidAugmentExistingDocumentParser(Parser):
     def _parse_xml_onto_doc(self, xml: str, doc: Document) -> Document:
         xml_root = et.fromstring(xml)
 
-        bib_entries = self._get_grobid_bib_box_groups(xml_root)
-        
+        bib_entry_box_groups = self._get_grobid_bib_box_groups(xml_root)
+
+        # get nice SpanGroups from tokens whose centers overlap with the Grobid box
+        bib_entry_span_groups = box_groups_to_span_groups(bib_entry_box_groups, doc, center=True)
+
         # note for if/when adding in relations between mention sources and bib targets:
         # big_entries metadata contains original grobid id attached to the BoxGroup.
         doc.annotate(
-            bib_entries=bib_entries
+            bib_entries=bib_entry_span_groups
             )
 
         return doc
