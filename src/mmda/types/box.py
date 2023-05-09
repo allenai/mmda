@@ -5,11 +5,14 @@
 """
 
 
+import logging
 import warnings
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
+
+logging.basicConfig(level=logging.INFO)
 
 
 def _is_overlap_1d(
@@ -24,13 +27,23 @@ def _is_overlap_1d(
     )  # ll  # rr
 
 
-@dataclass
 class Box:
-    l: float
-    t: float
-    w: float
-    h: float
-    page: int
+    def __init__(self, l: float, t: float, w: float, h: float, page: int) -> None:
+        if w < 0 or h < 0:
+            raise ValueError(f"Width and height must be non-negative, got {w} and {h}")
+        if page < 0:
+            raise ValueError(f"Page must be non-negative, got {page}")
+        if l < 0 or t < 0:
+            raise ValueError(f"Left and top must be non-negative, got {l} and {t}")
+        if l + w > 1.0 or t + h > 1.0:
+            raise ValueError(
+                f"Box must be within the page, got x={l}-{l+w} and y={t}-{t+h}"
+            )
+        self.l = l
+        self.t = t
+        self.w = w
+        self.h = h
+        self.page = page
 
     def to_json(self) -> Dict[str, float]:
         return {
@@ -183,3 +196,48 @@ class Box:
         clusters.sort(key=lambda x: x[0])
 
         return clusters
+
+    def shrink(self, delta: float, ignore: bool = True, clip: bool = True):
+        x1, y1, x2, y2 = self.coordinates
+        if x2 - x1 <= 2 * delta:
+            if ignore:
+                logging.warning(f"box's x-coords {self} shrink too much. Ignoring.")
+            else:
+                raise ValueError(
+                    f"box's x-coords {self} shrink too much with delta={delta}."
+                )
+        else:
+            if clip:
+                logging.warning(
+                    f"box's x-coords {self} go beyond page boundary. Clipping..."
+                )
+                x1 = min(x1 + delta, 1.0)
+                x2 = max(x2 - delta, 0.0)
+            else:
+                raise ValueError(
+                    f"box's x-coordinates {self} go beyond page boundary. need clip."
+                )
+
+        if y2 - y1 <= 2 * delta:
+            if ignore:
+                logging.warning(f"box's y-coords {self} shrink too much. Ignoring.")
+            else:
+                raise ValueError(
+                    f"box's y-coords {self} shrink too much with delta={delta}."
+                )
+        else:
+            if clip:
+                logging.warning(
+                    f"box's y-coords {self} go beyond page boundary. Clipping..."
+                )
+                y1 = min(y1 + delta, 1.0)
+                y2 = max(y2 - delta, 0.0)
+            else:
+                raise ValueError(
+                    f"box's y-coordinates {self} go beyond page boundary. need clip."
+                )
+
+        self.l = x1
+        self.t = y1
+        self.w = x2 - x1
+        self.h = y2 - y1
