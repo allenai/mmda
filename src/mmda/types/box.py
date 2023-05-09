@@ -120,11 +120,6 @@ class Box:
     def center(self) -> Tuple[float, float]:
         return self.l + self.w / 2, self.t + self.h / 2
 
-    @property
-    def xywh(self) -> Tuple[float, float, float, float]:
-        """Return a tuple of the (left, top, width, height) format."""
-        return self.l, self.t, self.w, self.h
-
     def get_relative(self, page_width: float, page_height: float) -> "Box":
         """Get the relative coordinates of self based on page_width, page_height."""
         return self.__class__(

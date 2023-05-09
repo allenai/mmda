@@ -36,17 +36,19 @@ Why is this bad? Because it messes up our ability to lookup overlapping entities
 
 There are a few solutions:
 
-1. Patch PDFPlumber so we posthoc fix token bounding boxes to enforce disjointness.
+1. Fix this in PDFPlumberParser with posthoc operator over bounding boxes to enforce disjointness.
 
-    * Ideal, but takes a long time to implement. Also would require reprocessing items PDFPlumber.
+    ➔ Kind of problematic because requires so much reprocessing.
 
-2. Hackier fix to adjust all token bounding boxes "inward". 
+    ➔ May also make it harder to keep in-sync w/ PDFPlumber over time. Posthoc corrections maybe should still be decoupled from the parser itself?
 
-    * Not as risky. Somewhat hacky but fairly straightforward. Problem is it doesn't quite fix the data, which is still being generated with weird boxes. 
+2. Apply fixes at `Document.from_json()` time to adjust all token bounding boxes "inward". 
 
-3. Base all bounding box-based lookup methods not on the bounding boxes, but instead on the box centroid.
+    ➔ Not as risky. Somewhat hacky but fairly straightforward. Problem is it doesn't quite fix the data, which is still being generated with weird boxes. 
 
-    * Really risky and it's actually quite a bit of code to refactor. Let's rule it out.
+3. Overlapping bounding boxes primarily affects vision-based lookup methods (e.g. give me all entities within a visual region). A different way to fix this is to base all bounding box-based lookup methods not on the bounding boxes, but instead on the box centroid or something else.
+
+    ➔ Not sure whether it would work. Seems dependent on box quality. For example, if the box is extremely off-center, then it's not like this would solve anything. And it's actually quite a bit of code to refactor. Let's rule it out.
 
 
 Thinking about it, #2 is pretty reasonable for now given that we're aiming for overall stability. We can worry about #1 later.
@@ -77,7 +79,7 @@ Before we do that, there are actually boxes out of PDFPlumber that are perfectly
 
 As you can see, `x2` of the first box is exactly `x1` of the second box.
 
-One way to make this way less annoying is to apply a very small amount. How big is this? Well, looking at the size of typical images rendered at `dpi=72`, we're probably looking at pages that have dimension `(800, 620)` at most. So conservatively, we can set an `epsilon=1e-4` without worrying about it being perceptible.
+One way to make this way less annoying is to apply a very small shrinkage. How big is this? Well, looking at the size of typical images rendered at `dpi=72`, we're probably looking at pages that have dimension `(800, 620)` at most. So conservatively, we can set an `epsilon=1e-4` without worrying about it being perceptible.
 
 For example, just doing something like this:
 ```
@@ -85,8 +87,8 @@ BUFFER = 1e-4
 for token in doc.tokens:
     token.box_group.boxes[0].l += BUFFER
     token.box_group.boxes[0].t += BUFFER
-    token.box_group.boxes[0].w -= BUFFER
-    token.box_group.boxes[0].h -= BUFFER
+    token.box_group.boxes[0].w -= 2 * BUFFER
+    token.box_group.boxes[0].h -= 2 * BUFFER
 ```
 
 will fix a lot of the overlapping boxes from the first figure:
@@ -98,7 +100,7 @@ will fix a lot of the overlapping boxes from the first figure:
 
 Now how do we fix the remaining boxes? 
 
-One thought is -- Can we do a fast thing just writing rules to compare xmin, xmax, ymin, ymax? Probably but it gets confusing really quickly. Consider this case:
+One thought is -- Can we do a fast thing just writing rules to compare `xmin, xmax, ymin, ymax` and directly make adjustments to those boundaries? Probably, but it gets confusing really quickly. Consider this case:
 
 ![image](fixtures/overlap-tokens-edge-case.png)
 
@@ -111,4 +113,10 @@ The technique looks something like:
 
 The figure above is what would happen if you just swapped the correct coordinates of the overlapping boxes. It does create more whitespace between, which may not be desirable, but it's also easier to follow. You can instead replace the relevant box coordinates with something newly calculated (e.g. split the difference).
 
-**4. Minor note**
+**6. Boxes that aren't even on the page**
+
+If we look at PDF in test fixtures `4be952924cd565488b4a239dc6549095029ee578.pdf`, we'll actually find weird boxes that come out of PDFPlumber that are off the page:
+
+```
+
+```
