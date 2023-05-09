@@ -34,7 +34,6 @@ import unittest
 
 from .. import api
 from mmda.types.document import Document
-from mmda.types.image import tobase64
 from .interface import Instance
 import mmda.types as mmda_types
 
