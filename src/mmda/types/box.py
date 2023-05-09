@@ -145,20 +145,29 @@ class Box:
             page=self.page,
         )
 
-    def is_overlap(self, other: "Box", x: float = 0.0, y: float = 0) -> bool:
+    def is_overlap(
+        self, other: "Box", x: float = 0.0, y: float = 0, center: bool = False
+    ) -> bool:
         """
         Whether self overlaps with the other Box object.
-        x, y distances
+        x, y distances for padding
+        center (bool) if True, only consider overlapping if this box's center is contained by other
         """
         if self.page != other.page:
             return False
 
         x11, y11, x12, y12 = self.coordinates
         x21, y21, x22, y22 = other.coordinates
-
-        return _is_overlap_1d(x11, x12, x21, x22, x) and _is_overlap_1d(
-            y11, y12, y21, y22, y
-        )
+        if center:
+            center_x, center_y = self.center
+            res = is_overlap_1d(center_x, center_x, x21, x22, x) and is_overlap_1d(
+                center_y, center_y, y21, y22, y
+            )
+        else:
+            res = is_overlap_1d(x11, x12, x21, x22, x) and is_overlap_1d(
+                y11, y12, y21, y22, y
+            )
+        return res
 
     @classmethod
     def cluster_boxes(cls, boxes: List["Box"]) -> List[List[int]]:

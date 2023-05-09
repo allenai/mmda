@@ -32,14 +32,12 @@ class Instance(BaseModel):
     tokens: List[api.SpanGroup]
     rows: List[api.SpanGroup]
     pages: List[api.SpanGroup]
-    blocks: List[api.BoxGroup]
 
     def to_mmda(self):
         doc = Document(symbols=self.symbols)
         doc.annotate(tokens=[sg.to_mmda() for sg in self.tokens])
         doc.annotate(rows=[sg.to_mmda() for sg in self.rows])
         doc.annotate(pages=[sg.to_mmda() for sg in self.pages])
-        doc.annotate(blocks=[bg.to_mmda() for bg in self.blocks])
 
         images = [frombase64(img) for img in self.images]
         doc.annotate_images(images)

@@ -8,12 +8,10 @@ as a definition of the objects it expects, and those it returns.
 
 from typing import List
 
-from pydantic import BaseModel, Field, BaseSettings
+from pydantic import BaseModel, BaseSettings
 
 from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureTablePredictions
 from mmda.types.document import Document
-from mmda.types.image import frombase64
-
 from ai2_internal import api
 
 
@@ -30,18 +28,17 @@ class Instance(BaseModel):
 
     symbols: str
     tokens: List[api.SpanGroup]
-    rows: List[api.SpanGroup]
     pages: List[api.SpanGroup]
     vila_span_groups: List[api.SpanGroup]
     blocks: List[api.BoxGroup]
-    images: List[str] = Field(description="List of base64-encoded page images")
 
     def to_mmda(self):
+        """
+        Convert this Instance to an mmda.types.Document
+        """
         doc = Document(symbols=self.symbols)
         doc.annotate(tokens=[sg.to_mmda() for sg in self.tokens])
-        doc.annotate(rows=[sg.to_mmda() for sg in self.rows])
         doc.annotate(pages=[sg.to_mmda() for sg in self.pages])
-        doc.annotate_images([frombase64(img) for img in self.images])
         doc.annotate(blocks=[sg.to_mmda() for sg in self.blocks])
         doc.annotate(vila_span_groups=[sg.to_mmda() for sg in self.vila_span_groups])
         return doc

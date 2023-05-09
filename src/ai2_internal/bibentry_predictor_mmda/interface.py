@@ -30,13 +30,13 @@ class Instance(BaseModel):
     symbols: str
     tokens: List[api.SpanGroup]
     pages: List[api.SpanGroup]
-    bib_entry_boxes: List[api.BoxGroup]
+    bib_entries: List[api.SpanGroup]
 
     def to_mmda(self) -> Document:
         doc = Document(symbols=self.symbols)
         doc.annotate(tokens=[token.to_mmda() for token in self.tokens])
         doc.annotate(pages=[page.to_mmda() for page in self.pages])
-        doc.annotate(bib_entry_boxes=[bbox.to_mmda() for bbox in self.bib_entry_boxes])
+        doc.annotate(bib_entries=[bib_entry.to_mmda() for bib_entry in self.bib_entries])
 
         return doc
 
