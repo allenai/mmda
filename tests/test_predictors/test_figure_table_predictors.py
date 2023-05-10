@@ -1,3 +1,4 @@
+import json
 import pickle
 import unittest
 from collections import defaultdict
@@ -6,7 +7,7 @@ import pytest
 
 from ai2_internal.api import Relation
 from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureTablePredictions
-from mmda.types import Document
+from mmda.types import Document, BoxGroup
 from mmda.types.box import Box
 from mmda.types.span import Span
 
@@ -23,6 +24,16 @@ class TestFigureCaptionPredictor(unittest.TestCase):
         assert cls.doc.tokens
         assert cls.doc.blocks
         assert cls.doc.vila_span_groups
+        with open(cls.fixture_path / 'fixtures/doc_fixture_2149e0c1106e6dfa36ea787167d6611cf88b69cb.json',
+                  'rb') as file_handle:
+            dic_json = json.load(file_handle)
+            cls.doc_2 = Document.from_json(dic_json['doc'])
+            layout_equations = [BoxGroup.from_json(entry) for entry in dic_json['layout_equations']]
+            cls.doc_2.annotate(blocks=layout_equations)
+
+        with open(cls.fixture_path / 'fixtures/figure_table_predictions.json', 'r') as file:
+            cls.figure_predictions = json.load(file)
+
         cls.figure_table_predictor = FigureTablePredictions(cls.doc)
 
     def test_merge_boxes(self):
@@ -42,6 +53,9 @@ class TestFigureCaptionPredictor(unittest.TestCase):
         assert distance == pytest.approx(0.15)
 
     def test_generate_map_of_layout_to_tokens(self):
+        """
+        Test that the function generates a map of layout to tokens using
+        """
         vila_caption = FigureTablePredictions._filter_span_group(
             self.doc.vila_span_groups, caption_content='fig', span_group_types=['Caption'])
 
@@ -51,7 +65,11 @@ class TestFigureCaptionPredictor(unittest.TestCase):
             defaultdict(list), defaultdict(list))
         assert list(result.keys()) == []
 
-    def test_predict(self):
+    def test_predict_0c027af0ee9c1901c57f6579d903aedee7f4(self):
+        """
+        Test that the function generates a map of layout to tokens using
+        for doc_fixture_0c027af0ee9c1901c57f6579d903aedee7f4.pkl
+        """
         result = self.figure_table_predictor.predict()
         assert isinstance(result, dict)
         assert list(result.keys()) == ['figures', 'figure_captions', 'figure_to_figure_captions', 'tables',
@@ -119,3 +137,39 @@ class TestFigureCaptionPredictor(unittest.TestCase):
             {'id': 1, 'metadata': {}, 'spans': [{'end': 22214, 'start': 22042}]},
             {'id': 2, 'metadata': {}, 'spans': [{'end': 23502, 'start': 23400}]},
             {'id': 3, 'metadata': {}, 'spans': [{'end': 29584, 'start': 29369}]}]
+
+    def test_predict_2149e0c1106e6dfa36ea787167d6611cf88b69cb(self):
+        """
+        Test that the function generates a map of layout to tokens using
+        for doc_fixture_2149e0c1106e6dfa36ea787167d6611cf88b69cb.json
+        """
+        self.figure_table_predictor.doc = self.doc_2
+        result = self.figure_table_predictor.predict()
+        assert isinstance(result, dict)
+        assert list(result.keys()) == ['figures', 'figure_captions', 'figure_to_figure_captions', 'tables',
+                                       'table_captions',
+                                       'table_to_table_captions', ]
+        assert len(result['figures']) == 19
+        assert len(result['tables']) == 0
+        assert isinstance(result['figure_to_figure_captions'][0], Relation)
+        assert [figure.to_json() for figure in result['figures']] == self.figure_predictions
+        assert [figure_caption.to_json() for figure_caption in result['figure_captions']] == [
+            {'id': 0, 'metadata': {}, 'spans': [{'end': 5253, 'start': 5019}]},
+            {'id': 1, 'metadata': {}, 'spans': [{'end': 9230, 'start': 8976}]},
+            {'id': 2, 'metadata': {}, 'spans': [{'end': 13164, 'start': 12935}]},
+            {'id': 3, 'metadata': {}, 'spans': [{'end': 17600, 'start': 17373}]},
+            {'id': 4, 'metadata': {}, 'spans': [{'end': 23624, 'start': 23205}]},
+            {'id': 5, 'metadata': {}, 'spans': [{'end': 21009, 'start': 20070}]},
+            {'id': 6, 'metadata': {}, 'spans': [{'end': 28975, 'start': 28838}]},
+            {'id': 7, 'metadata': {}, 'spans': [{'end': 32839, 'start': 32681}]},
+            {'id': 8, 'metadata': {}, 'spans': [{'end': 37061, 'start': 36394}]},
+            {'id': 9, 'metadata': {}, 'spans': [{'end': 42245, 'start': 42063}]},
+            {'id': 10, 'metadata': {}, 'spans': [{'end': 43512, 'start': 43418}]},
+            {'id': 11, 'metadata': {}, 'spans': [{'end': 46726, 'start': 46542}]},
+            {'id': 12, 'metadata': {}, 'spans': [{'end': 50359, 'start': 50192}]},
+            {'id': 13, 'metadata': {}, 'spans': [{'end': 57779, 'start': 57323}]},
+            {'id': 14, 'metadata': {}, 'spans': [{'end': 60918, 'start': 60838}]},
+            {'id': 15, 'metadata': {}, 'spans': [{'end': 64943, 'start': 64238}]},
+            {'id': 16, 'metadata': {}, 'spans': [{'end': 69170, 'start': 68548}]},
+            {'id': 17, 'metadata': {}, 'spans': [{'end': 75951, 'start': 75767}]},
+            {'id': 18, 'metadata': {}, 'spans': [{'end': 80129, 'start': 79561}]}]

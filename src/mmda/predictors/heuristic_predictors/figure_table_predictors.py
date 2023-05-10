@@ -235,6 +235,9 @@ class FigureTablePredictions(BaseHeuristicPredictor):
         Returns: Dictionary of the merged figure boxes.
 
         """
+        if merged_boxes_vila_dict is None:
+            merged_boxes_vila_dict = defaultdict(list)
+
         merged_boxes_vila_dict_left = defaultdict(list)
         merged_boxes_map = defaultdict(list)
         span_map = FigureTablePredictions._create_dict_of_pages_spans_layoutparser(
@@ -249,14 +252,14 @@ class FigureTablePredictions(BaseHeuristicPredictor):
 
             # Filtering out vila spans (not merged)
             if len(span_list) != len(merged_spans) and merged_boxes_vila_dict and merged_boxes_vila_dict[page]:
-                for merged_span in merged_spans:
-                    for vila_span in merged_boxes_vila_dict[page]:
-                        if vila_span.box.to_json() == merged_span.box.to_json():
-                            merged_spans.remove(merged_span)
-                            merged_boxes_vila_dict_left[page].append(vila_span)
+                merged_spans = [merged_span for merged_span in merged_spans if not any(
+                    vila_span.box.to_json() == merged_span.box.to_json() for vila_span in merged_boxes_vila_dict[page])]
+
+                merged_boxes_vila_dict_left[page] = [vila_span for vila_span in merged_boxes_vila_dict[page] if any(
+                    vila_span.box.to_json() == merged_span.box.to_json() for merged_span in merged_spans)]
 
             if merged_boxes_vila_dict_left[page]:
-                merged_boxes_vila_dict[page].update(merged_boxes_vila_dict_left[page])
+                merged_boxes_vila_dict[page] = merged_boxes_vila_dict_left[page]
             merged_boxes_map[page] = merged_spans
 
         return merged_boxes_map, merged_boxes_vila_dict
