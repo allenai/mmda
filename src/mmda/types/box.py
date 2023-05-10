@@ -12,8 +12,6 @@ from typing import Dict, List, Tuple, Union
 
 import numpy as np
 
-logging.basicConfig(level=logging.INFO)
-
 
 def _is_overlap_1d(
     start1: float, end1: float, start2: float, end2: float, x: float = 0
@@ -35,10 +33,6 @@ class Box:
             raise ValueError(f"Page must be non-negative, got {page}")
         if l < 0 or t < 0:
             raise ValueError(f"Left and top must be non-negative, got {l} and {t}")
-        if l + w > 1.0 or t + h > 1.0:
-            raise ValueError(
-                f"Box must be within the page, got x={l}-{l+w} and y={t}-{t+h}"
-            )
         self.l = l
         self.t = t
         self.w = w
@@ -66,39 +60,7 @@ class Box:
 
     @classmethod
     def from_coordinates(cls, x1: float, y1: float, x2: float, y2: float, page: int):
-        return cls(x1, y1, x2 - x1, y2 - y1, page)
-
-    @classmethod
-    def from_pdf_coordinates(
-        cls,
-        x1: float,
-        y1: float,
-        x2: float,
-        y2: float,
-        page_width: float,
-        page_height: float,
-        page: int,
-    ):
-        """
-        Convert PDF coordinates to absolute coordinates.
-        The difference between from_pdf_coordinates and from_coordinates is that this function
-        will perform extra checks to ensure the coordinates are valid, i.e.,
-        0<= x1 <= x2 <= page_width and 0<= y1 <= y2 <= page_height.
-        """
-
-        _x1, _x2 = np.clip([x1, x2], 0, page_width)
-        _y1, _y2 = np.clip([y1, y2], 0, page_height)
-
-        if _x2 < _x1:
-            _x2 = _x1
-        if _y2 < _y1:
-            _y2 = _y1
-        if (_x1, _y1, _x2, _y2) != (x1, y1, x2, y2):
-            warnings.warn(
-                f"The coordinates ({x1}, {y1}, {x2}, {y2}) are not valid and converted to ({_x1}, {_y1}, {_x2}, {_y2})."
-            )
-
-        return cls(_x1, _y1, _x2 - _x1, _y2 - _y1, page)
+        return Box(l=x1, t=y1, w=x2 - x1, h=y2 - y1, page=page)
 
     @classmethod
     def small_boxes_to_big_box(cls, boxes: List["Box"]) -> "Box":
