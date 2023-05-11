@@ -8,7 +8,7 @@ import json
 import re
 from tempfile import NamedTemporaryFile
 from grobid_client.grobid_client import GrobidClient
-from typing import Dict, Optional, List
+from typing import Any, Dict, Optional, List
 
 import os
 import xml.etree.ElementTree as et
@@ -22,13 +22,6 @@ from mmda.utils.tools import box_groups_to_span_groups
 
 REQUIRED_DOCUMENT_FIELDS = [PagesField, RowsField, TokensField]
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
-
-
-def make_variable_name(s: str) -> str:
-    s = re.sub(r'[^a-zA-Z0-9_]', "_", s)
-    if s[0].isdigit():
-        s = "_" + s
-    return s
 
 
 class GrobidFullParser(Parser):
@@ -110,16 +103,14 @@ class GrobidFullParser(Parser):
 
         all_box_groups = self._get_box_groups(xml_root)
         for field, box_groups in all_box_groups.items():
-
-            span_groups = []
-            for box_group in box_groups:
-                span_group, *others = box_groups_to_span_groups(
-                    box_groups=[box_group], doc=doc, center=True
-                )
-                assert len(others) == 0, \
-                    "BoxGroup should only contain one SpanGroup"
-                span_group.metadata = box_group.metadata
-                span_groups.append(span_group)
+            span_groups = box_groups_to_span_groups(
+                box_groups=box_groups, doc=doc, center=True
+            )
+            assert len(box_groups) == len(span_groups), (
+                f"BoxGroups and SpanGroups for {field} are not the same length"
+            )
+            for bg, sg in zip(box_groups, span_groups):
+                sg.metadata = bg.metadata
 
             # note for if/when adding in relations between mention sources and
             # bib targets: big_entries metadata contains original grobid id
@@ -161,17 +152,24 @@ class GrobidFullParser(Parser):
         for field in self.grobid_config["coordinates"]:
             structs = root.findall(f".//tei:{field}", NS)
             for i, struct in enumerate(structs):
-                coords_string = struct.attrib.pop("coords", None)
-                if coords_string is None:
+                if (coords_str := struct.attrib.get("coords", None)) is None:
+                    all_coords = struct.findall('.//*[@coords]')
+                    coords_str = ";".join([
+                        c.attrib["coords"] for c in all_coords
+                        if "coords" in c.attrib
+                    ])
+
+                if coords_str == "":
                     continue
-                boxes = self._xml_coords_to_boxes(coords_string, page_sizes)
-                metadata = Metadata(
-                    grobid_order=i,
-                    **{
-                        make_variable_name(k): v
-                        for k, v in struct.attrib.items()
-                    }
-                )
+
+                boxes = self._xml_coords_to_boxes(coords_str, page_sizes)
+                metadata_dict: Dict[str, Any] = {
+                    f"grobid_{re.sub(r'[^a-zA-Z0-9_]+', '_', k)}": v
+                    for k, v in struct.attrib.items() if k != "coords"
+                }
+                metadata_dict["grobid_order"] = i
+                metadata_dict["grobid_text"] = struct.text
+                metadata = Metadata.from_json(metadata_dict)
                 box_group = BoxGroup(boxes=boxes, metadata=metadata)
                 all_boxes[field].append(box_group)
 
@@ -180,7 +178,15 @@ class GrobidFullParser(Parser):
 
 if __name__ == "__main__":
     from mmda.parsers import PDFPlumberParser
-    doc = PDFPlumberParser().parse("/Users/lucas/local_scim/tests/test_1.pdf")
-    doc = GrobidFullParser().parse("/Users/lucas/local_scim/tests/test_1.pdf", doc)
-    print(doc.fields)
-    import ipdb; ipdb.set_trace()
+    from argparse import ArgumentParser
+
+    ap = ArgumentParser()
+    ap.add_argument("pdf_path", type=str)
+    opts = ap.parse_args()
+
+    doc = PDFPlumberParser().parse(opts.pdf_path)
+    doc = GrobidFullParser().parse(opts.pdf_path, doc)
+
+    for p in doc.p:
+        for s in p.s:
+            print(s.metadata.grobid_text)
