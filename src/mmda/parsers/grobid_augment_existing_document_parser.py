@@ -61,7 +61,8 @@ class GrobidAugmentExistingDocumentParser(Parser):
         self._parse_xml_onto_doc(xml, doc)
         return doc
 
-    def _grobid_box_groups_to_span_groups(self, doc: Document, **kwargs: Iterable[BoxGroup]) -> Dict[str, List[SpanGroup] ]:
+    def _grobid_box_groups_to_span_groups(self, doc: Document, **kwargs: Iterable[BoxGroup]) -> Dict[
+        str, List[SpanGroup]]:
         span_groups_by_field_name = defaultdict(list)
         for parsed_field_name, box_groups in kwargs.items():
             span_groups_by_field_name[parsed_field_name] = box_groups_to_span_groups(box_groups, doc, center=True)
@@ -74,7 +75,7 @@ class GrobidAugmentExistingDocumentParser(Parser):
         box_group_parses = defaultdict(list)
 
         # get raw box groups from Grobid XML output
-        # box_group_parses["authors"] = self._get_author_box_groups(xml_root)
+        box_group_parses["authors"] = self._get_author_box_groups(xml_root)
         # note for if/when adding in relations between mention sources and bib targets:
         # big_entries metadata contains original grobid id attached to the BoxGroup.
         box_group_parses["bib_entries"] = self._get_bib_entry_box_groups(xml_root)
@@ -111,40 +112,36 @@ class GrobidAugmentExistingDocumentParser(Parser):
         self.page_sizes = page_sizes
         return page_sizes
 
-# def _get_author_box_groups(self, root: et.Element) -> List[BoxGroup]:
-#         author_list_root = root.find(".//tei:sourceDesc/biblStruct/analytic", NS)
-#
-#         grobid_bibs = []
-#         bib_structs = bib_list_root.findall(".//tei:biblStruct", NS)
-#         for bib in bib_structs:
-#             coords_string = bib.attrib["coords"]
-#             boxes = self._xml_coords_to_boxes(coords_string)
-#             grobid_id = bib.attrib["{http://www.w3.org/XML/1998/namespace}id"]
-#
-#             grobid_bibs.append(
-#                 BoxGroup(
-#                     boxes=boxes,
-#                     metadata=Metadata(grobid_id=grobid_id)
-#                 )
-#             )
-#
-#         return grobid_bibs
+    def _get_author_box_groups(self, root: et.Element) -> List[BoxGroup]:
+        author_list_root = root.find(".//tei:sourceDesc", NS)
+
+        author_names = []
+        author_name_structs = author_list_root.findall(".//tei:persName", NS)
+        for a in author_name_structs:
+            coords_string = a.attrib["coords"]
+            boxes = self._xml_coords_to_boxes(coords_string)
+
+            author_names.append(
+                BoxGroup(boxes=boxes)
+            )
+
+        return author_names
 
     def _get_bib_entry_box_groups(self, root: et.Element) -> List[BoxGroup]:
         bib_list_root = root.find(".//tei:listBibl", NS)
 
-        grobid_bibs = []
+        bib_entries = []
         bib_structs = bib_list_root.findall(".//tei:biblStruct", NS)
         for bib in bib_structs:
             coords_string = bib.attrib["coords"]
             boxes = self._xml_coords_to_boxes(coords_string)
             grobid_id = bib.attrib["{http://www.w3.org/XML/1998/namespace}id"]
 
-            grobid_bibs.append(
+            bib_entries.append(
                 BoxGroup(
                     boxes=boxes,
                     metadata=Metadata(grobid_id=grobid_id)
                 )
             )
 
-        return grobid_bibs
+        return bib_entries
