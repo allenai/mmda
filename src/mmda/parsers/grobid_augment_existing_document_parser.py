@@ -5,7 +5,7 @@
 """
 from collections import defaultdict
 from grobid_client.grobid_client import GrobidClient
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import os
 import xml.etree.ElementTree as et
@@ -69,10 +69,12 @@ class GrobidAugmentExistingDocumentParser(Parser):
 
     def _parse_xml_onto_doc(self, xml: str, doc: Document) -> Document:
         xml_root = et.fromstring(xml)
+        self._cache_page_sizes(xml_root)
+
         box_group_parses = defaultdict(list)
 
         # get raw box groups from Grobid XML output
-        # box_group_parses["authors"] = self._get_author_box_groups(xml_root) # TODO turn on/make
+        # box_group_parses["authors"] = self._get_author_box_groups(xml_root)
         # note for if/when adding in relations between mention sources and bib targets:
         # big_entries metadata contains original grobid id attached to the BoxGroup.
         box_group_parses["bib_entries"] = self._get_bib_entry_box_groups(xml_root)
@@ -83,7 +85,7 @@ class GrobidAugmentExistingDocumentParser(Parser):
 
         return doc
 
-    def _xml_coords_to_boxes(self, coords_attribute: str, page_sizes: dict):
+    def _xml_coords_to_boxes(self, coords_attribute: str):
         coords_list = coords_attribute.split(";")
         boxes = []
         for coords in coords_list:
@@ -96,24 +98,46 @@ class GrobidAugmentExistingDocumentParser(Parser):
                     w=float(w),
                     h=float(h),
                     page=proper_page
-                ).get_relative(*page_sizes[proper_page])
+                ).get_relative(*self.page_sizes[proper_page])
             )
         return boxes
 
-    def _get_bib_entry_box_groups(self, root: et.Element) -> List[BoxGroup]:
-        bib_list_root = root.find(".//tei:listBibl", NS)
-
+    def _cache_page_sizes(self, root: et.Element):
         page_size_root = root.find(".//tei:facsimile", NS)
         page_size_data = page_size_root.findall(".//tei:surface", NS)
         page_sizes = dict()
         for data in page_size_data:
             page_sizes[int(data.attrib["n"]) - 1] = [float(data.attrib["lrx"]), float(data.attrib["lry"])]
+        self.page_sizes = page_sizes
+        return page_sizes
+
+# def _get_author_box_groups(self, root: et.Element) -> List[BoxGroup]:
+#         author_list_root = root.find(".//tei:sourceDesc/biblStruct/analytic", NS)
+#
+#         grobid_bibs = []
+#         bib_structs = bib_list_root.findall(".//tei:biblStruct", NS)
+#         for bib in bib_structs:
+#             coords_string = bib.attrib["coords"]
+#             boxes = self._xml_coords_to_boxes(coords_string)
+#             grobid_id = bib.attrib["{http://www.w3.org/XML/1998/namespace}id"]
+#
+#             grobid_bibs.append(
+#                 BoxGroup(
+#                     boxes=boxes,
+#                     metadata=Metadata(grobid_id=grobid_id)
+#                 )
+#             )
+#
+#         return grobid_bibs
+
+    def _get_bib_entry_box_groups(self, root: et.Element) -> List[BoxGroup]:
+        bib_list_root = root.find(".//tei:listBibl", NS)
 
         grobid_bibs = []
         bib_structs = bib_list_root.findall(".//tei:biblStruct", NS)
         for bib in bib_structs:
             coords_string = bib.attrib["coords"]
-            boxes = self._xml_coords_to_boxes(coords_string, page_sizes)
+            boxes = self._xml_coords_to_boxes(coords_string)
             grobid_id = bib.attrib["{http://www.w3.org/XML/1998/namespace}id"]
 
             grobid_bibs.append(
