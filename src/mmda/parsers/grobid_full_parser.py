@@ -99,7 +99,7 @@ class GrobidFullParser(Parser):
         
         for p ∈  doc.p:
             grobid_text = [s.metadata['grobid_text'] for s ∈  p.s]
-            grobid_text = ' '.join(grobid_text)
+            grobid_text = ' '.join(filter(lambda text: type(text) == str, grobid_text))
             p.metadata['grobid_text'] = grobid_text
 
         return doc
