@@ -65,8 +65,6 @@ class GrobidAugmentExistingDocumentParser(Parser):
         xml_root = et.fromstring(xml)
         self._cache_page_sizes(xml_root)
 
-        box_group_parses = defaultdict(list)
-
         # authors
         author_box_groups = self._get_box_groups(xml_root, "sourceDesc", "persName")
         doc.annotate(authors=box_groups_to_span_groups(author_box_groups, doc, center=True))

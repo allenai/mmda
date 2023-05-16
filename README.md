@@ -12,7 +12,7 @@ pip install -e '.[dev,<extras_require section from setup.py>]'
 
 For most users, we recommend using recipes:
 ```python
-pip install -e '.[dev,grobid_augment_existing_document_parser]'
+pip install -e '.[dev,recipes]'
 ```
 
 ## Unit testing
