@@ -16,7 +16,7 @@ class TestFigureCaptionPredictor(unittest.TestCase):
     @classmethod
     def setUp(cls):
         cls.fixture_path = pathlib.Path(__file__).parent.parent
-        with open(cls.fixture_path / 'fixtures/doc_fixture_0c027af0ee9c1901c57f6579d903aedee7f4.pkl',
+        with open(cls.fixture_path / 'fixtures/doc_fixture_e5910c027af0ee9c1901c57f6579d903aedee7f4.pkl',
                   'rb') as file_handle:
             doc_json = pickle.load(file_handle)
             cls.doc = Document.from_json(doc_json)
@@ -65,10 +65,10 @@ class TestFigureCaptionPredictor(unittest.TestCase):
             defaultdict(list), defaultdict(list))
         assert list(result.keys()) == []
 
-    def test_predict_0c027af0ee9c1901c57f6579d903aedee7f4(self):
+    def test_predict_e5910c027af0ee9c1901c57f6579d903aedee7f4(self):
         """
         Test that the function generates a map of layout to tokens using
-        for doc_fixture_0c027af0ee9c1901c57f6579d903aedee7f4.pkl
+        for doc_fixture_e5910c027af0ee9c1901c57f6579d903aedee7f4.pkl
         """
         result = self.figure_table_predictor.predict()
         assert isinstance(result, dict)

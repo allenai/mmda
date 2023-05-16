@@ -11,14 +11,14 @@ from mmda.parsers.grobid_augment_existing_document_parser import GrobidAugmentEx
 
 os.chdir(pathlib.Path(__file__).parent)
 
-PDF_PATH = "../fixtures/grobid_augment_existing_document_parser/0c027af0ee9c1901c57f6579d903aedee7f4.pdf"
-PDFPLUMBER_DOC_PATH = "../fixtures/grobid_augment_existing_document_parser/0c027af0ee9c1901c57f6579d903aedee7f4__pdfplumber_doc.json"
+PDF_PATH = "../fixtures/grobid_augment_existing_document_parser/e5910c027af0ee9c1901c57f6579d903aedee7f4.pdf"
+PDFPLUMBER_DOC_PATH = "../fixtures/grobid_augment_existing_document_parser/e5910c027af0ee9c1901c57f6579d903aedee7f4__pdfplumber_doc.json"
 
 OK_CONFIG_PATH =  "../fixtures/grobid_augment_existing_document_parser/grobid.config"
-XML_OK = open("../fixtures/grobid_augment_existing_document_parser/0c027af0ee9c1901c57f6579d903aedee7f4.xml").read()
+XML_OK = open("../fixtures/grobid_augment_existing_document_parser/e5910c027af0ee9c1901c57f6579d903aedee7f4.xml").read()
 
 NO_AUTHORS_CONFIG_PATH =  "../fixtures/grobid_augment_existing_document_parser/grobid-no-authors.config"
-XML_NO_AUTHORS = open("../fixtures/grobid_augment_existing_document_parser/0c027af0ee9c1901c57f6579d903aedee7f4_no_authors.xml").read()
+XML_NO_AUTHORS = open("../fixtures/grobid_augment_existing_document_parser/e5910c027af0ee9c1901c57f6579d903aedee7f4_no_authors.xml").read()
 
 def mock_request(*args, **kwargs):
     class MockResponse:
