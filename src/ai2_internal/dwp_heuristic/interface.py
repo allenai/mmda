@@ -54,16 +54,6 @@ class Predictor:
         doc = Document(instance.symbols)
         doc.annotate(tokens=[t.to_mmda() for t in instance.tokens])
         doc.annotate(rows=[r.to_mmda() for r in instance.rows])
-
-        missing_row = 0
-        missing_ids = []
-        for token in doc.tokens:
-            if len(token.rows) == 0:
-                missing_row += 1
-                missing_ids.append(token.id)
-
-        print(f"Missing {missing_row} of {len(doc.tokens)}: {missing_ids}")
-
         words = self._predictor.predict(doc)
 
         # RE: https://github.com/allenai/scholar/issues/36200
