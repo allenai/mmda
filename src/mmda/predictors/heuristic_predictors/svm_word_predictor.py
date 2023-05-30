@@ -98,15 +98,12 @@ class SVMWordPredictor(BasePredictor):
         # validate input
         self._validate_tokenization(document=document)
 
-        # precompute whitespace tokenization
-        clusters = self._cluster_tokens_by_whitespace(document=document)
-
-        # initialize output format
-        token_id_to_word_id = {t.id: None for t in document.tokens}
-        word_id_to_text = {}
-
-        for token_ids in clusters:
-            tokens = [document.tokens[token_id] for token_id in token_ids]
+        # initialize output format using whitespace tokenization
+        (
+            token_id_to_word_id,
+            word_id_to_token_ids,
+            word_id_to_text,
+        ) = self._predict_with_whitespace(document=document)
 
         # convert format
         words = self._create_words(
@@ -115,6 +112,25 @@ class SVMWordPredictor(BasePredictor):
             word_id_to_text=word_id_to_text,
         )
         return words
+
+    def _predict_with_whitespace(self, document: Document):
+        """Predicts word boundaries using whitespace tokenization."""
+        # precompute whitespace tokenization
+        whitespace_clusters = self._cluster_tokens_by_whitespace(document=document)
+        # assign word ids
+        token_id_to_word_id = {}
+        word_id_to_token_ids = defaultdict(list)
+        for word_id, token_ids_in_cluster in enumerate(whitespace_clusters):
+            for token_id in token_ids_in_cluster:
+                token_id_to_word_id[token_id] = word_id
+                word_id_to_token_ids[word_id].append(token_id)
+        # get word strings
+        word_id_to_text = {}
+        for word_id, token_ids in word_id_to_token_ids.items():
+            word_id_to_text[word_id] = "".join(
+                document.tokens[token_id].text for token_id in token_ids
+            )
+        return token_id_to_word_id, word_id_to_token_ids, word_id_to_text
 
     def _get_dense_features(self, part: str, name_prefix: str):
         upper = int(part[0].isupper())
@@ -232,6 +248,9 @@ class SVMWordPredictor(BasePredictor):
             sorted(ws_token_id_to_tokens[ws_token_id])
             for ws_token_id in range(len(ws_token_id_to_tokens))
         ]
+
+        # cleanup
+        document.remove("_ws_tokens")
         return clusters
 
     def _get_word_candidates(

@@ -42,6 +42,29 @@ class TestSVMWordPredictor(unittest.TestCase):
             doc_dict = json.load(f_in)
             self.doc = Document.from_json(doc_dict=doc_dict)
 
+    def test_predict(self):
+        words = self.predictor.predict(document=self.doc)
+        # double-check number of units
+        self.assertLess(len(words), len(self.doc.tokens))
+        # double-check can annotate
+        self.doc.annotate(words=words)
+        # after annotating, double-check words against tokens
+        for word in self.doc.words:
+            tokens_in_word = word.tokens
+            # if word is a single token, then it should be the same as the token
+            if len(tokens_in_word) == 1:
+                self.assertEqual(tokens_in_word[0].text, word.text)
+                self.assertEqual(tokens_in_word[0].spans, word.spans)
+            else:
+                # otherwise, most token units should be substring of word
+                overlap = np.mean([token.text in word.text for token in tokens_in_word])
+                self.assertGreaterEqual(overlap, 0.5)
+                # spans should match up though
+                self.assertEqual(
+                    [span for token in tokens_in_word for span in token.spans],
+                    word.spans,
+                )
+
     def test_get_features(self):
         all_features, word_id_to_feature_ids = self.predictor._get_features(
             words=self.pos_words
