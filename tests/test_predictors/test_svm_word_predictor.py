@@ -169,7 +169,6 @@ class TestSVMWordPredictor(unittest.TestCase):
                     {"id": 6, "spans": [{"start": 18, "end": 19}]},
                     {"id": 7, "spans": [{"start": 19, "end": 21}]},
                     {"id": 8, "spans": [{"start": 21, "end": 22}]},
-                    {"id": 9, "spans": [{"start": 22, "end": 23}]},
                 ],
             }
         )
@@ -225,7 +224,6 @@ class TestSVMWordPredictor(unittest.TestCase):
                     {"id": 6, "spans": [{"start": 18, "end": 19}]},
                     {"id": 7, "spans": [{"start": 19, "end": 21}]},
                     {"id": 8, "spans": [{"start": 21, "end": 22}]},
-                    {"id": 9, "spans": [{"start": 22, "end": 23}]},
                 ],
             }
         )
