@@ -8,7 +8,7 @@ import re
 import tarfile
 import tempfile
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
 from joblib import load
@@ -105,6 +105,14 @@ class SVMWordPredictor(BasePredictor):
             word_id_to_text,
         ) = self._predict_with_whitespace(document=document)
 
+        # get hyphen word candidates
+        hyphen_word_candidates = self._find_hyphen_word_candidates(
+            tokens=document.tokens,
+            token_id_to_word_id=token_id_to_word_id,
+            word_id_to_token_ids=word_id_to_token_ids,
+            word_id_to_text=word_id_to_text,
+        )
+
         # convert format
         words = self._create_words(
             document=document,
@@ -131,6 +139,37 @@ class SVMWordPredictor(BasePredictor):
                 document.tokens[token_id].text for token_id in token_ids
             )
         return token_id_to_word_id, word_id_to_token_ids, word_id_to_text
+
+    def _find_hyphen_word_candidates(
+        self,
+        tokens,
+        token_id_to_word_id,
+        word_id_to_token_ids,
+        word_id_to_text,
+    ) -> Tuple[int, int]:
+        # get all hyphen tokens
+        # TODO: can refine this further by restricting to only tokens at end of `rows`
+        hyphen_token_ids = []
+        for token_id, token in enumerate(tokens):
+            if token.text == "-":
+                hyphen_token_ids.append(token_id)
+        # get words that contain hyphen token, but only at the end (i.e. broken word)
+        # these form the `prefix` of a potential hyphenated word
+        prefix_word_ids = set()
+        for hyphen_token_id in hyphen_token_ids:
+            prefix_word_id = token_id_to_word_id[hyphen_token_id]
+            prefix_word_text = word_id_to_text[prefix_word_id]
+            if prefix_word_text.endswith("-"):
+                prefix_word_ids.add(prefix_word_id)
+        # get words right after the prefix (assumed words in reading order)
+        # these form the `suffix` of a potential hyphenated word
+        # together, a `prefix` and `suffix` form a candidate pair
+        word_id_pairs = []
+        for prefix_word_id in prefix_word_ids:
+            suffix_word_id = prefix_word_id + 1
+            suffix_word_text = word_id_to_text[suffix_word_id]
+            word_id_pairs.append((prefix_word_id, suffix_word_id))
+        return word_id_pairs
 
     def _get_dense_features(self, part: str, name_prefix: str):
         upper = int(part[0].isupper())
@@ -210,11 +249,19 @@ class SVMWordPredictor(BasePredictor):
 
     def _validate_tokenization(self, document: Document):
         """This Word Predictor relies on a specific type of Tokenization
-        in which hyphens ('-') must be their own token. This verifies."""
+        in which hyphens ('-') must be their own token. This verifies.
+
+        Additionally, doesnt work unless there's an `.id` field on each token.
+        See `_cluster_tokens_by_whitespace()` for more info.
+        """
         for token in document.tokens:
             if "-" in token.text and token.text != "-":
                 raise ValueError(
                     f"Document contains Token with hyphen, but not as its own token."
+                )
+            if token.id is None:
+                raise ValueError(
+                    f"Document contains Token without an `.id` field, which is necessary for this word Predictor's whitespace clustering operation."
                 )
 
     def _cluster_tokens_by_whitespace(self, document: Document) -> List[List[int]]:

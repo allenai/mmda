@@ -65,23 +65,97 @@ class TestSVMWordPredictor(unittest.TestCase):
                     word.spans,
                 )
 
-    def test_get_features(self):
-        all_features, word_id_to_feature_ids = self.predictor._get_features(
-            words=self.pos_words
+    def test_validate_tokenization(self):
+        doc = Document.from_json(
+            doc_dict={
+                "symbols": "I am the wizard-of-oz.",
+                "tokens": [
+                    {"id": 0, "spans": [{"start": 0, "end": 1}]},
+                    {"id": 1, "spans": [{"start": 2, "end": 4}]},
+                    {"id": 2, "spans": [{"start": 5, "end": 8}]},
+                    {"id": 3, "spans": [{"start": 9, "end": 15}]},
+                    {"id": 4, "spans": [{"start": 15, "end": 16}]},
+                    {"id": 5, "spans": [{"start": 16, "end": 18}]},
+                    {"id": 6, "spans": [{"start": 18, "end": 19}]},
+                    {"id": 7, "spans": [{"start": 19, "end": 21}]},
+                    {"id": 8, "spans": [{"start": 21, "end": 22}]},
+                    {"id": 9, "spans": [{"start": 22, "end": 23}]},
+                ],
+            }
         )
-        self.assertEqual(len(word_id_to_feature_ids), len(self.pos_words))
-        self.assertEqual(
-            all_features.shape[0],
-            sum([len(feature) for feature in word_id_to_feature_ids.values()]),
+        self.predictor._validate_tokenization(document=doc)
+        # missing token id
+        with self.assertRaises(ValueError):
+            doc = Document.from_json(
+                doc_dict={
+                    "symbols": "I",
+                    "tokens": [{"spans": [{"start": 0, "end": 1}]}],
+                }
+            )
+            self.predictor._validate_tokenization(document=doc)
+        # hyphen not its own token
+        with self.assertRaises(ValueError):
+            doc = Document.from_json(
+                doc_dict={
+                    "symbols": "wizard-of-oz",
+                    "tokens": [{"spans": [{"start": 0, "end": 9}]}],
+                }
+            )
+            self.predictor._validate_tokenization(document=doc)
+
+    def test_cluster_tokens_by_whitespace(self):
+        clusters = self.predictor._cluster_tokens_by_whitespace(document=self.doc)
+        for token_ids in clusters:
+            if len(token_ids) == 1:
+                token = self.doc.tokens[token_ids[0]]
+                self.assertEqual(
+                    self.doc.symbols[token.spans[0].start : token.spans[0].end],
+                    token.text,
+                )
+            else:
+                tokens = [self.doc.tokens[token_id] for token_id in token_ids]
+                spans = [span for token in tokens for span in token.spans]
+                big_span = Span.small_spans_to_big_span(spans=spans)
+                self.assertEqual(
+                    self.doc.symbols[big_span.start : big_span.end],
+                    "".join([token.text for token in tokens]),
+                )
+
+    def test_predict_with_whitespace(self):
+        doc = Document.from_json(
+            doc_dict={
+                "symbols": "I am the wizard-of-oz.",
+                "tokens": [
+                    {"id": 0, "spans": [{"start": 0, "end": 1}]},
+                    {"id": 1, "spans": [{"start": 2, "end": 4}]},
+                    {"id": 2, "spans": [{"start": 5, "end": 8}]},
+                    {"id": 3, "spans": [{"start": 9, "end": 15}]},
+                    {"id": 4, "spans": [{"start": 15, "end": 16}]},
+                    {"id": 5, "spans": [{"start": 16, "end": 18}]},
+                    {"id": 6, "spans": [{"start": 18, "end": 19}]},
+                    {"id": 7, "spans": [{"start": 19, "end": 21}]},
+                    {"id": 8, "spans": [{"start": 21, "end": 22}]},
+                    {"id": 9, "spans": [{"start": 22, "end": 23}]},
+                ],
+            }
         )
-        all_features, word_id_to_feature_ids = self.predictor._get_features(
-            words=self.neg_words
+        (
+            token_id_to_word_id,
+            word_id_to_token_ids,
+            word_id_to_text,
+        ) = self.predictor._predict_with_whitespace(document=doc)
+        self.assertDictEqual(
+            token_id_to_word_id, {0: 0, 1: 1, 2: 2, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3, 8: 3}
         )
-        self.assertEqual(len(word_id_to_feature_ids), len(self.neg_words))
-        self.assertEqual(
-            all_features.shape[0],
-            sum([len(feature) for feature in word_id_to_feature_ids.values()]),
+        self.assertDictEqual(
+            word_id_to_token_ids, {0: [0], 1: [1], 2: [2], 3: [3, 4, 5, 6, 7, 8]}
         )
+        self.assertDictEqual(
+            word_id_to_text, {0: "I", 1: "am", 2: "the", 3: "wizard-of-oz."}
+        )
+
+    def test_find_hyphen_word_candidates(self):
+        pass
 
     def test__predict(self):
         pos_words = [
@@ -110,61 +184,7 @@ class TestSVMWordPredictor(unittest.TestCase):
         self.assertEqual(len(neg_results), len(neg_words))
         self.assertTrue(all([r["is_edit"] is True for r in neg_results]))
 
-    def test_validate_tokenization(self):
-        doc = Document.from_json(
-            doc_dict={
-                "symbols": "I am the wizard-of-oz.",
-                "tokens": [
-                    {"spans": [{"start": 0, "end": 1}]},
-                    {"spans": [{"start": 2, "end": 4}]},
-                    {"spans": [{"start": 5, "end": 8}]},
-                    {"spans": [{"start": 9, "end": 15}]},
-                    {"spans": [{"start": 15, "end": 16}]},
-                    {"spans": [{"start": 16, "end": 18}]},
-                    {"spans": [{"start": 18, "end": 19}]},
-                    {"spans": [{"start": 19, "end": 21}]},
-                    {"spans": [{"start": 21, "end": 22}]},
-                ],
-            }
-        )
-        self.predictor._validate_tokenization(document=doc)
-        with self.assertRaises(ValueError):
-            doc = Document.from_json(
-                doc_dict={
-                    "symbols": "I am the wizard-of-oz.",
-                    "tokens": [
-                        {"spans": [{"start": 0, "end": 1}]},
-                        {"spans": [{"start": 2, "end": 4}]},
-                        {"spans": [{"start": 5, "end": 8}]},
-                        {"spans": [{"start": 9, "end": 18}]},
-                        {"spans": [{"start": 18, "end": 19}]},
-                        {"spans": [{"start": 19, "end": 21}]},
-                        {"spans": [{"start": 21, "end": 22}]},
-                        {"spans": [{"start": 22, "end": 23}]},
-                    ],
-                }
-            )
-            self.predictor._validate_tokenization(document=doc)
-
-    def test_cluster_tokens_by_whitespace(self):
-        clusters = self.predictor._cluster_tokens_by_whitespace(document=self.doc)
-        for token_ids in clusters:
-            if len(token_ids) == 1:
-                token = self.doc.tokens[token_ids[0]]
-                self.assertEqual(
-                    self.doc.symbols[token.spans[0].start : token.spans[0].end],
-                    token.text,
-                )
-            else:
-                tokens = [self.doc.tokens[token_id] for token_id in token_ids]
-                spans = [span for token in tokens for span in token.spans]
-                big_span = Span.small_spans_to_big_span(spans=spans)
-                self.assertEqual(
-                    self.doc.symbols[big_span.start : big_span.end],
-                    "".join([token.text for token in tokens]),
-                )
-
-    def test_predict(self):
+    def test___predict(self):
         preds_pos = self.predictor._predict(words=self.pos_words)
         self.assertEqual(len(preds_pos), len(self.pos_words))
         tp = sum(preds_pos)
@@ -179,3 +199,21 @@ class TestSVMWordPredictor(unittest.TestCase):
 
         p = tp / (tp + fp)
         r = tp / (tp + fn)
+
+    def test_get_features(self):
+        all_features, word_id_to_feature_ids = self.predictor._get_features(
+            words=self.pos_words
+        )
+        self.assertEqual(len(word_id_to_feature_ids), len(self.pos_words))
+        self.assertEqual(
+            all_features.shape[0],
+            sum([len(feature) for feature in word_id_to_feature_ids.values()]),
+        )
+        all_features, word_id_to_feature_ids = self.predictor._get_features(
+            words=self.neg_words
+        )
+        self.assertEqual(len(word_id_to_feature_ids), len(self.neg_words))
+        self.assertEqual(
+            all_features.shape[0],
+            sum([len(feature) for feature in word_id_to_feature_ids.values()]),
+        )
