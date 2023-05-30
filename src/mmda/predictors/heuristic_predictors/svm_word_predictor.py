@@ -169,7 +169,7 @@ class SVMWordPredictor(BasePredictor):
             suffix_word_id = prefix_word_id + 1
             suffix_word_text = word_id_to_text[suffix_word_id]
             word_id_pairs.append((prefix_word_id, suffix_word_id))
-        return word_id_pairs
+        return sorted(word_id_pairs)
 
     def _get_dense_features(self, part: str, name_prefix: str):
         upper = int(part[0].isupper())

@@ -155,7 +155,22 @@ class TestSVMWordPredictor(unittest.TestCase):
         )
 
     def test_find_hyphen_word_candidates(self):
-        pass
+        (
+            token_id_to_word_id,
+            word_id_to_token_ids,
+            word_id_to_text,
+        ) = self.predictor._predict_with_whitespace(document=self.doc)
+        hyphen_word_candidates = self.predictor._find_hyphen_word_candidates(
+            tokens=self.doc.tokens,
+            token_id_to_word_id=token_id_to_word_id,
+            word_id_to_token_ids=word_id_to_token_ids,
+            word_id_to_text=word_id_to_text,
+        )
+        # verify the outputs correspond to hyphenated words
+        for prefix_word_id, suffix_word_id in hyphen_word_candidates:
+            prefix_word = word_id_to_text[prefix_word_id]
+            suffix_word = word_id_to_text[suffix_word_id]
+            self.assertTrue("-" in prefix_word + suffix_word)
 
     def test__predict(self):
         pos_words = [
