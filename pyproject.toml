@@ -43,6 +43,7 @@ ai2_internal = [
     './citation_mentions/data/*',
     './vila/test_fixtures/*',
     './dwp_heuristic/test_fixtures/*',
+    './sentences/test_fixtures/*',
     './figure_table_predictors/test_fixtures/*',
     './figure_table_predictors/test_fixtures.images/*',
     './shared_test_fixtures/*',
