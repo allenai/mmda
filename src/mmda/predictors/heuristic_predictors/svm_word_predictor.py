@@ -3,7 +3,10 @@
 
 """
 
+import os
 import re
+import tarfile
+import tempfile
 from collections import defaultdict
 from typing import Dict, List
 
@@ -51,7 +54,28 @@ class SVMWordPredictor(BasePredictor):
         self.whitespace_predictor = WhitespacePredictor()
 
     @classmethod
-    def from_path(
+    def from_path(cls, tar_path: str):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with tarfile.open(tar_path, "r:gz") as tar:
+                tar.extractall(path=tmp_dir)
+                predictor = SVMWordPredictor.from_paths(
+                    ohe_encoder_path=os.path.join(
+                        tmp_dir, "svm_word_predictor/ohencoder.joblib"
+                    ),
+                    scaler_path=os.path.join(
+                        tmp_dir, "svm_word_predictor/scaler.joblib"
+                    ),
+                    estimator_path=os.path.join(
+                        tmp_dir, "svm_word_predictor/hyphen_clf.joblib"
+                    ),
+                    unigram_probs_path=os.path.join(
+                        tmp_dir, "svm_word_predictor/unigram_probs.pkl"
+                    ),
+                )
+                return predictor
+
+    @classmethod
+    def from_paths(
         cls,
         ohe_encoder_path: str,
         scaler_path: str,

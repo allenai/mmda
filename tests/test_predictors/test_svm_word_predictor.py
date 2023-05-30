@@ -20,18 +20,9 @@ class TestSVMWordPredictor(unittest.TestCase):
     def setUp(self):
         self.fixture_path = os.path.join(os.path.dirname(__file__), "../fixtures/")
         self.predictor = SVMWordPredictor.from_path(
-            ohe_encoder_path=os.path.join(
-                self.fixture_path, "svm_word_predictor/ohencoder.joblib"
-            ),
-            scaler_path=os.path.join(
-                self.fixture_path, "svm_word_predictor/scaler.joblib"
-            ),
-            estimator_path=os.path.join(
-                self.fixture_path, "svm_word_predictor/hyphen_clf.joblib"
-            ),
-            unigram_probs_path=os.path.join(
-                self.fixture_path, "svm_word_predictor/unigram_probs.pkl"
-            ),
+            tar_path=os.path.join(
+                self.fixture_path, "svm_word_predictor/svm_word_predictor.tar.gz"
+            )
         )
         with open(
             os.path.join(self.fixture_path, "svm_word_predictor/pos_words.txt")
