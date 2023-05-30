@@ -11,15 +11,18 @@ from typing import List, Optional, Set
 
 import numpy as np
 
-from mmda.predictors.heuristic_predictors.svm_word_predictor import SVMWordPredictor
+from mmda.predictors.heuristic_predictors.svm_word_predictor import (
+    SVMClassifier,
+    SVMWordPredictor,
+)
 from mmda.types import Document, Span, SpanGroup
 
 
-class TestSVMWordPredictor(unittest.TestCase):
+class TestSVMClassifier(unittest.TestCase):
     @classmethod
     def setUp(self):
         self.fixture_path = os.path.join(os.path.dirname(__file__), "../fixtures/")
-        self.predictor = SVMWordPredictor.from_path(
+        self.classifier = SVMClassifier.from_path(
             tar_path=os.path.join(
                 self.fixture_path, "svm_word_predictor/svm_word_predictor.tar.gz"
             )
@@ -33,6 +36,93 @@ class TestSVMWordPredictor(unittest.TestCase):
         ) as f_in:
             self.neg_words = [line.strip() for line in f_in]
 
+    def test_batch_predict_unit(self):
+        pos_words = [
+            "wizard-of-oz",
+            "moment-to-moment",
+            "batch-to-batch",
+            "Seven-day-old",
+            "slow-to-fast",
+            "HTLV-1-associated",
+            "anti-E-selectin",
+        ]
+        neg_words = [
+            "sig-nal-to-noise",
+            "nonre-turn-to-zero",
+            "comput-er-assisted",
+            "concentra-tion-dependent",
+            "ob-ject-oriented",
+            "cog-nitive-behavioral",
+            "deci-sion-makers",
+        ]
+        THRESHOLD = -1.0
+        pos_results = self.classifier.batch_predict(
+            words=pos_words, threshold=THRESHOLD
+        )
+        self.assertEqual(len(pos_results), len(pos_words))
+        self.assertTrue(all([r.is_edit is False for r in pos_results]))
+        neg_results = self.classifier.batch_predict(
+            words=neg_words, threshold=THRESHOLD
+        )
+        self.assertEqual(len(neg_results), len(neg_words))
+        self.assertTrue(all([r.is_edit is True for r in neg_results]))
+
+    def test_batch_predict_eval(self):
+        THRESHOLD = -1.0
+        preds_pos = self.classifier.batch_predict(
+            words=self.pos_words, threshold=THRESHOLD
+        )
+        self.assertEqual(len(preds_pos), len(self.pos_words))
+        preds_pos_as_ints = [int(r.is_edit is False) for r in preds_pos]
+        tp = sum(preds_pos_as_ints)
+        fn = len(preds_pos_as_ints) - tp
+
+        preds_neg = self.classifier.batch_predict(
+            words=self.neg_words, threshold=THRESHOLD
+        )
+        self.assertEqual(len(preds_neg), len(self.neg_words))
+        preds_neg_as_ints = [int(r.is_edit is True) for r in preds_neg]
+        tn = sum(preds_neg_as_ints)
+        fp = len(preds_neg_as_ints) - tn
+
+        self.assertEqual(tp + fn + tn + fp, len(preds_pos) + len(preds_neg))
+
+        p = tp / (tp + fp)
+        r = tp / (tp + fn)
+
+        self.assertGreaterEqual(p, 0.9)
+        self.assertGreaterEqual(r, 0.9)
+
+    def test_get_features(self):
+        (
+            all_features,
+            word_id_to_feature_ids,
+        ) = self.classifier._get_features(words=self.pos_words)
+        self.assertEqual(len(word_id_to_feature_ids), len(self.pos_words))
+        self.assertEqual(
+            all_features.shape[0],
+            sum([len(feature) for feature in word_id_to_feature_ids.values()]),
+        )
+        (
+            all_features,
+            word_id_to_feature_ids,
+        ) = self.classifier._get_features(words=self.neg_words)
+        self.assertEqual(len(word_id_to_feature_ids), len(self.neg_words))
+        self.assertEqual(
+            all_features.shape[0],
+            sum([len(feature) for feature in word_id_to_feature_ids.values()]),
+        )
+
+
+class TestSVMWordPredictor(unittest.TestCase):
+    @classmethod
+    def setUp(self):
+        self.fixture_path = os.path.join(os.path.dirname(__file__), "../fixtures/")
+        self.predictor = SVMWordPredictor.from_path(
+            tar_path=os.path.join(
+                self.fixture_path, "svm_word_predictor/svm_word_predictor.tar.gz"
+            )
+        )
         with open(
             os.path.join(
                 self.fixture_path,
@@ -171,64 +261,3 @@ class TestSVMWordPredictor(unittest.TestCase):
             prefix_word = word_id_to_text[prefix_word_id]
             suffix_word = word_id_to_text[suffix_word_id]
             self.assertTrue("-" in prefix_word + suffix_word)
-
-    def test__predict(self):
-        pos_words = [
-            "wizard-of-oz",
-            "moment-to-moment",
-            "batch-to-batch",
-            "Seven-day-old",
-            "slow-to-fast",
-            "HTLV-1-associated",
-            "anti-E-selectin",
-        ]
-        neg_words = [
-            "sig-nal-to-noise",
-            "nonre-turn-to-zero",
-            "comput-er-assisted",
-            "concentra-tion-dependent",
-            "ob-ject-oriented",
-            "cog-nitive-behavioral",
-            "deci-sion-makers",
-        ]
-        THRESHOLD = -1.0
-        pos_results = self.predictor._predict(words=pos_words, threshold=THRESHOLD)
-        self.assertEqual(len(pos_results), len(pos_words))
-        self.assertTrue(all([r["is_edit"] is False for r in pos_results]))
-        neg_results = self.predictor._predict(words=neg_words, threshold=THRESHOLD)
-        self.assertEqual(len(neg_results), len(neg_words))
-        self.assertTrue(all([r["is_edit"] is True for r in neg_results]))
-
-    def test___predict(self):
-        preds_pos = self.predictor._predict(words=self.pos_words)
-        self.assertEqual(len(preds_pos), len(self.pos_words))
-        tp = sum(preds_pos)
-        fn = len(preds_pos) - tp
-
-        preds_neg = self.predictor._predict(words=self.neg_words)
-        self.assertEqual(len(preds_neg), len(self.neg_words))
-        tn = sum(preds_neg)
-        fp = len(preds_neg) - tn
-
-        self.assertEqual(tp + fn + tn + fp, len(preds_pos) + len(preds_neg))
-
-        p = tp / (tp + fp)
-        r = tp / (tp + fn)
-
-    def test_get_features(self):
-        all_features, word_id_to_feature_ids = self.predictor._get_features(
-            words=self.pos_words
-        )
-        self.assertEqual(len(word_id_to_feature_ids), len(self.pos_words))
-        self.assertEqual(
-            all_features.shape[0],
-            sum([len(feature) for feature in word_id_to_feature_ids.values()]),
-        )
-        all_features, word_id_to_feature_ids = self.predictor._get_features(
-            words=self.neg_words
-        )
-        self.assertEqual(len(word_id_to_feature_ids), len(self.neg_words))
-        self.assertEqual(
-            all_features.shape[0],
-            sum([len(feature) for feature in word_id_to_feature_ids.values()]),
-        )

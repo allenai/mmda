@@ -21,7 +21,14 @@ from mmda.predictors.heuristic_predictors.whitespace_predictor import (
 from mmda.types import Document, Metadata, SpanGroup
 
 
-class SVMWordPredictor(BasePredictor):
+class IsWordResult:
+    def __init__(self, original: str, new: str, is_edit: bool) -> None:
+        self.original = original
+        self.new = new
+        self.is_edit = is_edit
+
+
+class SVMClassifier:
     def __init__(self, ohe_encoder, scaler, estimator, unigram_probs):
         self.ohe_encoder = ohe_encoder
         self.scaler = scaler
@@ -51,14 +58,13 @@ class SVMWordPredictor(BasePredictor):
             "multi_hyphen",
             "uni_prob",
         ]
-        self.whitespace_predictor = WhitespacePredictor()
 
     @classmethod
     def from_path(cls, tar_path: str):
         with tempfile.TemporaryDirectory() as tmp_dir:
             with tarfile.open(tar_path, "r:gz") as tar:
                 tar.extractall(path=tmp_dir)
-                predictor = SVMWordPredictor.from_paths(
+                classifier = SVMClassifier.from_paths(
                     ohe_encoder_path=os.path.join(
                         tmp_dir, "svm_word_predictor/ohencoder.joblib"
                     ),
@@ -72,7 +78,7 @@ class SVMWordPredictor(BasePredictor):
                         tmp_dir, "svm_word_predictor/unigram_probs.pkl"
                     ),
                 )
-                return predictor
+                return classifier
 
     @classmethod
     def from_paths(
@@ -86,90 +92,35 @@ class SVMWordPredictor(BasePredictor):
         scaler = load(scaler_path)
         estimator = load(estimator_path)
         unigram_probs = load(unigram_probs_path)
-        predictor = SVMWordPredictor(
+        classifier = SVMClassifier(
             ohe_encoder=ohe_encoder,
             scaler=scaler,
             estimator=estimator,
             unigram_probs=unigram_probs,
         )
-        return predictor
+        return classifier
 
-    def predict(self, document: Document) -> List[SpanGroup]:
-        # validate input
-        self._validate_tokenization(document=document)
-
-        # initialize output format using whitespace tokenization
-        (
-            token_id_to_word_id,
-            word_id_to_token_ids,
-            word_id_to_text,
-        ) = self._predict_with_whitespace(document=document)
-
-        # get hyphen word candidates
-        hyphen_word_candidates = self._find_hyphen_word_candidates(
-            tokens=document.tokens,
-            token_id_to_word_id=token_id_to_word_id,
-            word_id_to_token_ids=word_id_to_token_ids,
-            word_id_to_text=word_id_to_text,
-        )
-
-        # convert format
-        words = self._create_words(
-            document=document,
-            token_id_to_word_id=token_id_to_word_id,
-            word_id_to_text=word_id_to_text,
-        )
-        return words
-
-    def _predict_with_whitespace(self, document: Document):
-        """Predicts word boundaries using whitespace tokenization."""
-        # precompute whitespace tokenization
-        whitespace_clusters = self._cluster_tokens_by_whitespace(document=document)
-        # assign word ids
-        token_id_to_word_id = {}
-        word_id_to_token_ids = defaultdict(list)
-        for word_id, token_ids_in_cluster in enumerate(whitespace_clusters):
-            for token_id in token_ids_in_cluster:
-                token_id_to_word_id[token_id] = word_id
-                word_id_to_token_ids[word_id].append(token_id)
-        # get word strings
-        word_id_to_text = {}
-        for word_id, token_ids in word_id_to_token_ids.items():
-            word_id_to_text[word_id] = "".join(
-                document.tokens[token_id].text for token_id in token_ids
+    def batch_predict(self, words: List[str], threshold: float) -> List[IsWordResult]:
+        all_features, word_id_to_feature_ids = self._get_features(words)
+        all_scores = self.estimator.decision_function(all_features)
+        results = []
+        for word_id, feature_ids in word_id_to_feature_ids.items():
+            word = words[word_id]
+            word_segments = word.split("-")
+            score_per_hyphen_in_word = all_scores[feature_ids]
+            new_word = word_segments[0]
+            for word_segment, hyphen_score in zip(
+                word_segments[1:], score_per_hyphen_in_word
+            ):
+                if hyphen_score > threshold:
+                    new_word += "-"
+                else:
+                    new_word += ""
+                new_word += word_segment
+            results.append(
+                IsWordResult(original=word, new=new_word, is_edit=word != new_word)
             )
-        return token_id_to_word_id, word_id_to_token_ids, word_id_to_text
-
-    def _find_hyphen_word_candidates(
-        self,
-        tokens,
-        token_id_to_word_id,
-        word_id_to_token_ids,
-        word_id_to_text,
-    ) -> Tuple[int, int]:
-        # get all hyphen tokens
-        # TODO: can refine this further by restricting to only tokens at end of `rows`
-        hyphen_token_ids = []
-        for token_id, token in enumerate(tokens):
-            if token.text == "-":
-                hyphen_token_ids.append(token_id)
-        # get words that contain hyphen token, but only at the end (i.e. broken word)
-        # these form the `prefix` of a potential hyphenated word
-        prefix_word_ids = set()
-        for hyphen_token_id in hyphen_token_ids:
-            prefix_word_id = token_id_to_word_id[hyphen_token_id]
-            prefix_word_text = word_id_to_text[prefix_word_id]
-            if prefix_word_text.endswith("-"):
-                prefix_word_ids.add(prefix_word_id)
-        # get words right after the prefix (assumed words in reading order)
-        # these form the `suffix` of a potential hyphenated word
-        # together, a `prefix` and `suffix` form a candidate pair
-        word_id_pairs = []
-        for prefix_word_id in prefix_word_ids:
-            suffix_word_id = prefix_word_id + 1
-            suffix_word_text = word_id_to_text[suffix_word_id]
-            word_id_pairs.append((prefix_word_id, suffix_word_id))
-        return sorted(word_id_pairs)
+        return results
 
     def _get_dense_features(self, part: str, name_prefix: str):
         upper = int(part[0].isupper())
@@ -225,27 +176,46 @@ class SVMWordPredictor(BasePredictor):
 
         return hstack([sparse_transformed, dense_transformed]), word_id_to_feature_ids
 
-    def _predict(self, words: List[str], threshold: float) -> List[Dict]:
-        all_features, word_id_to_feature_ids = self._get_features(words)
-        all_scores = self.estimator.decision_function(all_features)
-        results = []
-        for word_id, feature_ids in word_id_to_feature_ids.items():
-            word = words[word_id]
-            word_segments = word.split("-")
-            score_per_hyphen_in_word = all_scores[feature_ids]
-            new_word = word_segments[0]
-            for word_segment, hyphen_score in zip(
-                word_segments[1:], score_per_hyphen_in_word
-            ):
-                if hyphen_score > threshold:
-                    new_word += "-"
-                else:
-                    new_word += ""
-                new_word += word_segment
-            results.append(
-                {"original": word, "new": new_word, "is_edit": word != new_word}
-            )
-        return results
+
+class SVMWordPredictor(BasePredictor):
+    def __init__(self, classifier: SVMClassifier):
+        self.classifier = classifier
+        self.whitespace_predictor = WhitespacePredictor()
+
+    @classmethod
+    def from_path(cls, tar_path: str):
+        classifier = SVMClassifier.from_path(tar_path=tar_path)
+        predictor = SVMWordPredictor(classifier=classifier)
+        return predictor
+
+    def predict(self, document: Document) -> List[SpanGroup]:
+        # validate input
+        self._validate_tokenization(document=document)
+
+        # initialize output format using whitespace tokenization
+        (
+            token_id_to_word_id,
+            word_id_to_token_ids,
+            word_id_to_text,
+        ) = self._predict_with_whitespace(document=document)
+
+        # get hyphen word candidates
+        hyphen_word_candidates = self._find_hyphen_word_candidates(
+            tokens=document.tokens,
+            token_id_to_word_id=token_id_to_word_id,
+            word_id_to_token_ids=word_id_to_token_ids,
+            word_id_to_text=word_id_to_text,
+        )
+
+        # classify hyphen words
+
+        # convert format
+        words = self._create_words(
+            document=document,
+            token_id_to_word_id=token_id_to_word_id,
+            word_id_to_text=word_id_to_text,
+        )
+        return words
 
     def _validate_tokenization(self, document: Document):
         """This Word Predictor relies on a specific type of Tokenization
@@ -300,16 +270,56 @@ class SVMWordPredictor(BasePredictor):
         document.remove("_ws_tokens")
         return clusters
 
-    def _get_word_candidates(
-        self, document: Document, token_clusters: List[List[int]]
-    ) -> List[List[int]]:
-        # TODO: stopped here
-        candidates = []
-        for token_cluster in token_clusters:
-            tokens = [document.tokens[token_id] for token_id in token_cluster]
-            if tokens[-1].text == "-":
-                pass
-        return candidates
+    def _predict_with_whitespace(self, document: Document):
+        """Predicts word boundaries using whitespace tokenization."""
+        # precompute whitespace tokenization
+        whitespace_clusters = self._cluster_tokens_by_whitespace(document=document)
+        # assign word ids
+        token_id_to_word_id = {}
+        word_id_to_token_ids = defaultdict(list)
+        for word_id, token_ids_in_cluster in enumerate(whitespace_clusters):
+            for token_id in token_ids_in_cluster:
+                token_id_to_word_id[token_id] = word_id
+                word_id_to_token_ids[word_id].append(token_id)
+        # get word strings
+        word_id_to_text = {}
+        for word_id, token_ids in word_id_to_token_ids.items():
+            word_id_to_text[word_id] = "".join(
+                document.tokens[token_id].text for token_id in token_ids
+            )
+        return token_id_to_word_id, word_id_to_token_ids, word_id_to_text
+
+    def _find_hyphen_word_candidates(
+        self,
+        tokens,
+        token_id_to_word_id,
+        word_id_to_token_ids,
+        word_id_to_text,
+    ) -> Tuple[int, int]:
+        """Finds the IDs of hyphenated words (in prefix + suffix format)."""
+        # get all hyphen tokens
+        # TODO: can refine this further by restricting to only tokens at end of `rows`
+        hyphen_token_ids = []
+        for token_id, token in enumerate(tokens):
+            if token.text == "-":
+                hyphen_token_ids.append(token_id)
+        # get words that contain hyphen token, but only at the end (i.e. broken word)
+        # these form the `prefix` of a potential hyphenated word
+        prefix_word_ids = set()
+        for hyphen_token_id in hyphen_token_ids:
+            prefix_word_id = token_id_to_word_id[hyphen_token_id]
+            prefix_word_text = word_id_to_text[prefix_word_id]
+            if prefix_word_text.endswith("-"):
+                prefix_word_ids.add(prefix_word_id)
+        # get words right after the prefix (assumed words in reading order)
+        # these form the `suffix` of a potential hyphenated word
+        # together, a `prefix` and `suffix` form a candidate pair
+        word_id_pairs = []
+        for prefix_word_id in prefix_word_ids:
+            suffix_word_id = prefix_word_id + 1
+            suffix_word_text = word_id_to_text[suffix_word_id]
+            word_id_pairs.append((prefix_word_id, suffix_word_id))
+        return sorted(word_id_pairs)
 
     def _create_words(
         self, document: Document, token_id_to_word_id, word_id_to_text
