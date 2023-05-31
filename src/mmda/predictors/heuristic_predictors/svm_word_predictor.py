@@ -178,9 +178,10 @@ class SVMClassifier:
 
 
 class SVMWordPredictor(BasePredictor):
-    def __init__(self, classifier: SVMClassifier):
+    def __init__(self, classifier: SVMClassifier, threshold: float = -1.5):
         self.classifier = classifier
         self.whitespace_predictor = WhitespacePredictor()
+        self.threshold = threshold
 
     @classmethod
     def from_path(cls, tar_path: str):
@@ -192,7 +193,7 @@ class SVMWordPredictor(BasePredictor):
         # validate input
         self._validate_tokenization(document=document)
 
-        # initialize output format using whitespace tokenization
+        # initialize output data using whitespace tokenization
         (
             token_id_to_word_id,
             word_id_to_token_ids,
@@ -208,14 +209,49 @@ class SVMWordPredictor(BasePredictor):
         )
 
         # classify hyphen words
+        candidate_texts = [
+            word_id_to_text[prefix_word_id] + word_id_to_text[suffix_word_id]
+            for prefix_word_id, suffix_word_id in hyphen_word_candidates
+        ]
+        results = self.classifier.batch_predict(
+            words=candidate_texts, threshold=self.threshold
+        )
 
-        # convert format
+        # update output data based on hyphen word candidates
+        # first, we concatenate words based on prefix + suffix. this includes hyphen.
+        # second, we modify the text value (e.g. remove hyphens) if classifier says.
+        for (prefix_word_id, suffix_word_id), result in zip(
+            hyphen_word_candidates, results
+        ):
+            impacted_token_ids = (
+                word_id_to_token_ids[prefix_word_id]
+                + word_id_to_token_ids[suffix_word_id]
+            )
+            word_id_to_token_ids[prefix_word_id] = impacted_token_ids
+            word_id_to_token_ids.pop(suffix_word_id)
+            word_id_to_text[prefix_word_id] += word_id_to_text[suffix_word_id]
+            word_id_to_text.pop(suffix_word_id)
+            if result.is_edit is True:
+                word_id_to_text[prefix_word_id] = result.new
+        token_id_to_word_id = {
+            token_id: word_id
+            for word_id, token_ids in word_id_to_token_ids.items()
+            for token_id in token_ids
+        }
+
+        # make into spangroups
         words = self._create_words(
             document=document,
             token_id_to_word_id=token_id_to_word_id,
             word_id_to_text=word_id_to_text,
         )
         return words
+
+    def _recursively_remove_trailing_hyphens(self, word: str) -> str:
+        if word.endswith("-"):
+            return self._recursively_remove_trailing_hyphens(word=word[:-1])
+        else:
+            return word
 
     def _validate_tokenization(self, document: Document):
         """This Word Predictor relies on a specific type of Tokenization
@@ -348,4 +384,7 @@ class SVMWordPredictor(BasePredictor):
             metadata=Metadata(text=word_id_to_text[current_word_id]),
         )
         words.append(word)
+        # cleanup the word IDs so no skipped integers
+        for i, word in enumerate(words):
+            word.id = i
         return words

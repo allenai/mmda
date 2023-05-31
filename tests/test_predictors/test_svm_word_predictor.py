@@ -55,7 +55,7 @@ class TestSVMClassifier(unittest.TestCase):
             "cog-nitive-behavioral",
             "deci-sion-makers",
         ]
-        THRESHOLD = -1.0
+        THRESHOLD = -1.5
         pos_results = self.classifier.batch_predict(
             words=pos_words, threshold=THRESHOLD
         )
@@ -68,7 +68,24 @@ class TestSVMClassifier(unittest.TestCase):
         self.assertTrue(all([r.is_edit is True for r in neg_results]))
 
     def test_batch_predict_eval(self):
-        THRESHOLD = -1.0
+        """
+        As a guideline, we want Recall to be close to 1.0 because we want
+        the model to favor predicting things as "negative" (i.e. not an edit).
+        If the classifier predicts a "1", then essentially we don't do anything.
+        Meaning in all cases where the ground truth is "1" (dont do anything),
+        we want to recover all these cases nearly perfectly, and ONLY
+        take action when absolutely safe.
+
+        THRESHOLD = -1.7    --> P: 0.9621262458471761 R: 1.0
+        THRESHOLD = -1.6    --> P: 0.9674346429879954 R: 1.0
+        THRESHOLD = -1.5    --> P: 0.9716437941036409 R: 1.0
+        THRESHOLD = -1.4    --> P: 0.9755705281460552 R: 0.9999554446622705
+        THRESHOLD = -1.0    --> P: 0.9866772193641999 R: 0.9998217786490822
+        THRESHOLD = -0.5    --> P: 0.9955352184633155 R: 0.9984405631794689
+        THRESHOLD = 0.0     --> P: 0.9985657299090135 R: 0.9926483692746391
+        THRESHOLD = 1.0     --> P: 0.9997759019944723 R: 0.8944929602566387
+        """
+        THRESHOLD = -1.5
         preds_pos = self.classifier.batch_predict(
             words=self.pos_words, threshold=THRESHOLD
         )
@@ -89,6 +106,9 @@ class TestSVMClassifier(unittest.TestCase):
 
         p = tp / (tp + fp)
         r = tp / (tp + fn)
+
+        # uncomment for debugging
+        print(f"P: {p} R: {r}")
 
         self.assertGreaterEqual(p, 0.9)
         self.assertGreaterEqual(r, 0.9)
@@ -154,6 +174,11 @@ class TestSVMWordPredictor(unittest.TestCase):
                     [span for token in tokens_in_word for span in token.spans],
                     word.spans,
                 )
+        # uncomment for debugging:
+        for word in self.doc.words:
+            token_text = str([t.text for t in word.tokens])
+            if len(word.tokens) > 1 and "-" in token_text:
+                print(f"{token_text}\t-->\t{word.text}")
 
     def test_validate_tokenization(self):
         doc = Document.from_json(
