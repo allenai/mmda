@@ -208,36 +208,38 @@ class SVMWordPredictor(BasePredictor):
             word_id_to_text=word_id_to_text,
         )
 
-        # classify hyphen words
-        candidate_texts = [
-            word_id_to_text[prefix_word_id] + word_id_to_text[suffix_word_id]
-            for prefix_word_id, suffix_word_id in hyphen_word_candidates
-        ]
-        results = self.classifier.batch_predict(
-            words=candidate_texts, threshold=self.threshold
-        )
-
-        # update output data based on hyphen word candidates
-        # first, we concatenate words based on prefix + suffix. this includes hyphen.
-        # second, we modify the text value (e.g. remove hyphens) if classifier says.
-        for (prefix_word_id, suffix_word_id), result in zip(
-            hyphen_word_candidates, results
-        ):
-            impacted_token_ids = (
-                word_id_to_token_ids[prefix_word_id]
-                + word_id_to_token_ids[suffix_word_id]
+        # only triggers if there are hyphen word candidates
+        if hyphen_word_candidates:
+            # classify hyphen words
+            candidate_texts = [
+                word_id_to_text[prefix_word_id] + word_id_to_text[suffix_word_id]
+                for prefix_word_id, suffix_word_id in hyphen_word_candidates
+            ]
+            results = self.classifier.batch_predict(
+                words=candidate_texts, threshold=self.threshold
             )
-            word_id_to_token_ids[prefix_word_id] = impacted_token_ids
-            word_id_to_token_ids.pop(suffix_word_id)
-            word_id_to_text[prefix_word_id] += word_id_to_text[suffix_word_id]
-            word_id_to_text.pop(suffix_word_id)
-            if result.is_edit is True:
-                word_id_to_text[prefix_word_id] = result.new
-        token_id_to_word_id = {
-            token_id: word_id
-            for word_id, token_ids in word_id_to_token_ids.items()
-            for token_id in token_ids
-        }
+
+            # update output data based on hyphen word candidates
+            # first, we concatenate words based on prefix + suffix. this includes hyphen.
+            # second, we modify the text value (e.g. remove hyphens) if classifier says.
+            for (prefix_word_id, suffix_word_id), result in zip(
+                hyphen_word_candidates, results
+            ):
+                impacted_token_ids = (
+                    word_id_to_token_ids[prefix_word_id]
+                    + word_id_to_token_ids[suffix_word_id]
+                )
+                word_id_to_token_ids[prefix_word_id] = impacted_token_ids
+                word_id_to_token_ids.pop(suffix_word_id)
+                word_id_to_text[prefix_word_id] += word_id_to_text[suffix_word_id]
+                word_id_to_text.pop(suffix_word_id)
+                if result.is_edit is True:
+                    word_id_to_text[prefix_word_id] = result.new
+            token_id_to_word_id = {
+                token_id: word_id
+                for word_id, token_ids in word_id_to_token_ids.items()
+                for token_id in token_ids
+            }
 
         # make into spangroups
         words = self._create_words(

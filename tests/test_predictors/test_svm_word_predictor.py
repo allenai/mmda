@@ -152,6 +152,30 @@ class TestSVMWordPredictor(unittest.TestCase):
             doc_dict = json.load(f_in)
             self.doc = Document.from_json(doc_dict=doc_dict)
 
+    def test_predict_no_hyphen(self):
+        doc = Document.from_json(
+            doc_dict={
+                "symbols": "I am the wizard-of-oz.",
+                "tokens": [
+                    {"id": 0, "spans": [{"start": 0, "end": 1}]},
+                    {"id": 1, "spans": [{"start": 2, "end": 4}]},
+                    {"id": 2, "spans": [{"start": 5, "end": 8}]},
+                    {"id": 3, "spans": [{"start": 9, "end": 15}]},
+                    {"id": 4, "spans": [{"start": 15, "end": 16}]},
+                    {"id": 5, "spans": [{"start": 16, "end": 18}]},
+                    {"id": 6, "spans": [{"start": 18, "end": 19}]},
+                    {"id": 7, "spans": [{"start": 19, "end": 21}]},
+                    {"id": 8, "spans": [{"start": 21, "end": 22}]},
+                ],
+            }
+        )
+        words = self.predictor.predict(document=doc)
+        self.assertEqual(len(words), 4)
+        doc.annotate(words=words)
+        self.assertListEqual(
+            [w.text for w in words], ["I", "am", "the", "wizard-of-oz."]
+        )
+
     def test_predict(self):
         words = self.predictor.predict(document=self.doc)
         # double-check number of units
