@@ -140,7 +140,11 @@ recipes = [
     'torchvision',
     'effdet',
     'vila>=0.5,<0.6',
-    'smashed==0.1.10'
+    'smashed==0.1.10',
+    'scikit-learn',
+    'scipy',
+    'numpy',
+    'tokenizers'
 ]
 
 

@@ -11,7 +11,7 @@ from typing import List, Optional, Set
 
 import numpy as np
 
-from mmda.predictors.heuristic_predictors.svm_word_predictor import (
+from mmda.predictors.sklearn_predictors.svm_word_predictor import (
     SVMClassifier,
     SVMWordPredictor,
 )
@@ -108,7 +108,7 @@ class TestSVMClassifier(unittest.TestCase):
         r = tp / (tp + fn)
 
         # uncomment for debugging
-        print(f"P: {p} R: {r}")
+        # print(f"P: {p} R: {r}")
 
         self.assertGreaterEqual(p, 0.9)
         self.assertGreaterEqual(r, 0.9)
@@ -199,10 +199,10 @@ class TestSVMWordPredictor(unittest.TestCase):
                     word.spans,
                 )
         # uncomment for debugging:
-        for word in self.doc.words:
-            token_text = str([t.text for t in word.tokens])
-            if len(word.tokens) > 1 and "-" in token_text:
-                print(f"{token_text}\t-->\t{word.text}")
+        # for word in self.doc.words:
+        #     token_text = str([t.text for t in word.tokens])
+        #     if len(word.tokens) > 1 and "-" in token_text:
+        #         print(f"{token_text}\t-->\t{word.text}")
 
     def test_validate_tokenization(self):
         doc = Document.from_json(
