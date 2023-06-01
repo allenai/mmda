@@ -185,6 +185,9 @@ class TestSVMWordPredictor(unittest.TestCase):
         # after annotating, double-check words against tokens
         for word in self.doc.words:
             tokens_in_word = word.tokens
+            spans_in_tokens_in_word = [
+                span for token in tokens_in_word for span in token.spans
+            ]
             # if word is a single token, then it should be the same as the token
             if len(tokens_in_word) == 1:
                 self.assertEqual(tokens_in_word[0].text, word.text)
@@ -193,11 +196,18 @@ class TestSVMWordPredictor(unittest.TestCase):
                 # otherwise, most token units should be substring of word
                 overlap = np.mean([token.text in word.text for token in tokens_in_word])
                 self.assertGreaterEqual(overlap, 0.5)
-                # spans should match up though
+                # words basically have a single contiguous span
+                # TODO: though this may change if we affect reading order
+                self.assertEqual(len(word.spans), 1)
+                # word span should align w token span somehow
                 self.assertEqual(
-                    [span for token in tokens_in_word for span in token.spans],
-                    word.spans,
+                    word.spans[0],
+                    Span(
+                        start=min([span.start for span in spans_in_tokens_in_word]),
+                        end=max([span.end for span in spans_in_tokens_in_word]),
+                    ),
                 )
+
         # uncomment for debugging:
         # for word in self.doc.words:
         #     token_text = str([t.text for t in word.tokens])
