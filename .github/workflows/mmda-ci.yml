@@ -48,3 +48,18 @@ jobs:
           pytest tests/test_predictors/test_vila_predictors.py --no-cov
           pytest tests/test_predictors/test_figure_table_predictors.py --no-cov
           pytest tests/test_predictors/test_section_nesting_predictor.py --no-cov
+
+  test_word_predictors:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: x64
+      - run: |
+          sudo apt-get update
+      - run: |
+          pip install -e .[dev,svm_word_predictor]
+          pytest tests/test_predictors/test_svm_word_predictor.py --no-cov

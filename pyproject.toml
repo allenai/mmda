@@ -127,6 +127,11 @@ section_nesting = [
 figure_table_predictors = [
     'scipy',
 ]
+svm_word_predictor = [
+    'scikit-learn',
+    'scipy',
+    'numpy'
+]
 recipes = [
     'layoutparser',
     'transformers',
