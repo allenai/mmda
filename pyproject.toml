@@ -130,7 +130,8 @@ figure_table_predictors = [
 svm_word_predictor = [
     'scikit-learn',
     'scipy',
-    'numpy'
+    'numpy',
+    'tokenizers'
 ]
 recipes = [
     'layoutparser',
