@@ -4,8 +4,8 @@
 
 """
 
-from typing import List, Optional, Dict
 from dataclasses import dataclass
+from typing import Dict, List, Optional
 
 from mmda.types.box import Box
 
@@ -24,26 +24,26 @@ class Span:
 
     @classmethod
     def from_json(cls, span_dict) -> "Span":
-        box_dict = span_dict.get('box')
+        box_dict = span_dict.get("box")
         if box_dict:
-            box = Box.from_json(box_dict=span_dict['box'])
+            box = Box.from_json(box_dict=span_dict["box"])
         else:
             box = None
-        return Span(start=span_dict['start'], end=span_dict['end'], box=box)
+        return Span(start=span_dict["start"], end=span_dict["end"], box=box)
 
-    def __lt__(self, other: 'Span'):
+    def __lt__(self, other: "Span"):
         if self.id and other.id:
             return self.id < other.id
         else:
             return self.start < other.start
 
     @classmethod
-    def small_spans_to_big_span(cls, spans: List['Span']) -> 'Span':
+    def small_spans_to_big_span(cls, spans: List["Span"]) -> "Span":
         # TODO: add warning for unsorted spans or not-contiguous spans
         # TODO: what happens when Boxes cant be merged?
-        start = None
-        end = None
-        for span in spans:
+        start = spans[0].start
+        end = spans[0].end
+        for span in spans[1:]:
             if span.start < start:
                 start = span.start
             if span.end > end:
@@ -51,5 +51,5 @@ class Span:
         return Span(
             start=start,
             end=end,
-            box=Box.small_boxes_to_big_box(boxes=[span.box for span in spans])
+            box=Box.small_boxes_to_big_box(boxes=[span.box for span in spans]),
         )
