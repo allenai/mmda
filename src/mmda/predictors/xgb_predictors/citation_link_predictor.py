@@ -1,3 +1,4 @@
+from scipy.stats import rankdata
 import numpy as np
 import os
 import pandas as pd
@@ -8,11 +9,12 @@ from mmda.types.document import Document
 from mmda.featurizers.citation_link_featurizers import CitationLink, featurize
 
 class CitationLinkPredictor:
-    def __init__(self, artifacts_dir: str):
-        full_model_path = os.path.join(artifacts_dir, "links_v0.json")
+    def __init__(self, artifacts_dir: str, threshold):
+        full_model_path = os.path.join(artifacts_dir, "links_v1.json")
         model = xgb.XGBClassifier()
         model.load_model(full_model_path)
         self.model = model
+        self.threshold = threshold
 
     # returns a paired mention id and bib id to represent a link
     def predict(self, doc: Document) -> List[Tuple[str, str]]:
@@ -35,6 +37,7 @@ class CitationLinkPredictor:
             match_scores = [pred[1] for pred in y_pred] # probability that label is 1
             match_index = np.argmax(match_scores)
             selected_link = possible_links[match_index]
+            if match_scores[match_index] < self.threshold: continue
             predicted_links.append((selected_link.mention.id, selected_link.bib.id))
 
         return predicted_links
