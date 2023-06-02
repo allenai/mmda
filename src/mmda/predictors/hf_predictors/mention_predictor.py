@@ -105,6 +105,7 @@ class MentionPredictor:
             batch_label_ids = prediction_label_ids[idx1]
             input_ = inputs[idx1]
 
+            # make list of word ids and list of label ids for each word
             word_ids: List[int] = [input_.word_ids[0]] if input_.word_ids[0] is not None else []
             word_label_ids: List[List[int]] = [[batch_label_ids[0]]] if input_.word_ids[0] is not None else []
 
@@ -129,6 +130,8 @@ class MentionPredictor:
                     ret.append(SpanGroup(spans=acc, id=next(counter)))
                 acc = []
 
+            # now we have zipped list of word ids and label ids (for which there can be multiple because of batching?)
+            # so we can map those words to spans
             for word_id, label_ids in zip(word_ids, word_label_ids):
                 spans = word_spans[word_id]
 
@@ -158,15 +161,20 @@ class MentionPredictor:
                 if outside_mention and has_last:
                     warnings.append('found an "L" while outside mention')
                 if not outside_mention and (has_begin or has_unit):
-                    warnings.append('found an "L" or "U" while inside mention')
+                    # I'm guessing this was meant to say "B" for "begin" label?
+                    warnings.append('found a "B" or "U" while inside mention')
 
                 if warnings and print_warnings:
                     print("warnings:")
                     for warning in warnings:
                         print(f"  - {warning}")
-
+                # is this the problem? we seem to be possibly appending the same span twice
+                # if the word is a single unit mention
                 if label_id == Labels.MENTION_UNIT_ID:
-                    append_acc()
+                    # append_acc() -- I'ma try commenting this out and see what happens...
+                    # acc is equal to the spans for this one single unit (word) mention -- so the error of duplicating
+                    # would be happening anytime we get a unit mention. So i would expect the instances where
+                    # we have duplicates to be happening right before we get a unit mention. Let's see!
                     acc = spans
                     append_acc()
                     outside_mention = True
