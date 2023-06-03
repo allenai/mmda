@@ -76,6 +76,7 @@ class MentionPredictor:
         return spangroups
 
     def predict_page(self, page: Annotation, counter: Iterator[int], print_warnings: bool = False) -> List[SpanGroup]:
+        print("doing page id ", page.id)
         if not hasattr(page, 'tokens'):
             return []
 
@@ -100,93 +101,148 @@ class MentionPredictor:
 
         def has_label_id(lbls: List[int], want_label_id: int) -> bool:
             return any(lbl == want_label_id for lbl in lbls)
+        
 
+        # make list of word ids and list of label ids for each word
+        # TODO: make this like a "local" word_ids and keep the outer "REAL" word_ids i think is the solution
+        # I THINK because 433 word id shows up twice and word_id list is up to 433 then the next word_id list is 433-onward that we are missing
+        # a moment when word_id == previous_word_id.  --- ok maybe not cause 433 is repeated per page. oops. somehow missing previous word id. should not be "none"
+        word_ids: List[int] = []
+        word_label_ids: List[List[int]] = []
+
+        # make list of word ids and list of label ids for each word
         for idx1 in range(len(inputs['input_ids'])):
+            print("idx1", idx1)
             batch_label_ids = prediction_label_ids[idx1]
             input_ = inputs[idx1]
 
-            # make list of word ids and list of label ids for each word
-            word_ids: List[int] = [input_.word_ids[0]] if input_.word_ids[0] is not None else []
-            word_label_ids: List[List[int]] = [[batch_label_ids[0]]] if input_.word_ids[0] is not None else []
+            if input_.word_ids[0] is not None:
+                word_ids.append(input_.word_ids[0])
+                word_label_ids.append(batch_label_ids[0])
+            print("at start of first loop, word_ids is ", word_ids)
 
+            # loop through each word_id in this list of 512 word_ids
             for idx2 in range(1, len(input_.word_ids)):
                 word_id: int = input_.word_ids[idx2]
-                previous_word_id: int = input_.word_ids[idx2 - 1]
+                # Get the true previous word_id
+                # TODO: get it from word_ids if not here
+                previous_word_id: int = word_ids[-1] if word_ids else None
+                # if input_.word_ids[idx2 - 1] is not None:
+                #     previous_word_id = input_.word_ids[idx2 - 1]
+                # elif len(word_ids) > 0:
+                #     previous_word_id = word_ids[-1]
+                # else:
+                #     previous_word_id = None
+                # elif (idx1 != 0) and inputs[idx1 - 1] is not None:  # TODO make sure this won't blow up if inputs
+                #     # scan previous input for last word_id that is not None:
+                #     for idx3 in range(len(inputs[idx1 - 1].word_ids) - 1, -1, -1):
+                #         if inputs[idx1 - 1].word_ids[idx3] is not None:
+                #             previous_word_id = inputs[idx1 - 1].word_ids[idx3]
+                #             break
+                # else:
+                #     previous_word_id = None
 
                 if word_id is not None:
                     label_id: int = batch_label_ids[idx2]
                     if word_id == previous_word_id:
+                        if word_spans[word_id][0].start == 3055:
+                            print("word_id == previous word_id: ", word_id, previous_word_id)
+                            if inputs[idx1 - 1] is not None:
+                                print("inputs[idx1 - 1]:", inputs[idx1 - 1])
+                            print("inputs[idx1 - 1].word_ids:", inputs[idx1 - 1].word_ids)
+                            print("label_id is", label_id)
+                            print(f"adding labelid {label_id} to word_label_ids[-1] which is {word_label_ids[-1]}")
+                            print("word_ids is:", word_ids)
                         word_label_ids[-1].append(label_id)
                     else:
+                        if word_spans[word_id][0].start == 3055:
+                            print("in else")
+                            print("current word id:", word_id)
+                            print("previous word id:", previous_word_id)
+                            print("inputs[idx1 - 1].word_ids", inputs[idx1 - 1].word_ids)
+                            print("current word spans:",  word_spans[word_id])
+                            print("previous word spans:", word_spans[word_id - 1])
+                            print("word_ids is:", word_ids)
                         word_label_ids.append([label_id])
                         word_ids.append(word_id)
+            print("entering new territory of idx ids")
+            print("word_ids is:", word_ids)
 
-            acc: List[Span] = []
-            outside_mention = True
 
-            def append_acc():
-                nonlocal acc
-                if acc:
-                    ret.append(SpanGroup(spans=acc, id=next(counter)))
-                acc = []
+        acc: List[Span] = []
+        outside_mention = True
 
-            # now we have zipped list of word ids and label ids (for which there can be multiple because of batching?)
-            # so we can map those words to spans
-            for word_id, label_ids in zip(word_ids, word_label_ids):
-                spans = word_spans[word_id]
+        def append_acc():
+            nonlocal acc
+            if acc:
+                ret.append(SpanGroup(spans=acc, id=next(counter)))
+            acc = []
 
-                has_begin = has_label_id(label_ids, Labels.MENTION_BEGIN_ID)
-                has_last = has_label_id(label_ids, Labels.MENTION_LAST_ID)
-                has_unit = has_label_id(label_ids, Labels.MENTION_UNIT_ID)
+        # now we have zipped list of word ids and label ids (for which there can be multiple because of batching?)
+        # so we can map those words to spans
+        for word_id, label_ids in zip(word_ids, word_label_ids):
+            spans = word_spans[word_id]
 
-                warnings = []
-                label_id: Optional[int] = None
+            has_begin = has_label_id(label_ids, Labels.MENTION_BEGIN_ID)
+            has_last = has_label_id(label_ids, Labels.MENTION_LAST_ID)
+            has_unit = has_label_id(label_ids, Labels.MENTION_UNIT_ID)
 
-                if sum(1 for cond in [has_begin, has_last, has_unit] if cond) > 1:
-                    warnings.append(
-                        "found multiple labels for the same word: "
-                        f"has_begin={has_begin} has_last={has_last} has_unit={has_unit}"
-                    )
-                    for cur_label_id in label_ids:
-                        # prioritize begin, last, unit over the rest
-                        if cur_label_id not in (Labels.MENTION_INSIDE_ID, Labels.MENTION_OUTSIDE_ID):
-                            label_id = cur_label_id
-                            break
+            if spans[0].start == 3055:
+                print("here's our zipped up word_id/labels for this word:")
+                print("word_id:", word_id)
+                print("label_ids:", label_ids)
+                print("spans", spans)
+                print(f"has_begin={has_begin} has_last={has_last} has_unit={has_unit}, spans = {spans}")
+                print()
 
-                if label_id is None:
-                    # prioritize inside over outside
-                    label_id = Labels.MENTION_INSIDE_ID \
-                        if any(lbl == Labels.MENTION_INSIDE_ID for lbl in label_ids) else label_ids[0]
+            warnings = []
+            label_id: Optional[int] = None
 
-                if outside_mention and has_last:
-                    warnings.append('found an "L" while outside mention')
-                if not outside_mention and (has_begin or has_unit):
-                    # I'm guessing this was meant to say "B" for "begin" label?
-                    warnings.append('found a "B" or "U" while inside mention')
+            if sum(1 for cond in [has_begin, has_last, has_unit] if cond) > 1:
+                warnings.append(
+                    "found multiple labels for the same word: "
+                    f"has_begin={has_begin} has_last={has_last} has_unit={has_unit}, spans = {spans}"
+                )
+                for cur_label_id in label_ids:
+                    # prioritize begin, last, unit over the rest
+                    if cur_label_id not in (Labels.MENTION_INSIDE_ID, Labels.MENTION_OUTSIDE_ID):
+                        label_id = cur_label_id
+                        break
 
-                if warnings and print_warnings:
-                    print("warnings:")
-                    for warning in warnings:
-                        print(f"  - {warning}")
-                # is this the problem? we seem to be possibly appending the same span twice
-                # if the word is a single unit mention
-                if label_id == Labels.MENTION_UNIT_ID:
-                    # append_acc() -- I'ma try commenting this out and see what happens...
-                    # acc is equal to the spans for this one single unit (word) mention -- so the error of duplicating
-                    # would be happening anytime we get a unit mention. So i would expect the instances where
-                    # we have duplicates to be happening right before we get a unit mention. Let's see!
-                    acc = spans
-                    append_acc()
-                    outside_mention = True
-                if label_id == Labels.MENTION_BEGIN_ID:
-                    append_acc()
-                    acc = spans
-                    outside_mention = False
-                elif label_id == Labels.MENTION_LAST_ID:
-                    acc.extend(spans)
-                    append_acc()
-                    outside_mention = True
-                elif label_id == Labels.MENTION_INSIDE_ID:
-                    acc.extend(spans)
+            if label_id is None:
+                # prioritize inside over outside
+                label_id = Labels.MENTION_INSIDE_ID \
+                    if any(lbl == Labels.MENTION_INSIDE_ID for lbl in label_ids) else label_ids[0]
+
+            if outside_mention and has_last:
+                warnings.append(f"found an L while outside mention, spans = {spans}")
+            if not outside_mention and (has_begin or has_unit):
+                # I'm guessing this was meant to say "B" for "begin" label?
+                warnings.append("found a 'B' or 'U' while inside mention, spans = {spans}")
+
+            if warnings and print_warnings:
+                print("warnings:")
+                for warning in warnings:
+                    print(f"  - {warning}")
+            # is this the problem? we seem to be possibly appending the same span twice
+            # if the word is a single unit mention
+            if label_id == Labels.MENTION_UNIT_ID:
+                append_acc()  # OG
+                # acc is equal to the spans for this one single unit (word) mention -- so the error of duplicating
+                # would be happening anytime we get a unit mention. So i would expect the instances where
+                # we have duplicates to be happening right before we get a unit mention. Let's see!
+                acc = spans
+                append_acc()
+                outside_mention = True
+            if label_id == Labels.MENTION_BEGIN_ID:
+                append_acc()
+                acc = spans
+                outside_mention = False
+            elif label_id == Labels.MENTION_LAST_ID:
+                acc.extend(spans)
+                append_acc()
+                outside_mention = True
+            elif label_id == Labels.MENTION_INSIDE_ID:
+                acc.extend(spans)
             append_acc()
         return ret
