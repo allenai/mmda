@@ -273,8 +273,5 @@ class MentionPredictor:
                 if spans[0].start == 3055:
                     print("doing the inside thing")
                 acc.extend(spans)
-            if spans[0].start == 3055:
-                print("NOT appending acc this time...", acc)
-            # TODO I think we want to append_acc() only if at end of word list
-            # append_acc()
+        append_acc()
         return ret
