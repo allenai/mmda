@@ -107,8 +107,8 @@ class MentionPredictor:
         # TODO: make this like a "local" word_ids and keep the outer "REAL" word_ids i think is the solution
         # I THINK because 433 word id shows up twice and word_id list is up to 433 then the next word_id list is 433-onward that we are missing
         # a moment when word_id == previous_word_id.  --- ok maybe not cause 433 is repeated per page. oops. somehow missing previous word id. should not be "none"
-        word_ids: List[int] = []
-        word_label_ids: List[List[int]] = []
+        word_ids: List[Optional[int]] = []
+        word_label_ids: List[Optional[List[int]]] = []
 
         # make list of word ids and list of label ids for each word
         for idx1 in range(len(inputs['input_ids'])):
@@ -116,29 +116,70 @@ class MentionPredictor:
             batch_label_ids = prediction_label_ids[idx1]
             input_ = inputs[idx1]
 
+            # keep track of this loop's word_ids
+            these_word_ids = [input_.word_ids[0]]
+
+            # append to the outer word_ids and word_label_ids lists
             if input_.word_ids[0] is not None:
                 word_ids.append(input_.word_ids[0])
                 word_label_ids.append(batch_label_ids[0])
-            print("at start of first loop, word_ids is ", word_ids)
+            else:
+                # preserve the Nones
+                word_ids.append(None)
+                word_label_ids.append(None)
 
-            # loop through each word_id in this list of 512 word_ids
+            print("at start of first loop, word_ids is ", word_ids)
+            print("these_word_ids is ", these_word_ids)
+            print("last word_id there is ", word_ids[-1] if word_ids else "nothing yet")
+            print()
+            # TODO I THINK THE SOLUTION
+            # go back to using old version of get previous id.
+            # if idx1 == 0, then get previous_word_id from looping through word_ids til not None
+            # loop through each word_id in this list of 512 word_ids, preserving Nones
             for idx2 in range(1, len(input_.word_ids)):
                 word_id: int = input_.word_ids[idx2]
-                # Get the true previous word_id
-                # TODO: get it from word_ids if not here
-                previous_word_id: int = word_ids[-1] if word_ids else None
+                # TODO HERE IT IS
+                # Check if all previous words in input_.word_ids are None
+                # get it the old way
+                previous_word_id: int = input_.word_ids[idx2 - 1]
+                # but...
+                # print("peek at these_word_ids", these_word_ids)
+
+                if all([not bool(word_id) for word_id in these_word_ids]):
+                    print("all of these_words_ids are None")
+                    # ... then try to get previous_word_id from looping through word_ids til not None
+                    print('looking for a word id in larger list...')
+                    for idx3 in range(len(word_ids) - 1, -1, -1):
+                        print("looking...")
+                        if word_ids[idx3] is not None:
+                            # previous_word_id = inputs[idx1 - 1].word_ids[idx3] # hit idx error but idk why i'm using this??
+                            print(f"found it - word_ids idx3 ({idx3}) = {word_ids[idx3]} ")
+                            previous_word_id = word_ids[idx3]
+                            break
+
+                if word_id == 433:
+                    print("word id 433")
+                    print("within second loop, word_ids is ", word_ids)
+                    print("last word_id now is ", word_ids[-1] if word_ids else "nothing yet")
+                    print()
+
                 # if input_.word_ids[idx2 - 1] is not None:
                 #     previous_word_id = input_.word_ids[idx2 - 1]
                 # elif len(word_ids) > 0:
                 #     previous_word_id = word_ids[-1]
                 # else:
                 #     previous_word_id = None
+
+
+                # if previous_word_id is not in current local word_ids list, scan previous
+                # word_ids list for last word_id that is not None:
                 # elif (idx1 != 0) and inputs[idx1 - 1] is not None:  # TODO make sure this won't blow up if inputs
-                #     # scan previous input for last word_id that is not None:
-                #     for idx3 in range(len(inputs[idx1 - 1].word_ids) - 1, -1, -1):
-                #         if inputs[idx1 - 1].word_ids[idx3] is not None:
-                #             previous_word_id = inputs[idx1 - 1].word_ids[idx3]
-                #             break
+                # if previous_word_id not in these_word_ids and (idx1 != 0) and inputs[idx1 - 1] is not None:  # TODO make sure this won't blow up if inputs
+                #         # scan previous input for last word_id that is not None:
+                #         for idx3 in range(len(inputs[idx1 - 1].word_ids) - 1, -1, -1):
+                #             if inputs[idx1 - 1].word_ids[idx3] is not None:
+                #                 previous_word_id = inputs[idx1 - 1].word_ids[idx3]
+                #                 break
                 # else:
                 #     previous_word_id = None
 
@@ -147,27 +188,42 @@ class MentionPredictor:
                     if word_id == previous_word_id:
                         if word_spans[word_id][0].start == 3055:
                             print("word_id == previous word_id: ", word_id, previous_word_id)
-                            if inputs[idx1 - 1] is not None:
-                                print("inputs[idx1 - 1]:", inputs[idx1 - 1])
                             print("inputs[idx1 - 1].word_ids:", inputs[idx1 - 1].word_ids)
                             print("label_id is", label_id)
-                            print(f"adding labelid {label_id} to word_label_ids[-1] which is {word_label_ids[-1]}")
                             print("word_ids is:", word_ids)
-                        word_label_ids[-1].append(label_id)
+                            print()
+                        # add to previous_word_id's word_label_ids
+                        # print(f"adding labelid {label_id} to word_label_ids[-1] which is {word_label_ids[-1]}")
+                        for idx3 in range(len(word_ids) - 1, -1, -1):
+                            if word_ids[idx3] == previous_word_id:
+                                if previous_word_id == 433:
+                                    print(f"adding label_id {label_id} to word_label_ids[{idx3}] which is {word_label_ids[idx3]}")
+                                    print(f"corresponding word_id at word_ids[{idx3}] is {word_ids[idx3]}")
+                                    print()
+                                    print()
+                                word_label_ids[idx3].append(label_id)
+                                break
+                        # word_label_ids[-1].append(label_id)
                     else:
                         if word_spans[word_id][0].start == 3055:
                             print("in else")
                             print("current word id:", word_id)
                             print("previous word id:", previous_word_id)
-                            print("inputs[idx1 - 1].word_ids", inputs[idx1 - 1].word_ids)
                             print("current word spans:",  word_spans[word_id])
                             print("previous word spans:", word_spans[word_id - 1])
                             print("word_ids is:", word_ids)
+                            print()
                         word_label_ids.append([label_id])
                         word_ids.append(word_id)
+                else:
+                    # again, preserve the Nones
+                    word_ids.append(None)
+                    word_label_ids.append(None)
+                # always
+                these_word_ids.append(word_id)
             print("entering new territory of idx ids")
             print("word_ids is:", word_ids)
-
+            print()
 
         acc: List[Span] = []
         outside_mention = True
@@ -180,7 +236,11 @@ class MentionPredictor:
 
         # now we have zipped list of word ids and label ids (for which there can be multiple because of batching?)
         # so we can map those words to spans
+        print("going to go through all the word_ids now. len(word_ids) is", len(word_ids))
+        print()
         for word_id, label_ids in zip(word_ids, word_label_ids):
+            if not word_id:
+                continue
             spans = word_spans[word_id]
 
             has_begin = has_label_id(label_ids, Labels.MENTION_BEGIN_ID)
@@ -224,13 +284,8 @@ class MentionPredictor:
                 print("warnings:")
                 for warning in warnings:
                     print(f"  - {warning}")
-            # is this the problem? we seem to be possibly appending the same span twice
-            # if the word is a single unit mention
             if label_id == Labels.MENTION_UNIT_ID:
-                append_acc()  # OG
-                # acc is equal to the spans for this one single unit (word) mention -- so the error of duplicating
-                # would be happening anytime we get a unit mention. So i would expect the instances where
-                # we have duplicates to be happening right before we get a unit mention. Let's see!
+                append_acc()
                 acc = spans
                 append_acc()
                 outside_mention = True
