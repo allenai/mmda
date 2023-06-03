@@ -76,7 +76,6 @@ class MentionPredictor:
         return spangroups
 
     def predict_page(self, page: Annotation, counter: Iterator[int], print_warnings: bool = False) -> List[SpanGroup]:
-        print("doing page id ", page.id)
         if not hasattr(page, 'tokens'):
             return []
 
@@ -107,7 +106,6 @@ class MentionPredictor:
         word_label_ids: List[Optional[List[int]]] = []
 
         for idx1 in range(len(inputs['input_ids'])):
-            print("idx1", idx1)
             batch_label_ids = prediction_label_ids[idx1]
             input_ = inputs[idx1]
 
@@ -122,11 +120,7 @@ class MentionPredictor:
                 # preserve the Nones
                 word_ids.append(None)
                 word_label_ids.append(None)
-            #
-            # print("at start of first loop, word_ids is ", word_ids)
-            # print("these_word_ids is ", these_word_ids)
-            # print("last word_id there is ", word_ids[-1] if word_ids else "nothing yet")
-            # print()
+
             for idx2 in range(1, len(input_.word_ids)):
                 word_id: int = input_.word_ids[idx2]
                 # get previous_word_id from this current list of word_ids
@@ -140,40 +134,15 @@ class MentionPredictor:
                             previous_word_id = word_ids[idx3]
                             break
 
-                if word_id == 433:
-                    print("word id 433")
-                    print("within second loop, word_ids is ", word_ids)
-                    print("last word_id now is ", word_ids[-1] if word_ids else "nothing yet")
-                    print()
-
                 if word_id is not None:
                     label_id: int = batch_label_ids[idx2]
                     if word_id == previous_word_id:
-                        if word_spans[word_id][0].start == 3055:
-                            print("word_id == previous word_id: ", word_id, previous_word_id)
-                            print("inputs[idx1 - 1].word_ids:", inputs[idx1 - 1].word_ids)
-                            print("label_id is", label_id)
-                            print("word_ids is:", word_ids)
-                            print()
-                        # add to previous_word_id's word_label_ids
+                        # add to previous_word_id's word_label_ids by finding its corresponding index in word_ids
                         for idx3 in range(len(word_ids) - 1, -1, -1):
                             if word_ids[idx3] == previous_word_id:
-                                if previous_word_id == 433:
-                                    print(f"adding label_id {label_id} to word_label_ids[{idx3}] which is {word_label_ids[idx3]}")
-                                    print(f"corresponding word_id at word_ids[{idx3}] is {word_ids[idx3]}")
-                                    print()
-                                    print()
                                 word_label_ids[idx3].append(label_id)
                                 break
                     else:
-                        if word_spans[word_id][0].start == 3055:
-                            print("in else")
-                            print("current word id:", word_id)
-                            print("previous word id:", previous_word_id)
-                            print("current word spans:",  word_spans[word_id])
-                            print("previous word spans:", word_spans[word_id - 1])
-                            print("word_ids is:", word_ids)
-                            print()
                         word_label_ids.append([label_id])
                         word_ids.append(word_id)
                 else:
@@ -182,10 +151,6 @@ class MentionPredictor:
                     word_label_ids.append(None)
                 # always
                 these_word_ids.append(word_id)
-            print("entering new territory of idx ids")
-            print("word_ids is:", word_ids)
-            print()
-
         acc: List[Span] = []
         outside_mention = True
 
@@ -195,10 +160,8 @@ class MentionPredictor:
                 ret.append(SpanGroup(spans=acc, id=next(counter)))
             acc = []
 
-        # now we have zipped list of word ids and label ids (for which there can be multiple because of batching?)
-        # so we can map those words to spans
-        print("going to go through all the word_ids now. len(word_ids) is", len(word_ids))
-        print()
+        # now we can zip our lists of word_ids (which correspond to spans) and label_ids (for which there can be
+        # multiple because of batching), we can decide how to label each span how to accumulate them into SpanGroups
         for word_id, label_ids in zip(word_ids, word_label_ids):
             if not word_id:
                 continue
@@ -208,20 +171,10 @@ class MentionPredictor:
             has_last = has_label_id(label_ids, Labels.MENTION_LAST_ID)
             has_unit = has_label_id(label_ids, Labels.MENTION_UNIT_ID)
 
-            if spans[0].start == 3055:
-                print("here's our zipped up word_id/labels for this word:")
-                print("word_id:", word_id)
-                print("label_ids:", label_ids)
-                print("spans", spans)
-                print(f"has_begin={has_begin} has_last={has_last} has_unit={has_unit}, spans = {spans}")
-                print()
-
             warnings = []
             label_id: Optional[int] = None
 
             if sum(1 for cond in [has_begin, has_last, has_unit] if cond) > 1:
-                if spans[0].start == 3055:
-                    print("found multiple labels")
                 warnings.append(
                     "found multiple labels for the same word: "
                     f"has_begin={has_begin} has_last={has_last} has_unit={has_unit}, spans = {spans}"
@@ -229,8 +182,6 @@ class MentionPredictor:
                 for cur_label_id in label_ids:
                     # prioritize begin, last, unit over the rest
                     if cur_label_id not in (Labels.MENTION_INSIDE_ID, Labels.MENTION_OUTSIDE_ID):
-                        if spans[0].start == 3055:
-                            print("setting label_id to cur_label_id: ", cur_label_id)
                         label_id = cur_label_id
                         break
 
@@ -238,40 +189,29 @@ class MentionPredictor:
                 # prioritize inside over outside
                 label_id = Labels.MENTION_INSIDE_ID \
                     if any(lbl == Labels.MENTION_INSIDE_ID for lbl in label_ids) else label_ids[0]
-            if spans[0].start == 3055:
-                print("after all that, label_id is", label_id)
             if outside_mention and has_last:
-                warnings.append(f"found an L while outside mention, spans = {spans}")
+                warnings.append(f"found an 'L' while outside mention, spans = {spans}")
             if not outside_mention and (has_begin or has_unit):
-                # I'm guessing this was meant to say "B" for "begin" label?
-                warnings.append("found a 'B' or 'U' while inside mention, spans = {spans}")
+                warnings.append(f"found a 'B' or 'U' while inside mention, spans = {spans}")
 
             if warnings and print_warnings:
                 print("warnings:")
                 for warning in warnings:
                     print(f"  - {warning}")
             if label_id == Labels.MENTION_UNIT_ID:
-                if spans[0].start == 3055:
-                    print("doing the unit thing")
                 append_acc()
                 acc = spans
                 append_acc()
                 outside_mention = True
             if label_id == Labels.MENTION_BEGIN_ID:
-                if spans[0].start == 3055:
-                    print("doing the begin thing")
                 append_acc()
                 acc = spans
                 outside_mention = False
             elif label_id == Labels.MENTION_LAST_ID:
-                if spans[0].start == 3055:
-                    print("doing the last thing")
                 acc.extend(spans)
                 append_acc()
                 outside_mention = True
             elif label_id == Labels.MENTION_INSIDE_ID:
-                if spans[0].start == 3055:
-                    print("doing the inside thing")
                 acc.extend(spans)
         append_acc()
         return ret
