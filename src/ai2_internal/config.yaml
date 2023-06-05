@@ -191,7 +191,7 @@ model_variants:
     extras_require: ["dev", "citation_links"]
 
     # Full S3 path to tar.gz'ed artifacts archive
-    artifacts_s3_path: s3://ai2-s2-analytics/danyh/extract-stuff-from-pdfs/artifacts/links/v1.tar.gz
+    artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/citationlinks/v1.tar.gz
 
     # Version of python required for model runtime
     python_version: "3.8"
@@ -319,4 +319,3 @@ model_variants:
     # as its sole argument.
     # Used by the TIMO toolchain to validate your model implementation and configuration.
     integration_test: ai2_internal.dwp_heuristic.integration_test.TestInterfaceIntegration
-
