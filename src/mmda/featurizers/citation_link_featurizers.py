@@ -31,7 +31,7 @@ class CitationLink:
         self.bib = bib
 
     def to_text_dict(self) -> Dict[str, str]:
-        return {"source_text": "".join(self.mention.symbols), "target_text": "".join(self.bib.symbols)}
+        return {"source_text": " ".join(self.mention.symbols), "target_text": " ".join(self.bib.symbols)}
 
 def featurize(possible_links: List[CitationLink]) -> pd.DataFrame:
     # create dataframe
