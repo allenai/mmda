@@ -20,7 +20,7 @@ class TestStringify(unittest.TestCase):
     def test_stringify(self):
         doc = Document.from_json(
             {
-                "symbols": '[1] Alan Higgins and R Wohlford, "Keyword recognition, "in Proc.   ICASSP , 1990, pp. 1233– 1236.',
+                "symbols": '[1] Alan Higgins and R Wohlford,\n"Keyword recognition, "in Proc.   ICASSP , 1990, pp. 1233– 1236.',
                 "words": [
                     {"id": 0, "spans": [{"start": 0, "end": 3}], "text": "[1]"},
                     {"id": 1, "spans": [{"start": 4, "end": 8}], "text": "Alan"},
@@ -96,6 +96,19 @@ class TestStringify(unittest.TestCase):
         self.assertEqual(
             stringify_span_group(span_group=query_span_group, document=doc),
             "[1] Alan Higgins Wohlford",
+        )
+
+        # stringify the whole bib entry
+        query_span_group = SpanGroup.from_json(
+            {
+                "spans": [
+                    {"start": 0, "end": 97},
+                ]
+            }
+        )
+        self.assertEqual(
+            stringify_span_group(span_group=query_span_group, document=doc),
+            '[1] Alan Higgins and R Wohlford, "Keyword recognition, "in Proc. ICASSP , 1990, pp. 1233– 1236.',
         )
 
     def test_multiple_whitespace(self):
