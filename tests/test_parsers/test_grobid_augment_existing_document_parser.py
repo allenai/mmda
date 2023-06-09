@@ -57,6 +57,10 @@ class TestGrobidAugmentExistingDocumentParser(unittest.TestCase):
         assert len(augmented_doc.bib_entries) is 40
         assert augmented_doc.bib_entries[0].text.startswith("ISPRS 2D Semantic Labeling Challenge.")
         assert len(augmented_doc.authors) is 4
+        for m in augmented_doc.citation_mentions:
+            print(m.text)
+        assert len(augmented_doc.citation_mentions) is 67
+        assert 1 == 0
 
     @um.patch("requests.request", side_effect=mock_request)
     def test_passes_if_xml_missing_authors(self, mock_request):

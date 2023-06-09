@@ -73,6 +73,10 @@ class GrobidAugmentExistingDocumentParser(Parser):
         bib_entry_box_groups = self._get_box_groups(xml_root, "listBibl", "biblStruct")
         doc.annotate(bib_entries=box_groups_to_span_groups(bib_entry_box_groups, doc, center=True))
 
+        # citation mentions
+        citation_mention_box_groups = self._get_box_groups(xml_root, "body", "ref", type_attr="bibr")
+        doc.annotate(citation_mentions=box_groups_to_span_groups(citation_mention_box_groups, doc, center=True))
+
         return doc
 
     def _xml_coords_to_boxes(self, coords_attribute: str):
@@ -101,11 +105,21 @@ class GrobidAugmentExistingDocumentParser(Parser):
         self.page_sizes = page_sizes
         return page_sizes
 
-    def _get_box_groups(self, root: et.Element, list_tag: str, item_tag: str) -> List[BoxGroup]:
+    def _get_box_groups(
+            self,
+            root: et.Element,
+            list_tag: str,
+            item_tag: str,
+            type_attr: Optional[str] = None
+    ) -> List[BoxGroup]:
         item_list_root = root.find(f".//tei:{list_tag}", NS)
 
         box_groups = []
-        elements = item_list_root.findall(f".//tei:{item_tag}", NS)
+        if type_attr:
+            elements = item_list_root.findall(f".//tei:{item_tag}[@type='{type_attr}']", NS)
+        else:
+            elements = item_list_root.findall(f".//tei:{item_tag}", NS)
+
         for e in elements:
             coords_string = e.attrib["coords"]
             boxes = self._xml_coords_to_boxes(coords_string)
