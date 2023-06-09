@@ -8,7 +8,7 @@ as a definition of the objects it expects, and those it returns.
 
 from typing import List, Tuple
 
-from pydantic import BaseModel, BaseSettings
+from pydantic import BaseModel, BaseSettings, Field
 
 from ai2_internal import api
 from mmda.predictors.xgb_predictors.citation_link_predictor import CitationLinkPredictor
@@ -39,7 +39,7 @@ class PredictorConfig(BaseSettings):
     Configuration required by the model to do its work.
     Uninitialized fields will be set via Environment variables.
     """
-    pass
+    CIT_LINK_PREDICTOR_SCORE_THRESHOLD: float = Field(default=0.8, description="Prediction threshold for linking a cit mention-bib pair.")
 
 
 class Predictor:
@@ -55,7 +55,7 @@ class Predictor:
     arg below.
     """
     def __init__(self, config: PredictorConfig, artifacts_dir: str):
-        self._predictor = CitationLinkPredictor(artifacts_dir)
+        self._predictor = CitationLinkPredictor(artifacts_dir, config.CIT_LINK_PREDICTOR_SCORE_THRESHOLD)
 
     def predict_one(self, inst: Instance) -> Prediction:
         """

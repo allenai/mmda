@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from pydantic import BaseModel
 import re
@@ -22,6 +23,7 @@ JACCARD_NUMERIC = "jaccard_numeric"
 MATCH_NUMERIC = "match_numeric"
 JACCARD_ALPHA = "jaccard_alpha"
 MATCH_FIRST_TOKEN = "match_first_token"
+FIRST_POSITION = "first_position"
 
 class CitationLink:
     def __init__(self, mention: SpanGroup, bib: SpanGroup):
@@ -29,7 +31,7 @@ class CitationLink:
         self.bib = bib
 
     def to_text_dict(self) -> Dict[str, str]:
-        return {"source_text": "".join(self.mention.symbols), "target_text": "".join(self.bib.symbols)}
+        return {"source_text": " ".join(self.mention.symbols), "target_text": " ".join(self.bib.symbols)}
 
 def featurize(possible_links: List[CitationLink]) -> pd.DataFrame:
     # create dataframe
@@ -46,11 +48,25 @@ def featurize(possible_links: List[CitationLink]) -> pd.DataFrame:
     df[MATCH_NUMERIC] = df.apply(lambda row: match_numeric(row['source_text'], row['target_text']), axis=1)
     df[JACCARD_ALPHA] = df.apply(lambda row: jaccard_alpha(row['source_text'], row['target_text']), axis=1)
     df[MATCH_FIRST_TOKEN] = df.apply(lambda row: match_first_token(row['source_text'], row['target_text']), axis=1)
+    df[FIRST_POSITION] = df.apply(lambda row: first_position(row['source_text'], row['target_text']), axis=1)
     
     # drop text columns
     X_features = df.drop(columns=['source_text', 'target_text'])
     return X_features
 
+
+def first_position(source: str, target: str) -> float:
+    truncated_target = target[:50]
+    source_tokens = strip_and_tokenize(source)
+    target_tokens = strip_and_tokenize(truncated_target)
+    if not source_tokens:
+        return np.nan
+    else:
+        first_source_token = source_tokens[0]
+        if first_source_token in target_tokens:
+            return target_tokens.index(first_source_token)
+        else:
+            return np.nan
 
 def ngramify(s: str, n: int) -> List[str]:
     s_len = len(s)
