@@ -3,9 +3,8 @@
 @geli-gel
 
 """
-from collections import defaultdict
 from grobid_client.grobid_client import GrobidClient
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import List, Optional
 
 import os
 import xml.etree.ElementTree as et
