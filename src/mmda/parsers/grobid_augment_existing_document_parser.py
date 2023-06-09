@@ -86,7 +86,6 @@ class GrobidAugmentExistingDocumentParser(Parser):
         )
 
         # citation mentions
-        print("doing citation mentions...")
         citation_mention_box_groups = self._get_box_groups(
             xml_root, "body", "ref", type_attr="bibr"
         )
@@ -145,22 +144,23 @@ class GrobidAugmentExistingDocumentParser(Parser):
             boxes = self._xml_coords_to_boxes(coords_string)
 
             grobid_id = e.attrib[ID_ATTR_KEY] if ID_ATTR_KEY in e.keys() else None
+            target_id = e.attrib["target"][1:] if (item_tag == "ref" and "target" in e.keys()) else None
 
-            if item_tag == "ref":
-                target_id = e.attrib["target"][1:] if "target" in e.keys() else None
-                if target_id:
-                    box_groups.append(
-                        BoxGroup(
-                            boxes=boxes,
-                            metadata=Metadata(grobid_id=grobid_id, target_id=target_id),
-                        )
+            if grobid_id and target_id:
+                box_groups.append(
+                    BoxGroup(
+                        boxes=boxes,
+                        metadata=Metadata(grobid_id=grobid_id, target_id=target_id),
                     )
-                else:
-                    box_groups.append(
-                        BoxGroup(boxes=boxes, metadata=Metadata(grobid_id=grobid_id))
-                    )
-            else:
+                )
+            elif grobid_id:
                 box_groups.append(
                     BoxGroup(boxes=boxes, metadata=Metadata(grobid_id=grobid_id))
                 )
+            elif target_id:
+                box_groups.append(
+                    BoxGroup(boxes=boxes, metadata=Metadata(target_id=target_id))
+                )
+            else:
+                box_groups.append(BoxGroup(boxes=boxes))
         return box_groups
