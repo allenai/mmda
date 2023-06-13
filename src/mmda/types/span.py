@@ -55,7 +55,9 @@ class Span:
         )
 
     def is_overlap(self, other: "Span") -> bool:
-        return self.start < other.end and self.end > other.start
+        is_self_before_other = self.start < other.end and self.end > other.start
+        is_other_before_self = other.start < self.end and other.end > self.start
+        return is_self_before_other or is_other_before_self
 
     @classmethod
     def are_disjoint(cls, spans: List["Span"]) -> bool:
