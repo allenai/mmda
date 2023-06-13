@@ -53,3 +53,16 @@ class Span:
             end=end,
             box=Box.small_boxes_to_big_box(boxes=[span.box for span in spans]),
         )
+
+    def is_overlap(self, other: "Span") -> bool:
+        is_self_before_other = self.start < other.end and self.end > other.start
+        is_other_before_self = other.start < self.end and other.end > self.start
+        return is_self_before_other or is_other_before_self
+
+    @classmethod
+    def are_disjoint(cls, spans: List["Span"]) -> bool:
+        for i in range(len(spans)):
+            for j in range(i + 1, len(spans)):
+                if spans[i].is_overlap(other=spans[j]):
+                    return False
+        return True
