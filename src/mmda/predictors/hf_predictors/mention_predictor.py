@@ -101,84 +101,117 @@ class MentionPredictor:
         def has_label_id(lbls: List[int], want_label_id: int) -> bool:
             return any(lbl == want_label_id for lbl in lbls)
 
+        #  make list of word ids and list of label ids for each word
+        word_ids: List[Optional[int]] = []
+        word_label_ids: List[Optional[List[int]]] = []
+
         for idx1 in range(len(inputs['input_ids'])):
             batch_label_ids = prediction_label_ids[idx1]
             input_ = inputs[idx1]
 
-            word_ids: List[int] = [input_.word_ids[0]] if input_.word_ids[0] is not None else []
-            word_label_ids: List[List[int]] = [[batch_label_ids[0]]] if input_.word_ids[0] is not None else []
+            # keep track of this loop's word_ids
+            these_word_ids = [input_.word_ids[0]]
+
+            # append to the outer word_ids and word_label_ids lists
+            if input_.word_ids[0] is not None:
+                word_ids.append(input_.word_ids[0])
+                word_label_ids.append(batch_label_ids[0])
+            else:
+                # preserve the Nones
+                word_ids.append(None)
+                word_label_ids.append(None)
 
             for idx2 in range(1, len(input_.word_ids)):
                 word_id: int = input_.word_ids[idx2]
+                # get previous_word_id from this current list of word_ids
                 previous_word_id: int = input_.word_ids[idx2 - 1]
+
+                # if all of these_word_ids are None...
+                if all([not bool(word_id) for word_id in these_word_ids]):
+                    # ... then try to get previous_word_id from looping through larger word_ids list til not None
+                    for idx3 in range(len(word_ids) - 1, -1, -1):
+                        if word_ids[idx3] is not None:
+                            previous_word_id = word_ids[idx3]
+                            break
 
                 if word_id is not None:
                     label_id: int = batch_label_ids[idx2]
                     if word_id == previous_word_id:
-                        word_label_ids[-1].append(label_id)
+                        # add to previous_word_id's word_label_ids by finding its corresponding index in word_ids
+                        for idx3 in range(len(word_ids) - 1, -1, -1):
+                            if word_ids[idx3] == previous_word_id:
+                                word_label_ids[idx3].append(label_id)
+                                break
                     else:
                         word_label_ids.append([label_id])
                         word_ids.append(word_id)
+                else:
+                    # again, preserve the Nones
+                    word_ids.append(None)
+                    word_label_ids.append(None)
+                # always
+                these_word_ids.append(word_id)
+        acc: List[Span] = []
+        outside_mention = True
 
-            acc: List[Span] = []
-            outside_mention = True
+        def append_acc():
+            nonlocal acc
+            if acc:
+                ret.append(SpanGroup(spans=acc, id=next(counter)))
+            acc = []
 
-            def append_acc():
-                nonlocal acc
-                if acc:
-                    ret.append(SpanGroup(spans=acc, id=next(counter)))
-                acc = []
+        # now we can zip our lists of word_ids (which correspond to spans) and label_ids (for which there can be
+        # multiple because of batching), we can decide how to label each span how to accumulate them into SpanGroups
+        for word_id, label_ids in zip(word_ids, word_label_ids):
+            if not word_id:
+                continue
+            spans = word_spans[word_id]
 
-            for word_id, label_ids in zip(word_ids, word_label_ids):
-                spans = word_spans[word_id]
+            has_begin = has_label_id(label_ids, Labels.MENTION_BEGIN_ID)
+            has_last = has_label_id(label_ids, Labels.MENTION_LAST_ID)
+            has_unit = has_label_id(label_ids, Labels.MENTION_UNIT_ID)
 
-                has_begin = has_label_id(label_ids, Labels.MENTION_BEGIN_ID)
-                has_last = has_label_id(label_ids, Labels.MENTION_LAST_ID)
-                has_unit = has_label_id(label_ids, Labels.MENTION_UNIT_ID)
+            warnings = []
+            label_id: Optional[int] = None
 
-                warnings = []
-                label_id: Optional[int] = None
+            if sum(1 for cond in [has_begin, has_last, has_unit] if cond) > 1:
+                warnings.append(
+                    "found multiple labels for the same word: "
+                    f"has_begin={has_begin} has_last={has_last} has_unit={has_unit}, spans = {spans}"
+                )
+                for cur_label_id in label_ids:
+                    # prioritize begin, last, unit over the rest
+                    if cur_label_id not in (Labels.MENTION_INSIDE_ID, Labels.MENTION_OUTSIDE_ID):
+                        label_id = cur_label_id
+                        break
 
-                if sum(1 for cond in [has_begin, has_last, has_unit] if cond) > 1:
-                    warnings.append(
-                        "found multiple labels for the same word: "
-                        f"has_begin={has_begin} has_last={has_last} has_unit={has_unit}"
-                    )
-                    for cur_label_id in label_ids:
-                        # prioritize begin, last, unit over the rest
-                        if cur_label_id not in (Labels.MENTION_INSIDE_ID, Labels.MENTION_OUTSIDE_ID):
-                            label_id = cur_label_id
-                            break
+            if label_id is None:
+                # prioritize inside over outside
+                label_id = Labels.MENTION_INSIDE_ID \
+                    if any(lbl == Labels.MENTION_INSIDE_ID for lbl in label_ids) else label_ids[0]
+            if outside_mention and has_last:
+                warnings.append(f"found an 'L' while outside mention, spans = {spans}")
+            if not outside_mention and (has_begin or has_unit):
+                warnings.append(f"found a 'B' or 'U' while inside mention, spans = {spans}")
 
-                if label_id is None:
-                    # prioritize inside over outside
-                    label_id = Labels.MENTION_INSIDE_ID \
-                        if any(lbl == Labels.MENTION_INSIDE_ID for lbl in label_ids) else label_ids[0]
-
-                if outside_mention and has_last:
-                    warnings.append('found an "L" while outside mention')
-                if not outside_mention and (has_begin or has_unit):
-                    warnings.append('found an "L" or "U" while inside mention')
-
-                if warnings and print_warnings:
-                    print("warnings:")
-                    for warning in warnings:
-                        print(f"  - {warning}")
-
-                if label_id == Labels.MENTION_UNIT_ID:
-                    append_acc()
-                    acc = spans
-                    append_acc()
-                    outside_mention = True
-                if label_id == Labels.MENTION_BEGIN_ID:
-                    append_acc()
-                    acc = spans
-                    outside_mention = False
-                elif label_id == Labels.MENTION_LAST_ID:
-                    acc.extend(spans)
-                    append_acc()
-                    outside_mention = True
-                elif label_id == Labels.MENTION_INSIDE_ID:
-                    acc.extend(spans)
-            append_acc()
+            if warnings and print_warnings:
+                print("warnings:")
+                for warning in warnings:
+                    print(f"  - {warning}")
+            if label_id == Labels.MENTION_UNIT_ID:
+                append_acc()
+                acc = spans
+                append_acc()
+                outside_mention = True
+            if label_id == Labels.MENTION_BEGIN_ID:
+                append_acc()
+                acc = spans
+                outside_mention = False
+            elif label_id == Labels.MENTION_LAST_ID:
+                acc.extend(spans)
+                append_acc()
+                outside_mention = True
+            elif label_id == Labels.MENTION_INSIDE_ID:
+                acc.extend(spans)
+        append_acc()
         return ret
