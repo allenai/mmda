@@ -113,8 +113,7 @@ def stringify_span_group(
     # stringify!
     prev = matched_words[0]
     text_from_words_including_whitespace: List[str] = [_stringify_word(word=prev)]
-    for i in range(1, len(matched_words)):
-        current = matched_words[i]
+    for current in matched_words[1:]:
         is_there_a_gap = current.start > prev.end
         if is_there_a_gap:
             text_from_words_including_whitespace.append(join_words_with)
