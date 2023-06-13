@@ -122,9 +122,8 @@ def stringify_span_group(
 
     # final step of formatting the text to return
     candidate_text = "".join(text_from_words_including_whitespace)
+    if replace_newlines_with is not None:
+        candidate_text = candidate_text.replace("\n", replace_newlines_with)
     if normalize_whitespace:
         candidate_text = _normalize_whitespace(candidate_text)
-    else:
-        if replace_newlines_with is not None:
-            candidate_text = candidate_text.replace("\n", replace_newlines_with)
     return candidate_text

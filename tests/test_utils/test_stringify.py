@@ -216,6 +216,67 @@ class TestStringify(unittest.TestCase):
             "is a test.",
         )
 
+    def test_normalize_whitespace(self):
+        doc = Document.from_json(
+            {
+                "symbols": " This   has \n \n white\n  space",
+                "words": [
+                    {"id": 0, "spans": [{"start": 1, "end": 5}], "text": "This"},
+                    {"id": 1, "spans": [{"start": 8, "end": 11}], "text": "has"},
+                    {"id": 2, "spans": [{"start": 16, "end": 22}], "text": "white\n"},
+                    {"id": 3, "spans": [{"start": 24, "end": 30}], "text": "space"},
+                ],
+            }
+        )
+        for i, word in enumerate(doc.words):
+            assert word.text == doc.symbols[word.start : word.end]
+
+        query_span_group = SpanGroup.from_json(
+            {
+                "spans": [
+                    {"start": 0, "end": 30},
+                ]
+            }
+        )
+        self.assertEqual(
+            stringify_span_group(span_group=query_span_group, document=doc),
+            "This has white space",
+        )
+
+        # now try again but with newline replacement
+        # should avoid newlines that aren't in words, since they were
+        # never part of stringify considered text
+        # but should replace the newline that's within the word
+        # given the flag
+        self.assertEqual(
+            stringify_span_group(
+                span_group=query_span_group, document=doc, replace_newlines_with="XXX"
+            ),
+            "This has whiteXXX space",
+        )
+
+        # `replace_newlines_with` defaults to replacing `\n` with a whitespace char
+        # but then setting normalize flag to False means we are left with two whitespace chars
+        self.assertEqual(
+            stringify_span_group(
+                span_group=query_span_group,
+                document=doc,
+                normalize_whitespace=False,
+            ),
+            "This has white  space",
+        )
+
+        # combining the two
+        self.assertEqual(
+            stringify_span_group(
+                span_group=query_span_group,
+                document=doc,
+                replace_newlines_with="XXX",
+                normalize_whitespace=False,
+            ),
+            "This has whiteXXX space",
+        )
+
     def test_how_words_relate_to_stringify(self):
         """This test is a comprehensive dive into how `words` interacts
         with `stringify()`. There are 4 cases defined here:
