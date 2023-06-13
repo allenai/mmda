@@ -15,20 +15,20 @@ from typing import List, Optional
 
 from mmda.types import Document, Span, SpanGroup
 
-logging.basicConfig(level=logging.WARNING)
+# logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
 def stringify_span_group(
     span_group: SpanGroup,
     document: Document,
-    use_word_text: Optional[bool] = True,
-    replace_newlines_with: Optional[str] = " ",
-    join_words_with: Optional[str] = " ",
-    normalize_whitespace: Optional[bool] = True,
-    allow_partial_word_match: Optional[bool] = True,
-    allow_disjoint_spans: Optional[bool] = True,
-    include_symbols_between_disjoint_spans: Optional[bool] = False,
+    use_word_text: bool = True,
+    replace_newlines_with: str = " ",
+    join_words_with: str = " ",
+    normalize_whitespace: bool = True,
+    allow_partial_word_match: bool = True,
+    allow_disjoint_spans: bool = True,
+    include_symbols_between_disjoint_spans: bool = False,
 ) -> str:
     """Requires doc.words to exist. This technique applies 4 main steps:
 
@@ -41,7 +41,7 @@ def stringify_span_group(
 
     # warn if no words intersecting query span_group
     if len(matched_words) == 0:
-        logger.warning(f"span_group {span_group} has no overlapping words in document")
+        logger.debug(f"span_group {span_group} has no overlapping words in document")
         return ""
 
     # are words cut in half? suppose word is (0, 3), but the query asks for (2, 3). Should it include the whole word?
@@ -51,11 +51,11 @@ def stringify_span_group(
     match_any_word_end = any([word.end == span_group.end for word in matched_words])
     if allow_partial_word_match:
         if not match_any_word_start:
-            logger.warning(
+            logger.debug(
                 f"span_group {span_group}'s start index doesnt match w/ start of any word. output string may thus include more text than expected."
             )
         if not match_any_word_end:
-            logger.warning(
+            logger.debug(
                 f"span_group {span_group}'s end index doesnt match w/ end of any word. output string may thus include more text than expected."
             )
     else:
@@ -75,7 +75,7 @@ def stringify_span_group(
                 f"span_group {span_group} has disjoint spans but allow_disjoint_spans is False"
             )
         else:
-            logger.warning(f"span_group {span_group} has disjoint spans")
+            logger.debug(f"span_group {span_group} has disjoint spans")
             if include_symbols_between_disjoint_spans:
                 # TODO: easiest is probably to convert disjoint spans into a single longer span
                 raise NotImplementedError
@@ -87,7 +87,7 @@ def stringify_span_group(
                 f"span_group {span_group} intersects words {matched_words} which have disjoint spans but allow_disjoint_spans is False"
             )
         else:
-            logger.warning(
+            logger.debug(
                 f"span_group {span_group} intersects words {matched_words} which have disjoint spans"
             )
             if include_symbols_between_disjoint_spans:
@@ -101,7 +101,10 @@ def stringify_span_group(
     _stringify_word = lambda word: word.text if use_word_text else None
     if use_word_text is False:
         raise NotImplementedError(
-            f"Havnt figured out how to do this yet. Only supports use_word_text=True for now."
+            f"""Havnt figured out how to do this yet. Only supports use_word_text=True for now.
+              One possible consideration is `document.symbols[start:end]` as a means to get
+              text, which may be useful for debugging purposes. But this isn't high priority 
+              right now."""
         )
 
     # define util function that replaces all whitespace with a single character
