@@ -127,7 +127,7 @@ class TestStringify(unittest.TestCase):
         # make sure test fixture is defined correctly
         for word in doc.words:
             assert word.text == doc.symbols[word.start : word.end]
-        
+
         # does whitespace normalize fine?
         query_span_group = SpanGroup.from_json(
             {
@@ -157,7 +157,7 @@ class TestStringify(unittest.TestCase):
         # make sure test fixture is defined correctly
         for word in doc.words:
             assert word.text == doc.symbols[word.start : word.end]
-        
+
         # does it grab partial word matches?
         query_span_group = SpanGroup.from_json(
             {
@@ -171,7 +171,7 @@ class TestStringify(unittest.TestCase):
             "This is",
         )
 
-         query_span_group = SpanGroup.from_json(
+        query_span_group = SpanGroup.from_json(
             {
                 "spans": [
                     {"start": 6, "end": 13},
@@ -203,7 +203,7 @@ class TestStringify(unittest.TestCase):
             else:
                 assert word.text == "test"
                 assert doc.symbols[word.start : word.end] == "te-\nst"
-        
+
         query_span_group = SpanGroup.from_json(
             {
                 "spans": [
@@ -219,16 +219,16 @@ class TestStringify(unittest.TestCase):
     def test_how_words_relate_to_stringify(self):
         """This test is a comprehensive dive into how `words` interacts
         with `stringify()`. There are 4 cases defined here:
-            
+
         1. `words` arent comprehensive. That is, `doc.symbols` contains chars
            that arent whitespace but also not part of any `word.
-           
+
         2. `words` are comprehensive. each word is effectively a token.
-        
+
         3. `words` are comprehensive. each word is a bigger chunk (includes punct)
 
         4. `words` are comprehensive and big chunks. they also override the text.
-        
+
         """
 
         # 1) for example, what might happen is puncts and newlines aren't included in words
@@ -241,13 +241,13 @@ class TestStringify(unittest.TestCase):
                     {"id": 2, "spans": [{"start": 12, "end": 17}], "text": "clude"},
                     {"id": 3, "spans": [{"start": 18, "end": 22}], "text": "hyph"},
                     {"id": 4, "spans": [{"start": 24, "end": 27}], "text": "ens"},
-                ]
+                ],
             }
         )
         # make sure test fixture is defined correctly
         for i, word in enumerate(doc.words):
             assert word.text == doc.symbols[word.start : word.end]
-        
+
         query_span_group = SpanGroup.from_json(
             {
                 "spans": [
@@ -276,7 +276,7 @@ class TestStringify(unittest.TestCase):
                     {"id": 5, "spans": [{"start": 22, "end": 23}], "text": "-"},
                     {"id": 6, "spans": [{"start": 24, "end": 27}], "text": "ens"},
                     {"id": 7, "spans": [{"start": 27, "end": 28}], "text": "."},
-                ]
+                ],
             }
         )
         for i, word in enumerate(doc.words):
@@ -284,7 +284,7 @@ class TestStringify(unittest.TestCase):
 
         self.assertEqual(
             stringify_span_group(span_group=query_span_group, document=doc),
-            "Symbols in- clude hyph- ens",
+            "Symbols in- clude hyph- ens.",
         )
 
         # 3) repeat this test, but merging hyphen into bigger word chunks
@@ -296,8 +296,8 @@ class TestStringify(unittest.TestCase):
                     {"id": 1, "spans": [{"start": 8, "end": 11}], "text": "in-"},
                     {"id": 2, "spans": [{"start": 12, "end": 17}], "text": "clude"},
                     {"id": 3, "spans": [{"start": 18, "end": 23}], "text": "hyph-"},
-                    {"id": 4, "spans": [{"start": 24, "end": 28}], "text": "ens."}
-                ]
+                    {"id": 4, "spans": [{"start": 24, "end": 28}], "text": "ens."},
+                ],
             }
         )
         for i, word in enumerate(doc.words):
@@ -317,8 +317,8 @@ class TestStringify(unittest.TestCase):
                     {"id": 1, "spans": [{"start": 8, "end": 11}], "text": "IN"},
                     {"id": 2, "spans": [{"start": 12, "end": 17}], "text": "clude"},
                     {"id": 3, "spans": [{"start": 18, "end": 23}], "text": "HYPH"},
-                    {"id": 4, "spans": [{"start": 24, "end": 28}], "text": "ENS"}
-                ]
+                    {"id": 4, "spans": [{"start": 24, "end": 28}], "text": "ENS"},
+                ],
             }
         )
         self.assertEqual(
