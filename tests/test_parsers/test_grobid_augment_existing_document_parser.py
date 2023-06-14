@@ -7,18 +7,27 @@ import unittest.mock as um
 
 import pytest
 from mmda.types.document import Document
-from mmda.parsers.grobid_augment_existing_document_parser import GrobidAugmentExistingDocumentParser
+from mmda.parsers.grobid_augment_existing_document_parser import (
+    GrobidAugmentExistingDocumentParser,
+)
 
 os.chdir(pathlib.Path(__file__).parent)
 
 PDF_PATH = "../fixtures/grobid_augment_existing_document_parser/e5910c027af0ee9c1901c57f6579d903aedee7f4.pdf"
 PDFPLUMBER_DOC_PATH = "../fixtures/grobid_augment_existing_document_parser/e5910c027af0ee9c1901c57f6579d903aedee7f4__pdfplumber_doc.json"
 
-OK_CONFIG_PATH =  "../fixtures/grobid_augment_existing_document_parser/grobid.config"
-XML_OK = open("../fixtures/grobid_augment_existing_document_parser/e5910c027af0ee9c1901c57f6579d903aedee7f4.xml").read()
+OK_CONFIG_PATH = "../fixtures/grobid_augment_existing_document_parser/grobid.config"
+XML_OK = open(
+    "../fixtures/grobid_augment_existing_document_parser/e5910c027af0ee9c1901c57f6579d903aedee7f4.xml"
+).read()
 
-NO_AUTHORS_CONFIG_PATH =  "../fixtures/grobid_augment_existing_document_parser/grobid-no-authors.config"
-XML_NO_AUTHORS = open("../fixtures/grobid_augment_existing_document_parser/e5910c027af0ee9c1901c57f6579d903aedee7f4_no_authors.xml").read()
+NO_AUTHORS_CONFIG_PATH = (
+    "../fixtures/grobid_augment_existing_document_parser/grobid-no-authors.config"
+)
+XML_NO_AUTHORS = open(
+    "../fixtures/grobid_augment_existing_document_parser/e5910c027af0ee9c1901c57f6579d903aedee7f4_no_authors.xml"
+).read()
+
 
 def mock_request(*args, **kwargs):
     class MockResponse:
@@ -50,13 +59,35 @@ class TestGrobidAugmentExistingDocumentParser(unittest.TestCase):
             doc_dict = json.load(f_in)
             doc = Document.from_json(doc_dict)
 
-        augmenter_parser = GrobidAugmentExistingDocumentParser(config_path=OK_CONFIG_PATH, check_server=False)
+        augmenter_parser = GrobidAugmentExistingDocumentParser(
+            config_path=OK_CONFIG_PATH, check_server=False
+        )
 
         augmented_doc = augmenter_parser.parse(input_pdf_path=PDF_PATH, doc=doc)
 
+        # bib_entries
         assert len(augmented_doc.bib_entries) is 40
-        assert augmented_doc.bib_entries[0].text.startswith("ISPRS 2D Semantic Labeling Challenge.")
+        assert augmented_doc.bib_entries[0].text.startswith(
+            "ISPRS 2D Semantic Labeling Challenge."
+        )
+        for b in augmented_doc.bib_entries:
+            assert b.box_group.metadata.grobid_id is not None
+
+        # authors
         assert len(augmented_doc.authors) is 4
+
+        # citation_mentions
+        assert len(augmented_doc.citation_mentions) is 67
+        bib_entry_grobid_ids = [
+            sg.box_group.metadata.grobid_id for sg in augmented_doc.bib_entries
+        ]
+        mentions_with_targets = 0
+        for m in augmented_doc.citation_mentions:
+            if m.box_group.metadata.target_id:
+                mentions_with_targets += 1
+                assert m.box_group.metadata.target_id.startswith("b")
+                assert m.box_group.metadata.target_id in bib_entry_grobid_ids
+        assert mentions_with_targets == 66
 
     @um.patch("requests.request", side_effect=mock_request)
     def test_passes_if_xml_missing_authors(self, mock_request):
@@ -64,7 +95,9 @@ class TestGrobidAugmentExistingDocumentParser(unittest.TestCase):
             doc_dict = json.load(f_in)
             doc = Document.from_json(doc_dict)
 
-        augmenter_parser = GrobidAugmentExistingDocumentParser(config_path=NO_AUTHORS_CONFIG_PATH, check_server=False)
+        augmenter_parser = GrobidAugmentExistingDocumentParser(
+            config_path=NO_AUTHORS_CONFIG_PATH, check_server=False
+        )
 
         augmented_doc = augmenter_parser.parse(input_pdf_path=PDF_PATH, doc=doc)
 

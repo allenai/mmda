@@ -3,9 +3,8 @@
 @geli-gel
 
 """
-from collections import defaultdict
 from grobid_client.grobid_client import GrobidClient
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import List, Optional
 
 import os
 import xml.etree.ElementTree as et
@@ -18,7 +17,11 @@ from mmda.types.names import PagesField, RowsField, TokensField
 from mmda.utils.tools import box_groups_to_span_groups
 
 REQUIRED_DOCUMENT_FIELDS = [PagesField, RowsField, TokensField]
-NS = {"tei": "http://www.tei-c.org/ns/1.0"}
+NS = {
+    "tei": "http://www.tei-c.org/ns/1.0",
+    "xml": "http://www.w3.org/XML/1998/namespace",
+}
+ID_ATTR_KEY = f"{{{NS['xml']}}}id"
 
 
 class GrobidAugmentExistingDocumentParser(Parser):
@@ -54,8 +57,10 @@ class GrobidAugmentExistingDocumentParser(Parser):
         )
         if xml_out_dir:
             os.makedirs(xml_out_dir, exist_ok=True)
-            xmlfile = os.path.join(xml_out_dir, os.path.basename(input_pdf_path).replace('.pdf', '.xml'))
-            with open(xmlfile, 'w') as f_out:
+            xmlfile = os.path.join(
+                xml_out_dir, os.path.basename(input_pdf_path).replace(".pdf", ".xml")
+            )
+            with open(xmlfile, "w") as f_out:
                 f_out.write(xml)
 
         self._parse_xml_onto_doc(xml, doc)
@@ -67,11 +72,27 @@ class GrobidAugmentExistingDocumentParser(Parser):
 
         # authors
         author_box_groups = self._get_box_groups(xml_root, "sourceDesc", "persName")
-        doc.annotate(authors=box_groups_to_span_groups(author_box_groups, doc, center=True))
+        doc.annotate(
+            authors=box_groups_to_span_groups(author_box_groups, doc, center=True)
+        )
 
         # bibliography entries
         bib_entry_box_groups = self._get_box_groups(xml_root, "listBibl", "biblStruct")
-        doc.annotate(bib_entries=box_groups_to_span_groups(bib_entry_box_groups, doc, center=True))
+        doc.annotate(
+            bib_entries=box_groups_to_span_groups(
+                bib_entry_box_groups, doc, center=True
+            )
+        )
+
+        # citation mentions
+        citation_mention_box_groups = self._get_box_groups(
+            xml_root, "body", "ref", type_attr="bibr"
+        )
+        doc.annotate(
+            citation_mentions=box_groups_to_span_groups(
+                citation_mention_box_groups, doc, center=True
+            )
+        )
 
         return doc
 
@@ -83,11 +104,7 @@ class GrobidAugmentExistingDocumentParser(Parser):
             proper_page = int(pg) - 1
             boxes.append(
                 Box(
-                    l=float(x),
-                    t=float(y),
-                    w=float(w),
-                    h=float(h),
-                    page=proper_page
+                    l=float(x), t=float(y), w=float(w), h=float(h), page=proper_page
                 ).get_relative(*self.page_sizes[proper_page])
             )
         return boxes
@@ -97,19 +114,52 @@ class GrobidAugmentExistingDocumentParser(Parser):
         page_size_data = page_size_root.findall(".//tei:surface", NS)
         page_sizes = dict()
         for data in page_size_data:
-            page_sizes[int(data.attrib["n"]) - 1] = [float(data.attrib["lrx"]), float(data.attrib["lry"])]
+            page_sizes[int(data.attrib["n"]) - 1] = [
+                float(data.attrib["lrx"]),
+                float(data.attrib["lry"]),
+            ]
         self.page_sizes = page_sizes
         return page_sizes
 
-    def _get_box_groups(self, root: et.Element, list_tag: str, item_tag: str) -> List[BoxGroup]:
+    def _get_box_groups(
+        self,
+        root: et.Element,
+        list_tag: str,
+        item_tag: str,
+        type_attr: Optional[str] = None,
+    ) -> List[BoxGroup]:
         item_list_root = root.find(f".//tei:{list_tag}", NS)
 
         box_groups = []
-        elements = item_list_root.findall(f".//tei:{item_tag}", NS)
+        if type_attr:
+            elements = item_list_root.findall(
+                f".//tei:{item_tag}[@type='{type_attr}']", NS
+            )
+        else:
+            elements = item_list_root.findall(f".//tei:{item_tag}", NS)
+
         for e in elements:
             coords_string = e.attrib["coords"]
             boxes = self._xml_coords_to_boxes(coords_string)
 
-            box_groups.append(BoxGroup(boxes=boxes))
+            grobid_id = e.attrib[ID_ATTR_KEY] if ID_ATTR_KEY in e.keys() else None
+            target_id = e.attrib["target"][1:] if (item_tag == "ref" and "target" in e.keys()) else None
 
+            if grobid_id and target_id:
+                box_groups.append(
+                    BoxGroup(
+                        boxes=boxes,
+                        metadata=Metadata(grobid_id=grobid_id, target_id=target_id),
+                    )
+                )
+            elif grobid_id:
+                box_groups.append(
+                    BoxGroup(boxes=boxes, metadata=Metadata(grobid_id=grobid_id))
+                )
+            elif target_id:
+                box_groups.append(
+                    BoxGroup(boxes=boxes, metadata=Metadata(target_id=target_id))
+                )
+            else:
+                box_groups.append(BoxGroup(boxes=boxes))
         return box_groups
