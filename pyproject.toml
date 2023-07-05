@@ -110,6 +110,7 @@ bibentry_predictor_gpu = [
     'optimum[onnxruntime-gpu]',
 ]
 bibentry_detection_predictor = [
+    'Pillow<10',
     'layoutparser',
     'torch==1.8.0+cu111',
     'torchvision==0.9.0+cu111',
