@@ -22,6 +22,7 @@ import requests
 from joblib import load
 from scipy.sparse import hstack
 
+from mmda.parsers.pdfplumber_parser import PDFPlumberParser
 from mmda.predictors.heuristic_predictors.whitespace_predictor import (
     WhitespacePredictor,
 )
@@ -195,10 +196,18 @@ class SVMClassifier:
 
 
 class SVMWordPredictor(BaseSklearnPredictor):
-    def __init__(self, classifier: SVMClassifier, threshold: float = -1.5):
+    def __init__(
+        self,
+        classifier: SVMClassifier,
+        threshold: float = -1.5,
+        punct_as_words: str = PDFPlumberParser.DEFAULT_PUNCTUATION_CHARS.replace(
+            "-", ""
+        ),
+    ):
         self.classifier = classifier
         self.whitespace_predictor = WhitespacePredictor()
         self.threshold = threshold
+        self.punct_as_words = punct_as_words
 
     @classmethod
     def from_path(cls, tar_path: str):
@@ -211,11 +220,23 @@ class SVMWordPredictor(BaseSklearnPredictor):
         self._validate_tokenization(document=document)
 
         # initialize output data using whitespace tokenization
+        # also avoid grouping specific punctuation. each instance should be their own word.
         (
             token_id_to_word_id,
             word_id_to_token_ids,
             word_id_to_text,
         ) = self._predict_with_whitespace(document=document)
+
+        # split up words back into tokens based on punctuation
+        (
+            token_id_to_word_id,
+            word_id_to_token_ids,
+            word_id_to_text,
+        ) = self._keep_punct_as_words(
+            document=document,
+            word_id_to_token_ids=word_id_to_token_ids,
+            punct_as_words=self.punct_as_words,
+        )
 
         # get hyphen word candidates
         hyphen_word_candidates = self._find_hyphen_word_candidates(
@@ -337,6 +358,42 @@ class SVMWordPredictor(BaseSklearnPredictor):
                 document.tokens[token_id].text for token_id in token_ids
             )
         return token_id_to_word_id, word_id_to_token_ids, word_id_to_text
+
+    def _keep_punct_as_words(
+        self, document: Document, word_id_to_token_ids: Dict, punct_as_words: str
+    ):
+        # keep track of which tokens are punctuation
+        token_ids_are_punct = set()
+        for token_id, token in enumerate(document.tokens):
+            if token.text in punct_as_words:
+                token_ids_are_punct.add(token_id)
+        # re-cluster punctuation tokens into their own words
+        new_clusters = []
+        for old_cluster in word_id_to_token_ids.values():
+            new_cluster = []
+            for token_id in old_cluster:
+                if token_id in token_ids_are_punct:
+                    new_clusters.append([token_id])
+                else:
+                    new_cluster.append(token_id)
+            if new_cluster:
+                new_clusters.append(new_cluster)
+        # reorder
+        new_clusters = sorted(new_clusters, key=lambda x: min(x))
+        # reassign word ids
+        new_token_id_to_word_id = {}
+        new_word_id_to_token_ids = defaultdict(list)
+        for word_id, token_ids_in_cluster in enumerate(new_clusters):
+            for token_id in token_ids_in_cluster:
+                new_token_id_to_word_id[token_id] = word_id
+                new_word_id_to_token_ids[word_id].append(token_id)
+        # get word strings
+        new_word_id_to_text = {}
+        for word_id, token_ids in new_word_id_to_token_ids.items():
+            new_word_id_to_text[word_id] = "".join(
+                document.tokens[token_id].text for token_id in token_ids
+            )
+        return new_token_id_to_word_id, new_word_id_to_token_ids, new_word_id_to_text
 
     def _find_hyphen_word_candidates(
         self,

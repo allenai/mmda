@@ -170,10 +170,10 @@ class TestSVMWordPredictor(unittest.TestCase):
             }
         )
         words = self.predictor.predict(document=doc)
-        self.assertEqual(len(words), 4)
+        self.assertEqual(len(words), 5)
         doc.annotate(words=words)
         self.assertListEqual(
-            [w.text for w in words], ["I", "am", "the", "wizard-of-oz."]
+            [w.text for w in words], ["I", "am", "the", "wizard-of-oz", "."]
         )
 
     def test_predict(self):
@@ -212,6 +212,11 @@ class TestSVMWordPredictor(unittest.TestCase):
         # for word in self.doc.words:
         #     token_text = str([t.text for t in word.tokens])
         #     if len(word.tokens) > 1 and "-" in token_text:
+        #         print(f"{token_text}\t-->\t{word.text}")
+
+        # for word in self.doc.words:
+        #     token_text = str([t.text for t in word.tokens])
+        #     if len(word.tokens) > 1 and "." in token_text:
         #         print(f"{token_text}\t-->\t{word.text}")
 
     def test_validate_tokenization(self):
@@ -318,3 +323,106 @@ class TestSVMWordPredictor(unittest.TestCase):
             prefix_word = word_id_to_text[prefix_word_id]
             suffix_word = word_id_to_text[suffix_word_id]
             self.assertTrue("-" in prefix_word + suffix_word)
+
+    def test_keep_punct_as_words(self):
+        doc = Document.from_json(
+            doc_dict={
+                "symbols": "I am, !the@ wiz ard-of-oz.",
+                "tokens": [
+                    {"id": 0, "spans": [{"start": 0, "end": 1}]},
+                    {"id": 1, "spans": [{"start": 2, "end": 4}]},
+                    {"id": 2, "spans": [{"start": 4, "end": 5}]},
+                    {"id": 3, "spans": [{"start": 6, "end": 7}]},
+                    {"id": 4, "spans": [{"start": 7, "end": 10}]},
+                    {"id": 5, "spans": [{"start": 10, "end": 11}]},
+                    {"id": 6, "spans": [{"start": 12, "end": 15}]},
+                    {"id": 7, "spans": [{"start": 16, "end": 19}]},
+                    {"id": 8, "spans": [{"start": 19, "end": 20}]},
+                    {"id": 9, "spans": [{"start": 20, "end": 22}]},
+                    {"id": 10, "spans": [{"start": 22, "end": 23}]},
+                    {"id": 11, "spans": [{"start": 23, "end": 25}]},
+                    {"id": 12, "spans": [{"start": 25, "end": 26}]},
+                ],
+            }
+        )
+        # stuff as it comes out of whitespace tokenization
+        token_id_to_word_id = {
+            0: 0,
+            1: 1,
+            2: 1,
+            3: 2,
+            4: 2,
+            5: 2,
+            6: 3,
+            7: 4,
+            8: 4,
+            9: 4,
+            10: 4,
+            11: 4,
+            12: 4,
+        }
+        word_id_to_token_ids = {
+            0: [0],
+            1: [1, 2],
+            2: [3, 4, 5],
+            3: [6],
+            4: [7, 8, 9, 10, 11, 12],
+        }
+        word_id_to_text = {0: "I", 1: "am,", 2: "!the@", 3: "wiz", 4: "ard-of-oz."}
+
+        # test that punctuation is kept as its own word, except for ones like hyphens
+        (
+            token_id_to_word_id,
+            word_id_to_token_ids,
+            word_id_to_text,
+        ) = self.predictor._keep_punct_as_words(
+            document=doc,
+            word_id_to_token_ids=word_id_to_token_ids,
+            punct_as_words=",!@.",  # not including hyphens
+        )
+        self.assertDictEqual(
+            token_id_to_word_id,
+            {
+                0: 0,
+                1: 1,
+                2: 2,
+                3: 3,
+                4: 4,
+                5: 5,
+                6: 6,
+                7: 7,
+                8: 7,
+                9: 7,
+                10: 7,
+                11: 7,
+                12: 8,
+            },
+        )
+        self.assertDictEqual(
+            word_id_to_token_ids,
+            {
+                0: [0],
+                1: [1],
+                2: [2],
+                3: [3],
+                4: [4],
+                5: [5],
+                6: [6],
+                7: [7, 8, 9, 10, 11],
+                8: [12],
+            },
+        )
+        self.assertDictEqual(
+            word_id_to_text,
+            {
+                0: "I",
+                1: "am",
+                2: ",",
+                3: "!",
+                4: "the",
+                5: "@",
+                6: "wiz",
+                7: "ard-of-oz",
+                8: ".",
+            },
+        )
