@@ -1,6 +1,8 @@
 """
 
+A Box on a page. Can be in relative or absolute coordinates.
 
+@kylel
 
 """
 

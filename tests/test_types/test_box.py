@@ -44,12 +44,23 @@ class TestBox(unittest.TestCase):
         self.assertListEqual(mmda_box.Box.cluster_boxes(boxes), [[0], [1, 2]])
 
     def test_create_invalid_box(self):
+        # relative coordinate box
         box = mmda_box.Box(l=0.7, t=0.4, w=0.3, h=0.6, page=0)
-        with self.assertRaises(ValueError):
-            box = mmda_box.Box(l=0.7 + 0.0000001, t=0.2, w=0.3, h=0.4, page=0)
-            box = mmda_box.Box(l=0.7, t=0.4, w=0.3, h=0.6 + 0.000001, page=0)
+        # absolute coordinate box (larger than 1.0)
+        box = mmda_box.Box(l=0.7 + 0.0000001, t=0.2, w=0.3, h=0.4, page=0)
+        box = mmda_box.Box(l=0.7, t=0.4, w=0.3, h=0.6 + 0.000001, page=0)
+        # negative page
         with self.assertRaises(ValueError):
             box = mmda_box.Box(l=0.7, t=0.4, w=0.3, h=0.6, page=-1)
+        # negative coordinates
+        with self.assertRaises(ValueError):
+            box = mmda_box.Box(l=-0.1, t=0.4, w=0.3, h=0.6, page=0)
+        with self.assertRaises(ValueError):
+            box = mmda_box.Box(l=0.7, t=-0.1, w=0.3, h=0.6, page=0)
+        with self.assertRaises(ValueError):
+            box = mmda_box.Box(l=0.7, t=0.4, w=-0.1, h=0.6, page=0)
+        with self.assertRaises(ValueError):
+            box = mmda_box.Box(l=0.7, t=0.4, w=0.3, h=-0.1, page=0)
 
     def test_shrink(self):
         # usual
