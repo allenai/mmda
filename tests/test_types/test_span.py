@@ -19,18 +19,15 @@ class TestSpan(unittest.TestCase):
             },
         }
 
-    def test_from_json(self):
+    def test_to_from_json(self):
         self.assertEqual(
-            self.span.from_json(self.span_dict),
+            self.span.from_json(self.span_dict).to_json(),
             mmda_span.Span(
                 start=0,
                 end=8,
                 box=mmda_box.Box(l=0.2, t=0.09, w=0.095, h=0.017, page=0),
-            ),
+            ).to_json(),
         )
-
-    def test_to_json(self):
-        self.assertEqual(self.span.from_json(self.span_dict).to_json(), self.span_dict)
 
     def test_is_overlap(self):
         span1 = mmda_span.Span(start=0, end=8)
@@ -46,14 +43,14 @@ class TestSpan(unittest.TestCase):
         span5 = mmda_span.Span(start=10, end=12)
         self.assertFalse(span1.is_overlap(span5))
 
-    def small_spans_to_big_span(self):
+    def test_small_spans_to_big_span(self):
         spans = [
             mmda_span.Span(start=0, end=8),
             mmda_span.Span(start=8, end=16),
             mmda_span.Span(start=16, end=24),
         ]
         self.assertEqual(
-            self.span.small_spans_to_big_span(spans),
+            self.span.small_spans_to_big_span(spans=spans, merge_boxes=False),
             mmda_span.Span(start=0, end=24),
         )
 
@@ -64,7 +61,7 @@ class TestSpan(unittest.TestCase):
             mmda_span.Span(start=0, end=8),
             mmda_span.Span(start=0, end=8),
         ]
-        self.assertListEqual(mmda_span.Span.cluster_spans(spans), [[0, 1, 2]])
+        self.assertListEqual(mmda_span.Span.cluster_spans(spans=spans), [[0, 1, 2]])
 
         # non-overlapping spans
         spans = [
