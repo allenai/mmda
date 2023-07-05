@@ -19,7 +19,7 @@ class TestPDFPlumberParser(unittest.TestCase):
     def setUp(cls) -> None:
         cls.fixture_path = pathlib.Path(__file__).parent.parent / "fixtures"
 
-    '''
+    """
     def test_parse(self):
         parser = PDFPlumberParser()
         doc = parser.parse(input_pdf_path=self.fixture_path / "1903.10676.pdf")
@@ -207,7 +207,7 @@ class TestPDFPlumberParser(unittest.TestCase):
             "abc\nd ef",
             "gh i\njkl",
         ]
-    '''
+    """
 
     def test_parser_stability(self):
         """
@@ -223,15 +223,25 @@ class TestPDFPlumberParser(unittest.TestCase):
 
         parser = PDFPlumberParser()
 
-        current_doc = parser.parse(input_pdf_path=self.fixture_path / "4be952924cd565488b4a239dc6549095029ee578.pdf")
+        current_doc = parser.parse(
+            input_pdf_path=self.fixture_path
+            / "4be952924cd565488b4a239dc6549095029ee578.pdf"
+        )
 
-        with open(self.fixture_path / "4be952924cd565488b4a239dc6549095029ee578__pdfplumber_doc.json", "r") as f:
+        with open(
+            self.fixture_path
+            / "4be952924cd565488b4a239dc6549095029ee578__pdfplumber_doc.json",
+            "r",
+        ) as f:
             raw_json = f.read()
             fixture_doc_json = json.loads(raw_json)
             fixture_doc = Document.from_json(fixture_doc_json)
 
-
-        self.assertEqual(current_doc.symbols, fixture_doc.symbols, msg="Current parse has extracted different text from pdf.")
+        self.assertEqual(
+            current_doc.symbols,
+            fixture_doc.symbols,
+            msg="Current parse has extracted different text from pdf.",
+        )
 
         def compare_span_groups(current_doc_sgs, fixture_doc_sgs, annotation_name):
             current_doc_sgs_simplified = [
@@ -244,17 +254,23 @@ class TestPDFPlumberParser(unittest.TestCase):
             self.assertEqual(
                 current_doc_sgs_simplified,
                 fixture_doc_sgs_simplified,
-                msg=f"Current parse produces different SpanGroups for `{annotation_name}`"
+                msg=f"Current parse produces different SpanGroups for `{annotation_name}`",
             )
 
-            current_doc_sg_boxes = [[list(s.box.xywh) + [s.box.page] for s in sg] for sg in current_doc_sgs]
-            fixture_doc_sg_boxes = [[list(s.box.xywh) + [s.box.page] for s in sg] for sg in current_doc_sgs]
+            current_doc_sg_boxes = [
+                [list(s.box.coordinates) + [s.box.page] for s in sg]
+                for sg in current_doc_sgs
+            ]
+            fixture_doc_sg_boxes = [
+                [list(s.box.coordinates) + [s.box.page] for s in sg]
+                for sg in current_doc_sgs
+            ]
 
             self.assertAlmostEqual(
                 current_doc_sg_boxes,
                 fixture_doc_sg_boxes,
                 places=3,
-                msg=f"Boxes generated for `{annotation_name}` have changed."
+                msg=f"Boxes generated for `{annotation_name}` have changed.",
             )
 
         compare_span_groups(current_doc.tokens, fixture_doc.tokens, "tokens")
