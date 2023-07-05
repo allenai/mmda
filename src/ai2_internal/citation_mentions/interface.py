@@ -63,8 +63,10 @@ class Predictor:
         doc.annotate(tokens=[sg.to_mmda() for sg in inst.tokens])
         doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
 
-        prediction = self._predictor.predict(doc)
-        return Prediction(mentions=[api.SpanGroup.from_mmda(sg) for sg in prediction])
+        prediction_span_groups = self._predictor.predict(doc)
+        doc.annotate(citation_mentions=prediction_span_groups)
+
+        return Prediction(mentions=[api.SpanGroup.from_mmda(sg) for sg in doc.citation_mentions])
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
         """

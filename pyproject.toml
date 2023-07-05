@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.4.7'
+version = '0.7.0'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -14,7 +14,7 @@ dependencies = [
         'pdfplumber==0.7.4',
         'requests',
         'pandas<2',
-        'pydantic',
+        'pydantic<2',
         'ncls==0.0.66',
         'necessary>=0.3.2',
 ]
@@ -42,6 +42,7 @@ ai2_internal = [
     './bibentry_predictor_mmda/data/*',
     './citation_mentions/data/*',
     './vila/test_fixtures/*',
+    './dwp_heuristic/test_fixtures/*',
     './figure_table_predictors/test_fixtures/*',
     './figure_table_predictors/test_fixtures.images/*',
     './shared_test_fixtures/*',
@@ -127,6 +128,12 @@ section_nesting = [
 figure_table_predictors = [
     'scipy',
 ]
+svm_word_predictor = [
+    'scikit-learn',
+    'scipy',
+    'numpy',
+    'tokenizers'
+]
 recipes = [
     'layoutparser',
     'transformers',
@@ -134,7 +141,11 @@ recipes = [
     'torchvision',
     'effdet',
     'vila>=0.5,<0.6',
-    'smashed==0.1.10'
+    'smashed==0.1.10',
+    'scikit-learn',
+    'scipy',
+    'numpy',
+    'tokenizers'
 ]
 
 

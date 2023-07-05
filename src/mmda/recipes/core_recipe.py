@@ -10,13 +10,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 from mmda.parsers.pdfplumber_parser import PDFPlumberParser
-from mmda.predictors.heuristic_predictors.dictionary_word_predictor import (
-    DictionaryWordPredictor,
-)
 from mmda.predictors.hf_predictors.token_classification_predictor import (
     IVILATokenClassificationPredictor,
 )
 from mmda.predictors.lp_predictors import LayoutParserPredictor
+from mmda.predictors.sklearn_predictors.svm_word_predictor import SVMWordPredictor
 from mmda.rasterizers.rasterizer import PDF2ImageRasterizer
 from mmda.recipes.recipe import Recipe
 from mmda.types import *
@@ -28,11 +26,12 @@ class CoreRecipe(Recipe):
         effdet_publaynet_predictor_path: str = "lp://efficientdet/PubLayNet",
         effdet_mfd_predictor_path: str = "lp://efficientdet/MFD",
         vila_predictor_path: str = "allenai/ivila-row-layoutlm-finetuned-s2vl-v2",
+        svm_word_predictor_path: str = "https://ai2-s2-research-public.s3.us-west-2.amazonaws.com/mmda/models/svm_word_predictor.tar.gz",
     ):
         logger.info("Instantiating recipe...")
         self.parser = PDFPlumberParser()
         self.rasterizer = PDF2ImageRasterizer()
-        self.word_predictor = DictionaryWordPredictor()
+        self.word_predictor = SVMWordPredictor.from_path(svm_word_predictor_path)
         self.effdet_publaynet_predictor = LayoutParserPredictor.from_pretrained(
             effdet_publaynet_predictor_path
         )

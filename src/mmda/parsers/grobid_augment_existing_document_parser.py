@@ -4,20 +4,24 @@
 
 """
 from grobid_client.grobid_client import GrobidClient
-from typing import Optional, List
+from typing import List, Optional
 
 import os
 import xml.etree.ElementTree as et
 
 from mmda.parsers.parser import Parser
 from mmda.types import Metadata
-from mmda.types.annotation import BoxGroup, Box
+from mmda.types.annotation import BoxGroup, Box, SpanGroup
 from mmda.types.document import Document
 from mmda.types.names import PagesField, RowsField, TokensField
 from mmda.utils.tools import box_groups_to_span_groups
 
 REQUIRED_DOCUMENT_FIELDS = [PagesField, RowsField, TokensField]
-NS = {"tei": "http://www.tei-c.org/ns/1.0"}
+NS = {
+    "tei": "http://www.tei-c.org/ns/1.0",
+    "xml": "http://www.w3.org/XML/1998/namespace",
+}
+ID_ATTR_KEY = f"{{{NS['xml']}}}id"
 
 
 class GrobidAugmentExistingDocumentParser(Parser):
@@ -34,28 +38,29 @@ class GrobidAugmentExistingDocumentParser(Parser):
 
         self.client = GrobidClient(config_path=config_path, check_server=check_server)
 
-
     def parse(self, input_pdf_path: str, doc: Document, xml_out_dir: Optional[str] = None) -> Document:
-        
+
         assert doc.symbols != ""
         for field in REQUIRED_DOCUMENT_FIELDS:
             assert field in doc.fields
 
         (_, _, xml) = self.client.process_pdf(
-                "processFulltextDocument",
-                input_pdf_path,
-                generateIDs=False,
-                consolidate_header=False,
-                consolidate_citations=False,
-                include_raw_citations=False,
-                include_raw_affiliations=False,
-                tei_coordinates=True,
-                segment_sentences=True
-            )
+            "processFulltextDocument",
+            input_pdf_path,
+            generateIDs=False,
+            consolidate_header=False,
+            consolidate_citations=False,
+            include_raw_citations=False,
+            include_raw_affiliations=False,
+            tei_coordinates=True,
+            segment_sentences=True
+        )
         if xml_out_dir:
             os.makedirs(xml_out_dir, exist_ok=True)
-            xmlfile = os.path.join(xml_out_dir, os.path.basename(input_pdf_path).replace('.pdf', '.xml'))
-            with open(xmlfile, 'w') as f_out:
+            xmlfile = os.path.join(
+                xml_out_dir, os.path.basename(input_pdf_path).replace(".pdf", ".xml")
+            )
+            with open(xmlfile, "w") as f_out:
                 f_out.write(xml)
 
         self._parse_xml_onto_doc(xml, doc)
@@ -63,21 +68,35 @@ class GrobidAugmentExistingDocumentParser(Parser):
 
     def _parse_xml_onto_doc(self, xml: str, doc: Document) -> Document:
         xml_root = et.fromstring(xml)
+        self._cache_page_sizes(xml_root)
 
-        bib_entry_box_groups = self._get_grobid_bib_box_groups(xml_root)
-
-        # get nice SpanGroups from tokens whose centers overlap with the Grobid box
-        bib_entry_span_groups = box_groups_to_span_groups(bib_entry_box_groups, doc, center=True)
-
-        # note for if/when adding in relations between mention sources and bib targets:
-        # big_entries metadata contains original grobid id attached to the BoxGroup.
+        # authors
+        author_box_groups = self._get_box_groups(xml_root, "sourceDesc", "persName")
         doc.annotate(
-            bib_entries=bib_entry_span_groups
+            authors=box_groups_to_span_groups(author_box_groups, doc, center=True)
+        )
+
+        # bibliography entries
+        bib_entry_box_groups = self._get_box_groups(xml_root, "listBibl", "biblStruct")
+        doc.annotate(
+            bib_entries=box_groups_to_span_groups(
+                bib_entry_box_groups, doc, center=True
             )
+        )
+
+        # citation mentions
+        citation_mention_box_groups = self._get_box_groups(
+            xml_root, "body", "ref", type_attr="bibr"
+        )
+        doc.annotate(
+            citation_mentions=box_groups_to_span_groups(
+                citation_mention_box_groups, doc, center=True
+            )
+        )
 
         return doc
 
-    def _xml_coords_to_boxes(self, coords_attribute: str, page_sizes: dict):
+    def _xml_coords_to_boxes(self, coords_attribute: str):
         coords_list = coords_attribute.split(";")
         boxes = []
         for coords in coords_list:
@@ -85,37 +104,62 @@ class GrobidAugmentExistingDocumentParser(Parser):
             proper_page = int(pg) - 1
             boxes.append(
                 Box(
-                    l=float(x), 
-                    t=float(y), 
-                    w=float(w), 
-                    h=float(h), 
-                    page=proper_page
-                ).get_relative(*page_sizes[proper_page])
+                    l=float(x), t=float(y), w=float(w), h=float(h), page=proper_page
+                ).get_relative(*self.page_sizes[proper_page])
             )
         return boxes
 
-    def _get_grobid_bib_box_groups(self, root: et.Element) -> List[BoxGroup]:
-        bib_list_root = root.find(".//tei:listBibl", NS)
-
+    def _cache_page_sizes(self, root: et.Element):
         page_size_root = root.find(".//tei:facsimile", NS)
         page_size_data = page_size_root.findall(".//tei:surface", NS)
         page_sizes = dict()
         for data in page_size_data:
-            page_sizes[int(data.attrib["n"]) - 1] = [float(data.attrib["lrx"]), float(data.attrib["lry"])]
-        
-        grobid_bibs = []
-        bib_structs = bib_list_root.findall(".//tei:biblStruct", NS)
-        for bib in bib_structs:
-            coords_string = bib.attrib["coords"]
-            boxes = self._xml_coords_to_boxes(coords_string, page_sizes)
-            grobid_id = bib.attrib["{http://www.w3.org/XML/1998/namespace}id"]
+            page_sizes[int(data.attrib["n"]) - 1] = [
+                float(data.attrib["lrx"]),
+                float(data.attrib["lry"]),
+            ]
+        self.page_sizes = page_sizes
+        return page_sizes
 
-            grobid_bibs.append(
-                BoxGroup(
-                boxes=boxes, 
-                metadata=Metadata(grobid_id=grobid_id)
-                )
+    def _get_box_groups(
+        self,
+        root: et.Element,
+        list_tag: str,
+        item_tag: str,
+        type_attr: Optional[str] = None,
+    ) -> List[BoxGroup]:
+        item_list_root = root.find(f".//tei:{list_tag}", NS)
+
+        box_groups = []
+        if type_attr:
+            elements = item_list_root.findall(
+                f".//tei:{item_tag}[@type='{type_attr}']", NS
             )
+        else:
+            elements = item_list_root.findall(f".//tei:{item_tag}", NS)
 
-        return grobid_bibs
-    
+        for e in elements:
+            coords_string = e.attrib["coords"]
+            boxes = self._xml_coords_to_boxes(coords_string)
+
+            grobid_id = e.attrib[ID_ATTR_KEY] if ID_ATTR_KEY in e.keys() else None
+            target_id = e.attrib["target"][1:] if (item_tag == "ref" and "target" in e.keys()) else None
+
+            if grobid_id and target_id:
+                box_groups.append(
+                    BoxGroup(
+                        boxes=boxes,
+                        metadata=Metadata(grobid_id=grobid_id, target_id=target_id),
+                    )
+                )
+            elif grobid_id:
+                box_groups.append(
+                    BoxGroup(boxes=boxes, metadata=Metadata(grobid_id=grobid_id))
+                )
+            elif target_id:
+                box_groups.append(
+                    BoxGroup(boxes=boxes, metadata=Metadata(target_id=target_id))
+                )
+            else:
+                box_groups.append(BoxGroup(boxes=boxes))
+        return box_groups

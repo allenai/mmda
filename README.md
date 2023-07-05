@@ -6,6 +6,7 @@ This is work in progress...
 
 ```bash
 conda create -n mmda python=3.8
+conda activate mmda
 pip install -e '.[dev,<extras_require section from setup.py>]'
 ```
 
