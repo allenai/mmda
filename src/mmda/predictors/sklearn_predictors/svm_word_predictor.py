@@ -82,21 +82,25 @@ class SVMClassifier:
                 tar_path = os.path.join(tmp_dir, "svm_word_predictor.tar.gz")
             with tarfile.open(tar_path, "r:gz") as tar:
                 tar.extractall(path=tmp_dir)
-                classifier = SVMClassifier.from_paths(
-                    ohe_encoder_path=os.path.join(
-                        tmp_dir, "svm_word_predictor/ohencoder.joblib"
-                    ),
-                    scaler_path=os.path.join(
-                        tmp_dir, "svm_word_predictor/scaler.joblib"
-                    ),
-                    estimator_path=os.path.join(
-                        tmp_dir, "svm_word_predictor/hyphen_clf.joblib"
-                    ),
-                    unigram_probs_path=os.path.join(
-                        tmp_dir, "svm_word_predictor/unigram_probs.pkl"
-                    ),
-                )
-                return classifier
+                return cls.from_directory(tmp_dir)
+
+    @classmethod
+    def from_directory(cls, dir: str):
+        classifier = SVMClassifier.from_paths(
+            ohe_encoder_path=os.path.join(
+                dir, "svm_word_predictor/ohencoder.joblib"
+            ),
+            scaler_path=os.path.join(
+                dir, "svm_word_predictor/scaler.joblib"
+            ),
+            estimator_path=os.path.join(
+                dir, "svm_word_predictor/hyphen_clf.joblib"
+            ),
+            unigram_probs_path=os.path.join(
+                dir, "svm_word_predictor/unigram_probs.pkl"
+            ),
+        )
+        return classifier
 
     @classmethod
     def from_paths(
@@ -213,6 +217,12 @@ class SVMWordPredictor(BaseSklearnPredictor):
     def from_path(cls, tar_path: str):
         classifier = SVMClassifier.from_path(tar_path=tar_path)
         predictor = SVMWordPredictor(classifier=classifier)
+        return predictor
+
+    @classmethod
+    def from_directory(cls, dir: str, threshold: float = -1.5):
+        classifier = SVMClassifier.from_directory(dir=dir)
+        predictor = SVMWordPredictor(classifier=classifier, threshold=threshold)
         return predictor
 
     def predict(self, document: Document) -> List[SpanGroup]:
