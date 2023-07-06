@@ -14,7 +14,7 @@ from mmda.types.image import PILImage
 from mmda.types.indexers import Indexer, SpanGroupIndexer
 from mmda.types.metadata import Metadata
 from mmda.types.names import ImagesField, MetadataField, SymbolsField
-from mmda.utils.tools import box_groups_to_span_groups
+from mmda.utils.tools import MergeSpans, allocate_overlapping_tokens_for_box, box_groups_to_span_groups
 
 
 class Document:
@@ -46,7 +46,7 @@ class Document:
             self.metadata.set(k, value)
 
     def annotate(
-        self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
+            self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
     ) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
@@ -54,7 +54,7 @@ class Document:
         # 1) check validity of field names
         for field_name in kwargs.keys():
             assert (
-                field_name not in self.SPECIAL_FIELDS
+                    field_name not in self.SPECIAL_FIELDS
             ), f"The field_name {field_name} should not be in {self.SPECIAL_FIELDS}."
 
             if field_name in self.fields:
@@ -83,7 +83,7 @@ class Document:
 
             annotation_types = {type(a) for a in annotations}
             assert (
-                len(annotation_types) == 1
+                    len(annotation_types) == 1
             ), f"Annotations in field_name {field_name} more than 1 type: {annotation_types}"
             annotation_type = annotation_types.pop()
 
@@ -94,8 +94,7 @@ class Document:
             elif annotation_type == BoxGroup:
                 # TODO: not good. BoxGroups should be stored on their own, not auto-generating SpanGroups.
                 span_groups = self._annotate_span_group(
-                    span_groups=box_groups_to_span_groups(annotations, self),
-                    field_name=field_name,
+                    span_groups=box_groups_to_span_groups(annotations, self), field_name=field_name
                 )
             else:
                 raise NotImplementedError(
@@ -112,7 +111,7 @@ class Document:
         del self.__indexers[field_name]
 
     def annotate_images(
-        self, images: Iterable[PILImage], is_overwrite: bool = False
+            self, images: Iterable[PILImage], is_overwrite: bool = False
     ) -> None:
         if not is_overwrite and len(self.images) > 0:
             raise AssertionError(
@@ -134,7 +133,7 @@ class Document:
         self.images = images
 
     def _annotate_span_group(
-        self, span_groups: List[SpanGroup], field_name: str
+            self, span_groups: List[SpanGroup], field_name: str
     ) -> List[SpanGroup]:
         """Annotate the Document using a bunch of span groups.
         It will associate the annotations with the document symbols.
