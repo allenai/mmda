@@ -20,11 +20,7 @@ fixture_path = pathlib.Path(__file__).parent.parent / "fixtures" / "utils"
 
 class TestMergeNeighborSpans(unittest.TestCase):
     def test_merge_multiple_neighbor_spans(self):
-        spans = [
-            Span(start=0, end=10, box=Box(l=1.0, t=2.0, w=3.0, h=4.0, page=0)),
-            Span(start=11, end=20, box=Box(l=5.0, t=6.0, w=7.0, h=8.0, page=0)),
-            Span(start=21, end=30, box=Box(l=9.0, t=10.0, w=11.0, h=12.0, page=0)),
-        ]
+        spans = [Span(start=0, end=10), Span(start=11, end=20), Span(start=21, end=30)]
         merge_spans = MergeSpans(list_of_spans=spans, index_distance=1)
         out = merge_spans.merge_neighbor_spans_by_symbol_distance()
         assert len(out) == 1
@@ -33,33 +29,18 @@ class TestMergeNeighborSpans(unittest.TestCase):
         assert out[0].end == 30
 
     def test_different_index_distances(self):
-        spans = [
-            Span(start=0, end=10, box=Box(l=1.0, t=2.0, w=3.0, h=4.0, page=0)),
-            Span(start=15, end=20, box=Box(l=5.0, t=6.0, w=7.0, h=8.0, page=0)),
-        ]
+        spans = [Span(start=0, end=10), Span(start=15, end=20)]
         merge_spans = MergeSpans(list_of_spans=spans, index_distance=1)
         out = merge_spans.merge_neighbor_spans_by_symbol_distance()
-        # no merge happened
-        for s1, s2 in zip(spans, out):
-            assert s1.start == s2.start
-            assert s1.end == s2.end
-            assert s1.box.coordinates == s2.box.coordinates
+        assert out == spans  # no merge happened
 
         merge_spans = MergeSpans(list_of_spans=spans, index_distance=2)
         out = merge_spans.merge_neighbor_spans_by_symbol_distance()
-        # no merge happened
-        for s1, s2 in zip(spans, out):
-            assert s1.start == s2.start
-            assert s1.end == s2.end
-            assert s1.box.coordinates == s2.box.coordinates
+        assert out == spans  # no merge happened
 
         merge_spans = MergeSpans(list_of_spans=spans, index_distance=4)
         out = merge_spans.merge_neighbor_spans_by_symbol_distance()
-        # no merge happened
-        for s1, s2 in zip(spans, out):
-            assert s1.start == s2.start
-            assert s1.end == s2.end
-            assert s1.box.coordinates == s2.box.coordinates
+        assert out == spans  # no merge happened
 
         merge_spans = MergeSpans(list_of_spans=spans, index_distance=5)
         out = merge_spans.merge_neighbor_spans_by_symbol_distance()
@@ -69,10 +50,7 @@ class TestMergeNeighborSpans(unittest.TestCase):
         assert out[0].end == 20
 
     def test_zero_index_distance(self):
-        spans = [
-            Span(start=0, end=10, box=Box(l=1.0, t=2.0, w=3.0, h=4.0, page=0)),
-            Span(start=10, end=20, box=Box(l=5.0, t=6.0, w=7.0, h=8.0, page=0)),
-        ]
+        spans = [Span(start=0, end=10), Span(start=10, end=20)]
         out = MergeSpans(
             list_of_spans=spans, index_distance=0
         ).merge_neighbor_spans_by_symbol_distance()
