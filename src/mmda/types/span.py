@@ -41,8 +41,7 @@ class Span:
     def small_spans_to_big_span(
         cls, spans: List["Span"], merge_boxes: bool = True
     ) -> "Span":
-        # TODO: add warning for unsorted spans or not-contiguous spans
-        # TODO: what happens when Boxes cant be merged?
+        # TODO: add warning for non-contiguous spans?
         start = spans[0].start
         end = spans[0].end
         for span in spans[1:]:
@@ -50,7 +49,7 @@ class Span:
                 start = span.start
             if span.end > end:
                 end = span.end
-        if merge_boxes:
+        if merge_boxes and all(span.box for span in spans):
             new_box = Box.small_boxes_to_big_box(boxes=[span.box for span in spans])
         else:
             new_box = None

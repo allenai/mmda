@@ -5,9 +5,9 @@ from mmda.types import span as mmda_span
 
 
 class TestSpan(unittest.TestCase):
-    def setUp(cls):
-        cls.span = mmda_span.Span(start=0, end=0)
-        cls.span_dict = {
+    def test_to_from_json(self):
+        span = mmda_span.Span(start=0, end=0)
+        span_dict = {
             "start": 0,
             "end": 8,
             "box": {
@@ -18,10 +18,8 @@ class TestSpan(unittest.TestCase):
                 "page": 0,
             },
         }
-
-    def test_to_from_json(self):
         self.assertEqual(
-            self.span.from_json(self.span_dict).to_json(),
+            span.from_json(span_dict).to_json(),
             mmda_span.Span(
                 start=0,
                 end=8,
@@ -50,7 +48,33 @@ class TestSpan(unittest.TestCase):
             mmda_span.Span(start=16, end=24),
         ]
         self.assertEqual(
-            self.span.small_spans_to_big_span(spans=spans, merge_boxes=False),
+            mmda_span.Span.small_spans_to_big_span(spans=spans, merge_boxes=False),
+            mmda_span.Span(start=0, end=24),
+        )
+        # if no boxes, should still work
+        self.assertEqual(
+            mmda_span.Span.small_spans_to_big_span(spans=spans, merge_boxes=True),
+            mmda_span.Span(start=0, end=24),
+        )
+
+    def test_small_spans_to_big_span_unsorted(self):
+        spans = [
+            mmda_span.Span(start=8, end=16),
+            mmda_span.Span(start=0, end=8),
+            mmda_span.Span(start=16, end=24),
+        ]
+        self.assertEqual(
+            mmda_span.Span.small_spans_to_big_span(spans=spans),
+            mmda_span.Span(start=0, end=24),
+        )
+
+        spans = [
+            mmda_span.Span(start=16, end=24),
+            mmda_span.Span(start=8, end=16),
+            mmda_span.Span(start=0, end=8),
+        ]
+        self.assertEqual(
+            mmda_span.Span.small_spans_to_big_span(spans=spans),
             mmda_span.Span(start=0, end=24),
         )
 
