@@ -60,9 +60,6 @@ class Span:
             box=new_box,
         )
 
-    def is_overlap(self, other: "Span") -> bool:
-        return self.start < other.end and other.start < self.end
-
     @classmethod
     def cluster_spans(cls, spans: List["Span"]) -> List[List[int]]:
         """
