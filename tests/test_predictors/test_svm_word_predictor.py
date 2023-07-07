@@ -12,9 +12,7 @@ from typing import List, Optional, Set
 import numpy as np
 
 from mmda.predictors.sklearn_predictors.svm_word_predictor import (
-    SVMClassifier,
-    SVMWordPredictor,
-)
+    SVMClassifier, SVMWordPredictor)
 from mmda.types import Document, Span, SpanGroup
 
 
@@ -426,3 +424,31 @@ class TestSVMWordPredictor(unittest.TestCase):
                 8: ".",
             },
         )
+
+    def test_works_with_newlines(self):
+        doc = Document.from_json(
+            doc_dict={
+                "symbols": "I am\nthe wizard-\nof-oz.",
+                "tokens": [
+                    {"id": 0, "spans": [{"start": 0, "end": 1}]},
+                    {"id": 1, "spans": [{"start": 2, "end": 4}]},
+                    {"id": 2, "spans": [{"start": 5, "end": 8}]},
+                    {"id": 3, "spans": [{"start": 9, "end": 15}]},
+                    {"id": 4, "spans": [{"start": 15, "end": 16}]},
+                    {"id": 5, "spans": [{"start": 17, "end": 19}]},
+                    {"id": 6, "spans": [{"start": 19, "end": 20}]},
+                    {"id": 7, "spans": [{"start": 20, "end": 22}]},
+                    {"id": 8, "spans": [{"start": 22, "end": 23}]},
+                ],
+            }
+        )
+        words = self.predictor.predict(doc=doc)
+        self.assertLess(len(words), len(doc.tokens))
+        doc.annotate(words=words)
+        self.assertDictEqual(doc.tokens[0].spans, doc.words[0].spans)  # I
+        self.assertDictEqual(doc.tokens[1].spans, doc.words[1].spans)  # am
+        self.assertDictEqual(doc.tokens[2].spans, doc.words[2].spans)  # the
+        self.assertDictEqual(doc.tokens[8].spans, doc.words[4].spans)  # .
+        # wizard-of-oz
+        self.assertEqual(doc.words[3].spans, [Span(start=9, end=22, box=None)])
+        self.assertEqual(doc.words[3].text, "wizard-of-oz")
