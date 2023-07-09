@@ -487,13 +487,13 @@ class TestSVMWordPredictor(unittest.TestCase):
                 ],
             }
         )
-        words = self.predictor.predict(doc=doc)
+        words = self.predictor.predict(document=doc)
         self.assertLess(len(words), len(doc.tokens))
         doc.annotate(words=words)
-        self.assertDictEqual(doc.tokens[0].spans, doc.words[0].spans)  # I
-        self.assertDictEqual(doc.tokens[1].spans, doc.words[1].spans)  # am
-        self.assertDictEqual(doc.tokens[2].spans, doc.words[2].spans)  # the
-        self.assertDictEqual(doc.tokens[8].spans, doc.words[4].spans)  # .
+        self.assertEqual(doc.tokens[0].spans, doc.words[0].spans)  # I
+        self.assertEqual(doc.tokens[1].spans, doc.words[1].spans)  # am
+        self.assertEqual(doc.tokens[2].spans, doc.words[2].spans)  # the
+        self.assertEqual(doc.tokens[8].spans, doc.words[4].spans)  # .
         # wizard-of-oz
         self.assertEqual(doc.words[3].spans, [Span(start=9, end=22, box=None)])
         self.assertEqual(doc.words[3].text, "wizard-of-oz")
