@@ -12,7 +12,9 @@ from typing import List, Optional, Set
 import numpy as np
 
 from mmda.predictors.sklearn_predictors.svm_word_predictor import (
-    SVMClassifier, SVMWordPredictor)
+    SVMClassifier,
+    SVMWordPredictor,
+)
 from mmda.types import Document, Span, SpanGroup
 
 
@@ -302,6 +304,49 @@ class TestSVMWordPredictor(unittest.TestCase):
         )
         self.assertDictEqual(
             word_id_to_text, {0: "I", 1: "am", 2: "the", 3: "wizard-of-oz."}
+        )
+
+    def test_group_adjacent_with_exceptions(self):
+        adjacent = [0, 1, 2, 3]
+
+        # alternating
+        self.assertListEqual(
+            self.predictor._group_adjacent_with_exceptions(
+                adjacent=adjacent, exception_ids={1, 3}
+            ),
+            [[0], [1], [2], [3]],
+        )
+
+        # start
+        self.assertListEqual(
+            self.predictor._group_adjacent_with_exceptions(
+                adjacent=adjacent, exception_ids={0}
+            ),
+            [[0], [1, 2, 3]],
+        )
+
+        # end
+        self.assertListEqual(
+            self.predictor._group_adjacent_with_exceptions(
+                adjacent=adjacent, exception_ids={3}
+            ),
+            [[0, 1, 2], [3]],
+        )
+
+        # none
+        self.assertListEqual(
+            self.predictor._group_adjacent_with_exceptions(
+                adjacent=adjacent, exception_ids=set()
+            ),
+            [[0, 1, 2, 3]],
+        )
+
+        # all
+        self.assertListEqual(
+            self.predictor._group_adjacent_with_exceptions(
+                adjacent=adjacent, exception_ids={0, 1, 2, 3}
+            ),
+            [[0], [1], [2], [3]],
         )
 
     def test_find_hyphen_word_candidates(self):

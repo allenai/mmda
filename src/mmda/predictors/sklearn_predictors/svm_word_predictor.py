@@ -14,7 +14,7 @@ import re
 import tarfile
 import tempfile
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 from urllib.parse import urlparse
 
 import numpy as np
@@ -87,15 +87,9 @@ class SVMClassifier:
     @classmethod
     def from_directory(cls, dir: str):
         classifier = SVMClassifier.from_paths(
-            ohe_encoder_path=os.path.join(
-                dir, "svm_word_predictor/ohencoder.joblib"
-            ),
-            scaler_path=os.path.join(
-                dir, "svm_word_predictor/scaler.joblib"
-            ),
-            estimator_path=os.path.join(
-                dir, "svm_word_predictor/hyphen_clf.joblib"
-            ),
+            ohe_encoder_path=os.path.join(dir, "svm_word_predictor/ohencoder.joblib"),
+            scaler_path=os.path.join(dir, "svm_word_predictor/scaler.joblib"),
+            estimator_path=os.path.join(dir, "svm_word_predictor/hyphen_clf.joblib"),
             unigram_probs_path=os.path.join(
                 dir, "svm_word_predictor/unigram_probs.pkl"
             ),
@@ -236,6 +230,7 @@ class SVMWordPredictor(BaseSklearnPredictor):
             word_id_to_token_ids,
             word_id_to_text,
         ) = self._predict_with_whitespace(document=document)
+        self._validate_token_word_assignments(word_id_to_token_ids=word_id_to_token_ids)
 
         # split up words back into tokens based on punctuation
         (
@@ -247,6 +242,7 @@ class SVMWordPredictor(BaseSklearnPredictor):
             word_id_to_token_ids=word_id_to_token_ids,
             punct_as_words=self.punct_as_words,
         )
+        self._validate_token_word_assignments(word_id_to_token_ids=word_id_to_token_ids)
 
         # get hyphen word candidates
         hyphen_word_candidates = self._find_hyphen_word_candidates(
@@ -288,6 +284,9 @@ class SVMWordPredictor(BaseSklearnPredictor):
                 for word_id, token_ids in word_id_to_token_ids.items()
                 for token_id in token_ids
             }
+            self._validate_token_word_assignments(
+                word_id_to_token_ids=word_id_to_token_ids
+            )
 
         # make into spangroups
         words = self._create_words(
@@ -319,6 +318,14 @@ class SVMWordPredictor(BaseSklearnPredictor):
                 raise ValueError(
                     f"Document contains Token without an `.id` field, which is necessary for this word Predictor's whitespace clustering operation."
                 )
+
+    def _validate_token_word_assignments(self, word_id_to_token_ids):
+        for word_id, token_ids in word_id_to_token_ids.items():
+            start = min(token_ids)
+            end = max(token_ids)
+            assert (
+                len(token_ids) == end - start + 1
+            ), f"word={word_id} comprised of disjoint token_ids={token_ids}"
 
     def _cluster_tokens_by_whitespace(self, document: Document) -> List[List[int]]:
         """
@@ -380,13 +387,9 @@ class SVMWordPredictor(BaseSklearnPredictor):
         # re-cluster punctuation tokens into their own words
         new_clusters = []
         for old_cluster in word_id_to_token_ids.values():
-            new_cluster = []
-            for token_id in old_cluster:
-                if token_id in token_ids_are_punct:
-                    new_clusters.append([token_id])
-                else:
-                    new_cluster.append(token_id)
-            if new_cluster:
+            for new_cluster in self._group_adjacent_with_exceptions(
+                adjacent=old_cluster, exception_ids=token_ids_are_punct
+            ):
                 new_clusters.append(new_cluster)
         # reorder
         new_clusters = sorted(new_clusters, key=lambda x: min(x))
@@ -404,6 +407,23 @@ class SVMWordPredictor(BaseSklearnPredictor):
                 document.tokens[token_id].text for token_id in token_ids
             )
         return new_token_id_to_word_id, new_word_id_to_token_ids, new_word_id_to_text
+
+    def _group_adjacent_with_exceptions(
+        self, adjacent: List[int], exception_ids: Set[int]
+    ) -> List[List[int]]:
+        result = []
+        group = []
+        for e in adjacent:
+            if e in exception_ids:
+                if group:
+                    result.append(group)
+                result.append([e])
+                group = []
+            else:
+                group.append(e)
+        if group:
+            result.append(group)
+        return result
 
     def _find_hyphen_word_candidates(
         self,
