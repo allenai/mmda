@@ -481,7 +481,10 @@ class SVMWordPredictor(BaseSklearnPredictor):
             else:
                 spans = [
                     Span.small_spans_to_big_span(
-                        spans=[span for token in tokens_in_word for span in token.spans]
+                        spans=[
+                            span for token in tokens_in_word for span in token.spans
+                        ],
+                        merge_boxes=False,
                     )
                 ]
                 metadata = (
@@ -501,7 +504,8 @@ class SVMWordPredictor(BaseSklearnPredictor):
         # last bit
         spans = [
             Span.small_spans_to_big_span(
-                spans=[span for token in tokens_in_word for span in token.spans]
+                spans=[span for token in tokens_in_word for span in token.spans],
+                merge_boxes=False,
             )
         ]
         metadata = (

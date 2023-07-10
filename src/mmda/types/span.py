@@ -38,9 +38,10 @@ class Span:
             return self.start < other.start
 
     @classmethod
-    def small_spans_to_big_span(cls, spans: List["Span"]) -> "Span":
-        # TODO: add warning for unsorted spans or not-contiguous spans
-        # TODO: what happens when Boxes cant be merged?
+    def small_spans_to_big_span(
+        cls, spans: List["Span"], merge_boxes: bool = True
+    ) -> "Span":
+        # TODO: add warning for non-contiguous spans?
         start = spans[0].start
         end = spans[0].end
         for span in spans[1:]:
@@ -48,10 +49,14 @@ class Span:
                 start = span.start
             if span.end > end:
                 end = span.end
+        if merge_boxes and all(span.box for span in spans):
+            new_box = Box.small_boxes_to_big_box(boxes=[span.box for span in spans])
+        else:
+            new_box = None
         return Span(
             start=start,
             end=end,
-            box=Box.small_boxes_to_big_box(boxes=[span.box for span in spans]),
+            box=new_box,
         )
 
     def is_overlap(self, other: "Span") -> bool:

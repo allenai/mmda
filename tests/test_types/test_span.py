@@ -39,6 +39,43 @@ class TestSpan(unittest.TestCase):
         self.assertFalse(span.is_overlap(mmda_span.Span(start=2, end=3)))
         self.assertFalse(span.is_overlap(mmda_span.Span(start=4, end=5)))
 
+    def test_small_spans_to_big_span(self):
+        spans = [
+            mmda_span.Span(start=0, end=8),
+            mmda_span.Span(start=8, end=16),
+            mmda_span.Span(start=16, end=24),
+        ]
+        self.assertEqual(
+            mmda_span.Span.small_spans_to_big_span(spans=spans, merge_boxes=False),
+            mmda_span.Span(start=0, end=24),
+        )
+        # if no boxes, should still work
+        self.assertEqual(
+            mmda_span.Span.small_spans_to_big_span(spans=spans, merge_boxes=True),
+            mmda_span.Span(start=0, end=24),
+        )
+
+    def test_small_spans_to_big_span_unsorted(self):
+        spans = [
+            mmda_span.Span(start=8, end=16),
+            mmda_span.Span(start=0, end=8),
+            mmda_span.Span(start=16, end=24),
+        ]
+        self.assertEqual(
+            mmda_span.Span.small_spans_to_big_span(spans=spans),
+            mmda_span.Span(start=0, end=24),
+        )
+
+        spans = [
+            mmda_span.Span(start=16, end=24),
+            mmda_span.Span(start=8, end=16),
+            mmda_span.Span(start=0, end=8),
+        ]
+        self.assertEqual(
+            mmda_span.Span.small_spans_to_big_span(spans=spans),
+            mmda_span.Span(start=0, end=24),
+        )
+
     def test_are_disjoint(self):
         # should be disjoint
         span1 = mmda_span.Span(start=0, end=1)
