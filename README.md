@@ -44,6 +44,11 @@ recipe = CoreRecipe()
 doc: Document = recipe.from_path(pdfpath='...pdf')
 ```
 
+If you'd like, try with this PDF in our test fixtures:
+```python
+doc: Document = recipe.from_path(pdfpath='tests/fixtures/2020.acl-main.447.pdf')
+```
+
 #### 2. Understanding the output: the `Document` class
 
 What is a `Document`? At minimum, it is some text, saved under the `.symbols` field, which is just a `<str>`.  For example:

@@ -306,6 +306,49 @@ class TestSVMWordPredictor(unittest.TestCase):
             word_id_to_text, {0: "I", 1: "am", 2: "the", 3: "wizard-of-oz."}
         )
 
+    def test_group_adjacent_with_exceptions(self):
+        adjacent = [0, 1, 2, 3]
+
+        # alternating
+        self.assertListEqual(
+            self.predictor._group_adjacent_with_exceptions(
+                adjacent=adjacent, exception_ids={1, 3}
+            ),
+            [[0], [1], [2], [3]],
+        )
+
+        # start
+        self.assertListEqual(
+            self.predictor._group_adjacent_with_exceptions(
+                adjacent=adjacent, exception_ids={0}
+            ),
+            [[0], [1, 2, 3]],
+        )
+
+        # end
+        self.assertListEqual(
+            self.predictor._group_adjacent_with_exceptions(
+                adjacent=adjacent, exception_ids={3}
+            ),
+            [[0, 1, 2], [3]],
+        )
+
+        # none
+        self.assertListEqual(
+            self.predictor._group_adjacent_with_exceptions(
+                adjacent=adjacent, exception_ids=set()
+            ),
+            [[0, 1, 2, 3]],
+        )
+
+        # all
+        self.assertListEqual(
+            self.predictor._group_adjacent_with_exceptions(
+                adjacent=adjacent, exception_ids={0, 1, 2, 3}
+            ),
+            [[0], [1], [2], [3]],
+        )
+
     def test_find_hyphen_word_candidates(self):
         (
             token_id_to_word_id,
@@ -426,3 +469,31 @@ class TestSVMWordPredictor(unittest.TestCase):
                 8: ".",
             },
         )
+
+    def test_works_with_newlines(self):
+        doc = Document.from_json(
+            doc_dict={
+                "symbols": "I am\nthe wizard-\nof-oz.",
+                "tokens": [
+                    {"id": 0, "spans": [{"start": 0, "end": 1}]},
+                    {"id": 1, "spans": [{"start": 2, "end": 4}]},
+                    {"id": 2, "spans": [{"start": 5, "end": 8}]},
+                    {"id": 3, "spans": [{"start": 9, "end": 15}]},
+                    {"id": 4, "spans": [{"start": 15, "end": 16}]},
+                    {"id": 5, "spans": [{"start": 17, "end": 19}]},
+                    {"id": 6, "spans": [{"start": 19, "end": 20}]},
+                    {"id": 7, "spans": [{"start": 20, "end": 22}]},
+                    {"id": 8, "spans": [{"start": 22, "end": 23}]},
+                ],
+            }
+        )
+        words = self.predictor.predict(document=doc)
+        self.assertLess(len(words), len(doc.tokens))
+        doc.annotate(words=words)
+        self.assertEqual(doc.tokens[0].spans, doc.words[0].spans)  # I
+        self.assertEqual(doc.tokens[1].spans, doc.words[1].spans)  # am
+        self.assertEqual(doc.tokens[2].spans, doc.words[2].spans)  # the
+        self.assertEqual(doc.tokens[8].spans, doc.words[4].spans)  # .
+        # wizard-of-oz
+        self.assertEqual(doc.words[3].spans, [Span(start=9, end=22, box=None)])
+        self.assertEqual(doc.words[3].text, "wizard-of-oz")
