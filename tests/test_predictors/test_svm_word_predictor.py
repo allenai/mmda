@@ -497,3 +497,159 @@ class TestSVMWordPredictor(unittest.TestCase):
         # wizard-of-oz
         self.assertEqual(doc.words[3].spans, [Span(start=9, end=22, box=None)])
         self.assertEqual(doc.words[3].text, "wizard-of-oz")
+
+    def test_works_with_cross_page_boxes(self):
+        doc = Document.from_json(
+            {
+                "symbols": "I am\nthe wizard-\nof-oz.",
+                "tokens": [
+                    {
+                        "id": 0,
+                        "spans": [
+                            {
+                                "start": 0,
+                                "end": 1,
+                                "box": {
+                                    "left": 0.1,
+                                    "top": 0.2,
+                                    "width": 0.3,
+                                    "height": 0.4,
+                                    "page": 0,
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "id": 1,
+                        "spans": [
+                            {
+                                "start": 2,
+                                "end": 4,
+                                "box": {
+                                    "left": 0.1,
+                                    "top": 0.2,
+                                    "width": 0.3,
+                                    "height": 0.4,
+                                    "page": 1,
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "id": 2,
+                        "spans": [
+                            {
+                                "start": 5,
+                                "end": 8,
+                                "box": {
+                                    "left": 0.1,
+                                    "top": 0.2,
+                                    "width": 0.3,
+                                    "height": 0.4,
+                                    "page": 2,
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "id": 3,
+                        "spans": [
+                            {
+                                "start": 9,
+                                "end": 15,
+                                "box": {
+                                    "left": 0.1,
+                                    "top": 0.2,
+                                    "width": 0.3,
+                                    "height": 0.4,
+                                    "page": 3,
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "id": 4,
+                        "spans": [
+                            {
+                                "start": 15,
+                                "end": 16,
+                                "box": {
+                                    "left": 0.1,
+                                    "top": 0.2,
+                                    "width": 0.3,
+                                    "height": 0.4,
+                                    "page": 4,
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "id": 5,
+                        "spans": [
+                            {
+                                "start": 17,
+                                "end": 19,
+                                "box": {
+                                    "left": 0.1,
+                                    "top": 0.2,
+                                    "width": 0.3,
+                                    "height": 0.4,
+                                    "page": 5,
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "id": 6,
+                        "spans": [
+                            {
+                                "start": 19,
+                                "end": 20,
+                                "box": {
+                                    "left": 0.1,
+                                    "top": 0.2,
+                                    "width": 0.3,
+                                    "height": 0.4,
+                                    "page": 6,
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "id": 7,
+                        "spans": [
+                            {
+                                "start": 20,
+                                "end": 22,
+                                "box": {
+                                    "left": 0.1,
+                                    "top": 0.2,
+                                    "width": 0.3,
+                                    "height": 0.4,
+                                    "page": 7,
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "id": 8,
+                        "spans": [
+                            {
+                                "start": 22,
+                                "end": 23,
+                                "box": {
+                                    "left": 0.1,
+                                    "top": 0.2,
+                                    "width": 0.3,
+                                    "height": 0.4,
+                                    "page": 8,
+                                },
+                            }
+                        ],
+                    },
+                ],
+            }
+        )
+        words = self.predictor.predict(document=doc)
+        self.assertLess(len(words), len(doc.tokens))
+        doc.annotate(words=words)
