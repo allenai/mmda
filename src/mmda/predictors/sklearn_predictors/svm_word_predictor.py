@@ -9,6 +9,7 @@ classifier to predict whether hyphenated segments should be considered a single 
 
 """
 
+import logging
 import os
 import re
 import tarfile
@@ -30,6 +31,8 @@ from mmda.predictors.sklearn_predictors.base_sklearn_predictor import (
     BaseSklearnPredictor,
 )
 from mmda.types import Document, Metadata, Span, SpanGroup
+
+logger = logging.getLogger(__name__)
 
 
 class IsWordResult:
@@ -117,6 +120,11 @@ class SVMClassifier:
         return classifier
 
     def batch_predict(self, words: List[str], threshold: float) -> List[IsWordResult]:
+        if not all(
+            [not word.startswith("-") and not word.endswith("-") for word in words]
+        ):
+            raise ValueError("Words should not start or end with hyphens.")
+
         all_features, word_id_to_feature_ids = self._get_features(words)
         all_scores = self.estimator.decision_function(all_features)
         results = []
@@ -220,6 +228,9 @@ class SVMWordPredictor(BaseSklearnPredictor):
         return predictor
 
     def predict(self, document: Document) -> List[SpanGroup]:
+        # clean input
+        document = self._make_clean_document(document=document)
+
         # validate input
         self._validate_tokenization(document=document)
 
@@ -296,13 +307,36 @@ class SVMWordPredictor(BaseSklearnPredictor):
         )
         return words
 
+    def _make_clean_document(self, document: Document) -> Document:
+        """Word predictor doesnt work on documents with poor tokenizations,
+        such as when there are empty tokens. This cleans up the document.
+        We keep this pretty minimal, such as ignoring Span Boxes since dont need
+        them for word prediction."""
+        new_tokens = []
+        current_id = 0
+        for token in document.tokens:
+            if token.text.strip() != "":
+                new_token = SpanGroup(
+                    spans=[
+                        Span(start=span.start, end=span.end) for span in token.spans
+                    ],
+                    id=current_id,
+                )
+                new_tokens.append(new_token)
+                current_id += 1
+        new_doc = Document(symbols=document.symbols)
+        new_doc.annotate(tokens=new_tokens)
+        return new_doc
+
     def _recursively_remove_trailing_hyphens(self, word: str) -> str:
         if word.endswith("-"):
             return self._recursively_remove_trailing_hyphens(word=word[:-1])
         else:
             return word
 
-    def _validate_tokenization(self, document: Document):
+    def _validate_tokenization(
+        self, document: Document, allow_empty_tokens: bool = True
+    ):
         """This Word Predictor relies on a specific type of Tokenization
         in which hyphens ('-') must be their own token. This verifies.
 
@@ -319,13 +353,30 @@ class SVMWordPredictor(BaseSklearnPredictor):
                     f"Document contains Token without an `.id` field, which is necessary for this word Predictor's whitespace clustering operation."
                 )
 
-    def _validate_token_word_assignments(self, word_id_to_token_ids):
+        if not allow_empty_tokens:
+            if any([token.text == "" for token in document.tokens]):
+                raise ValueError(
+                    f"Document contains Token with empty text, which is not allowed."
+                )
+
+    def _validate_token_word_assignments(
+        self, word_id_to_token_ids, allow_missed_tokens: bool = True
+    ):
         for word_id, token_ids in word_id_to_token_ids.items():
             start = min(token_ids)
             end = max(token_ids)
             assert (
                 len(token_ids) == end - start + 1
             ), f"word={word_id} comprised of disjoint token_ids={token_ids}"
+
+        if not allow_missed_tokens:
+            all_token_ids = {
+                token_id
+                for token_id in word_id_to_token_ids.values()
+                for token_id in token_ids
+            }
+            if len(all_token_ids) < max(all_token_ids):
+                raise ValueError(f"Not all tokens are assigned to a word.")
 
     def _cluster_tokens_by_whitespace(self, document: Document) -> List[List[int]]:
         """
@@ -340,7 +391,9 @@ class SVMWordPredictor(BaseSklearnPredictor):
         # token -> ws_tokens
         token_id_to_ws_token_id = {}
         for token in document.tokens:
-            token_id_to_ws_token_id[token.id] = token._ws_tokens[0].id
+            overlap_ws_tokens = token._ws_tokens
+            if overlap_ws_tokens:
+                token_id_to_ws_token_id[token.id] = overlap_ws_tokens[0].id
 
         # ws_token -> tokens
         ws_token_id_to_tokens = defaultdict(list)
@@ -475,7 +528,12 @@ class SVMWordPredictor(BaseSklearnPredictor):
         new_word_id = 0
         for token_id in range(1, len(token_id_to_word_id)):
             token = document.tokens[token_id]
-            word_id = token_id_to_word_id[token_id]
+            word_id = token_id_to_word_id.get(token_id)
+            if word_id is None:
+                logger.warning(
+                    f"Token {token_id} has no word ID. Likely PDF Parser produced empty tokens."
+                )
+                continue
             if word_id == current_word_id:
                 tokens_in_word.append(token)
             else:
