@@ -137,7 +137,7 @@ class TestSVMClassifier(unittest.TestCase):
         words = ["-wizard-of-", "wizard-of-"]
         for word in words:
             with self.assertRaises(ValueError):
-                self.classifier._get_features(words=[word])
+                self.classifier.batch_predict(words=[word], threshold=0.0)
 
 
 class TestSVMWordPredictor(unittest.TestCase):

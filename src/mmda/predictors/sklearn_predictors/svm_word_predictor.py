@@ -120,9 +120,7 @@ class SVMClassifier:
         return classifier
 
     def batch_predict(self, words: List[str], threshold: float) -> List[IsWordResult]:
-        if not all(
-            [not word.startswith("-") and not word.endswith("-") for word in words]
-        ):
+        if any([word.startswith("-") or word.endswith("-") for word in words]):
             raise ValueError("Words should not start or end with hyphens.")
 
         all_features, word_id_to_feature_ids = self._get_features(words)
