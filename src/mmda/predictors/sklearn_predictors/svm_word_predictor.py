@@ -332,9 +332,7 @@ class SVMWordPredictor(BaseSklearnPredictor):
         else:
             return word
 
-    def _validate_tokenization(
-        self, document: Document, allow_empty_tokens: bool = True
-    ):
+    def _validate_tokenization(self, document: Document):
         """This Word Predictor relies on a specific type of Tokenization
         in which hyphens ('-') must be their own token. This verifies.
 
@@ -351,8 +349,7 @@ class SVMWordPredictor(BaseSklearnPredictor):
                     f"Document contains Token without an `.id` field, which is necessary for this word Predictor's whitespace clustering operation."
                 )
 
-        if not allow_empty_tokens:
-            if any([token.text == "" for token in document.tokens]):
+            if token.text.strip() == "":
                 raise ValueError(
                     f"Document contains Token with empty text, which is not allowed."
                 )
@@ -524,7 +521,7 @@ class SVMWordPredictor(BaseSklearnPredictor):
         tokens_in_word = [document.tokens[0]]
         current_word_id = 0
         new_word_id = 0
-        for token_id in range(1, len(token_id_to_word_id)):
+        for token_id in range(1, len(document.tokens)):
             token = document.tokens[token_id]
             word_id = token_id_to_word_id.get(token_id)
             if word_id is None:

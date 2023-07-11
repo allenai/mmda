@@ -373,6 +373,30 @@ class TestSVMWordPredictor(unittest.TestCase):
             suffix_word = word_id_to_text[suffix_word_id]
             self.assertTrue("-" in prefix_word + suffix_word)
 
+    # TODO: fix this test
+    def test_with_hyphen_boundaries_not_candidates(self):
+        doc = Document.from_json(
+            doc_dict={
+                "symbols": "COVID- 19",
+                "tokens": [
+                    {"id": 0, "spans": [{"start": 0, "end": 5}]},
+                    {"id": 1, "spans": [{"start": 5, "end": 6}]},
+                    {"id": 2, "spans": [{"start": 7, "end": 9}]},
+                ],
+            }
+        )
+        (
+            token_id_to_word_id,
+            word_id_to_token_ids,
+            word_id_to_text,
+        ) = self.predictor._predict_with_whitespace(document=doc)
+        hyphen_word_candidates = self.predictor._find_hyphen_word_candidates(
+            tokens=doc.tokens,
+            token_id_to_word_id=token_id_to_word_id,
+            word_id_to_token_ids=word_id_to_token_ids,
+            word_id_to_text=word_id_to_text,
+        )
+
     def test_keep_punct_as_words(self):
         doc = Document.from_json(
             doc_dict={
