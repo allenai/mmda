@@ -96,9 +96,9 @@ class GrobidFullParser(Parser):
                 f_out.write(xml)
 
         self._parse_xml_onto_doc(xml, doc)
-        
-        for p ∈  doc.p:
-            grobid_text = [s.metadata['grobid_text'] for s ∈  p.s]
+
+        for p in doc.p:
+            grobid_text = [s.metadata['grobid_text'] for s in p.s]
             grobid_text = ' '.join(filter(lambda text: type(text) == str, grobid_text))
             p.metadata['grobid_text'] = grobid_text
 
