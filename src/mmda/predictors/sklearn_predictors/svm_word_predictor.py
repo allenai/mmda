@@ -260,14 +260,20 @@ class SVMWordPredictor(BaseSklearnPredictor):
             word_id_to_token_ids=word_id_to_token_ids,
             word_id_to_text=word_id_to_text,
         )
+        candidate_texts = [
+            word_id_to_text[prefix_word_id] + word_id_to_text[suffix_word_id]
+            for prefix_word_id, suffix_word_id in hyphen_word_candidates
+        ]
+
+        # filter candidate texts
+        hyphen_word_candidates, candidate_texts = self._filter_word_candidates(
+            hyphen_word_candidates=hyphen_word_candidates,
+            candidate_texts=candidate_texts,
+        )
 
         # only triggers if there are hyphen word candidates
         if hyphen_word_candidates:
             # classify hyphen words
-            candidate_texts = [
-                word_id_to_text[prefix_word_id] + word_id_to_text[suffix_word_id]
-                for prefix_word_id, suffix_word_id in hyphen_word_candidates
-            ]
             results = self.classifier.batch_predict(
                 words=candidate_texts, threshold=self.threshold
             )
@@ -513,6 +519,21 @@ class SVMWordPredictor(BaseSklearnPredictor):
                 continue
             word_id_pairs.append((prefix_word_id, suffix_word_id))
         return sorted(word_id_pairs)
+
+    def _filter_word_candidates(
+        self, hyphen_word_candidates: list, candidate_texts: list
+    ) -> tuple:
+        hyphen_word_candidates_filtered = []
+        candidate_texts_filtered = []
+        for hyphen_word_candidate, candidate_text in zip(
+            hyphen_word_candidates, candidate_texts
+        ):
+            if candidate_text.endswith("-") or candidate_text.startswith("-"):
+                continue
+            else:
+                hyphen_word_candidates_filtered.append(hyphen_word_candidate)
+                candidate_texts_filtered.append(candidate_text)
+        return hyphen_word_candidates_filtered, candidate_texts_filtered
 
     def _create_words(
         self, document: Document, token_id_to_word_id, word_id_to_text
