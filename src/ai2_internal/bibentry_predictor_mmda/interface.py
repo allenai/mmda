@@ -8,7 +8,7 @@ as a definition of the objects it expects, and those it returns.
 
 from typing import List
 
-from pydantic import BaseModel, BaseSettings
+from pydantic import BaseModel, BaseSettings, Field
 
 from ai2_internal import api
 from mmda.predictors.hf_predictors.bibentry_predictor.predictor import BibEntryPredictor
@@ -81,7 +81,11 @@ class PredictorConfig(BaseSettings):
     appropriate for your model. These serve as a record of the ENV
     vars the consuming application needs to set.
     """
-    pass
+    bibentries_per_run: int = Field(
+        default=5,
+        description="The maximum number of bibentries we can send to the model at one time. "
+                    "Used for capping the maximum memory used during token classification."
+    )
 
 
 class Predictor:
@@ -130,5 +134,10 @@ class Predictor:
         via environment variable by the calling application.
         """
         documents = [i.to_mmda() for i in instances]
-        mmda_predictions = [self._predictor.predict(document) for document in documents]
+        mmda_predictions = [
+            self._predictor.predict(
+                document,
+                bibentries_per_run=self._config.bibentries_per_run
+            ) for document in documents
+        ]
         return [Prediction.from_mmda(prediction) for prediction in mmda_predictions]
