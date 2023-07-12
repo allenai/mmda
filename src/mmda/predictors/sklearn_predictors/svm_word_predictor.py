@@ -546,7 +546,7 @@ class SVMWordPredictor(BaseSklearnPredictor):
             token = document.tokens[token_id]
             word_id = token_id_to_word_id.get(token_id)
             if word_id is None:
-                logger.warning(
+                logger.debug(
                     f"Token {token_id} has no word ID. Likely PDF Parser produced empty tokens."
                 )
                 continue
