@@ -39,12 +39,17 @@ class BibEntryPredictor(BasePredictor):
             # https://stackoverflow.com/a/60018731
             self.model.eval()  # for some reason the onnx version doesnt have an eval()
 
-    def predict(self, document: Document) -> BibEntryStructureSpanGroups:
+    def predict(self, document: Document, bibentries_per_run: int = 5) -> BibEntryStructureSpanGroups:
         # Recover the (approximate) raw bibentry strings from mmda document
         bib_entry_strings = utils.mk_bib_entry_strings(document)
 
-        # Delegate to underlying model for inference
-        raw_predictions = self.predict_raw(bib_entry_strings)
+        raw_predictions = []
+
+        # Do inference in batches to not blow out vram
+        for i in range(0, len(bib_entry_strings), bibentries_per_run):
+            batch_strings = bib_entry_strings[i:i+bibentries_per_run]
+            batch_raw_predictions = self.predict_raw(batch_strings)
+            raw_predictions += batch_raw_predictions
 
         # Map raw predictions back into valid annotations for passed document
         prediction = utils.map_raw_predictions_to_mmda(document.bib_entries, raw_predictions)
