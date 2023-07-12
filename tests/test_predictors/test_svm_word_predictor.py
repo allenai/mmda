@@ -133,6 +133,12 @@ class TestSVMClassifier(unittest.TestCase):
             sum([len(feature) for feature in word_id_to_feature_ids.values()]),
         )
 
+    def test_exception_with_start_or_end_hyphen(self):
+        words = ["-wizard-of-", "wizard-of-"]
+        for word in words:
+            with self.assertRaises(ValueError):
+                self.classifier.batch_predict(words=[word], threshold=0.0)
+
 
 class TestSVMWordPredictor(unittest.TestCase):
     @classmethod
@@ -366,6 +372,30 @@ class TestSVMWordPredictor(unittest.TestCase):
             prefix_word = word_id_to_text[prefix_word_id]
             suffix_word = word_id_to_text[suffix_word_id]
             self.assertTrue("-" in prefix_word + suffix_word)
+
+    # TODO: fix this test
+    def test_with_hyphen_boundaries_not_candidates(self):
+        doc = Document.from_json(
+            doc_dict={
+                "symbols": "COVID- 19",
+                "tokens": [
+                    {"id": 0, "spans": [{"start": 0, "end": 5}]},
+                    {"id": 1, "spans": [{"start": 5, "end": 6}]},
+                    {"id": 2, "spans": [{"start": 7, "end": 9}]},
+                ],
+            }
+        )
+        (
+            token_id_to_word_id,
+            word_id_to_token_ids,
+            word_id_to_text,
+        ) = self.predictor._predict_with_whitespace(document=doc)
+        hyphen_word_candidates = self.predictor._find_hyphen_word_candidates(
+            tokens=doc.tokens,
+            token_id_to_word_id=token_id_to_word_id,
+            word_id_to_token_ids=word_id_to_token_ids,
+            word_id_to_text=word_id_to_text,
+        )
 
     def test_keep_punct_as_words(self):
         doc = Document.from_json(
@@ -652,4 +682,26 @@ class TestSVMWordPredictor(unittest.TestCase):
         )
         words = self.predictor.predict(document=doc)
         self.assertLess(len(words), len(doc.tokens))
+        doc.annotate(words=words)
+
+    def test_works_with_empty_tokens(self):
+        doc = Document.from_json(
+            doc_dict={
+                "symbols": "I am the wizard-of-oz.",
+                "tokens": [
+                    {"id": 0, "spans": [{"start": 0, "end": 1}]},
+                    {"id": 1, "spans": [{"start": 2, "end": 4}]},
+                    {"id": 2, "spans": [{"start": 5, "end": 8}]},
+                    {"id": 3, "spans": [{"start": 8, "end": 8}]},
+                    {"id": 4, "spans": [{"start": 9, "end": 15}]},
+                    {"id": 5, "spans": [{"start": 15, "end": 16}]},
+                    {"id": 6, "spans": [{"start": 16, "end": 18}]},
+                    {"id": 7, "spans": [{"start": 18, "end": 19}]},
+                    {"id": 8, "spans": [{"start": 19, "end": 19}]},
+                    {"id": 9, "spans": [{"start": 19, "end": 21}]},
+                    {"id": 10, "spans": [{"start": 21, "end": 22}]},
+                ],
+            }
+        )
+        words = self.predictor.predict(document=doc)
         doc.annotate(words=words)
