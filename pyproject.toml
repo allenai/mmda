@@ -45,6 +45,7 @@ ai2_internal = [
     './dwp_heuristic/test_fixtures/*',
     './figure_table_predictors/test_fixtures/*',
     './figure_table_predictors/test_fixtures.images/*',
+    './svm_word_predictor/test_fixtures/*',
     './shared_test_fixtures/*',
 ]
 
