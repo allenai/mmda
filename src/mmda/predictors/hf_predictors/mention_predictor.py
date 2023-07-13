@@ -5,7 +5,7 @@ from typing import Dict, Iterator, List, Optional
 
 from optimum.onnxruntime import ORTModelForTokenClassification
 import torch
-from transformers import AutoModelForTokenClassification, AutoTokenizer
+from transformers import AutoModelForTokenClassification, AutoTokenizer, BatchEncoding
 
 from mmda.types.annotation import Annotation, SpanGroup
 from mmda.types.document import Document
@@ -91,12 +91,24 @@ class MentionPredictor:
             padding='max_length',
             return_overflowing_tokens=True,
             return_tensors="pt"
-        ).to(self.model.device)
-        del inputs["overflow_to_sample_mapping"]
+        )
 
         with torch.no_grad():
-            outputs = self.model(**inputs)
-        prediction_label_ids = torch.argmax(outputs.logits, dim=-1)
+            # Control device memory use to predictable levels
+            # by limiting size of batches sent to it.
+            prediction_label_ids = []
+            for index, sequence in enumerate(inputs["input_ids"]):
+                batch = BatchEncoding(
+                    data=dict(
+                        input_ids=inputs["input_ids"][index:index+1],
+                        token_type_ids=inputs["token_type_ids"][index:index+1],
+                        attention_mask=inputs["attention_mask"][index:index+1],
+                    )
+                )
+                batch.to(self.model.device)
+                batch_outputs = self.model(**batch)
+                batch_prediction_label_ids = torch.argmax(batch_outputs.logits, dim=-1)[0]
+                prediction_label_ids.append(batch_prediction_label_ids)
 
         def has_label_id(lbls: List[int], want_label_id: int) -> bool:
             return any(lbl == want_label_id for lbl in lbls)
