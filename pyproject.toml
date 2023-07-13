@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.9.2'
+version = '0.9.3'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -45,6 +45,7 @@ ai2_internal = [
     './dwp_heuristic/test_fixtures/*',
     './figure_table_predictors/test_fixtures/*',
     './figure_table_predictors/test_fixtures.images/*',
+    './svm_word_predictor/test_fixtures/*',
     './shared_test_fixtures/*',
 ]
 
