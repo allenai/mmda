@@ -402,10 +402,9 @@ class SVMWordPredictor(BaseSklearnPredictor):
             ws_token_id_to_tokens[ws_token_id].append(token_id)
 
         # cluster tokens by whitespace
-        clusters = [
-            sorted(ws_token_id_to_tokens[ws_token_id])
-            for ws_token_id in range(len(ws_token_id_to_tokens))
-        ]
+        clusters = []
+        for ws_token_id, tokens in ws_token_id_to_tokens.items():
+            clusters.append(sorted(tokens))
 
         # cleanup
         document.remove("_ws_tokens")
