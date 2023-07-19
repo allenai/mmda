@@ -107,7 +107,7 @@ class MentionPredictor:
                 )
                 batch.to(self.model.device)
                 batch_outputs = self.model(**batch)
-                batch_prediction_label_ids = torch.argmax(batch_outputs.logits, dim=-1)[0]
+                batch_prediction_label_ids = torch.argmax(batch_outputs.logits, dim=-1).tolist()[0]
                 prediction_label_ids.append(batch_prediction_label_ids)
 
         def has_label_id(lbls: List[int], want_label_id: int) -> bool:
