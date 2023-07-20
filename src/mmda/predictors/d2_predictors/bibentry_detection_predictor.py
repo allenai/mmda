@@ -43,17 +43,19 @@ def tighten_boxes(bib_box_group, page_tokens, page_width, page_height):
             abs_box.l + abs_box.w,
             abs_box.t + abs_box.h
         )
-        new_rect = union_blocks(page_tokens_as_layout.filter_by(rect, center=True))
-        new_boxes.append(
-            Box(l=new_rect.x_1,
-                t=new_rect.y_1,
-                w=new_rect.width,
-                h=new_rect.height,
-                page=box.page).get_relative(
-                page_width=page_width,
-                page_height=page_height,
+        intersecting_page_tokens = page_tokens_as_layout.filter_by(rect, center=True)
+        if intersecting_page_tokens:
+            new_rect = union_blocks(intersecting_page_tokens)
+            new_boxes.append(
+                Box(l=new_rect.x_1,
+                    t=new_rect.y_1,
+                    w=new_rect.width,
+                    h=new_rect.height,
+                    page=box.page).get_relative(
+                    page_width=page_width,
+                    page_height=page_height,
+                )
             )
-        )
     new_box_group = BoxGroup(
         boxes=new_boxes,
         id=bib_box_group.id
