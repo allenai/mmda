@@ -116,8 +116,8 @@ class Predictor:
                 for sg in doc.bib_entries
             ]
             prediction = Prediction(
-                # filter out span-less SpanGroups which occasionally occur
-                bib_entries=[sg for sg in no_span_box_span_groups if len(sg.spans) != 0],
+                # filter out span-less and box-less SpanGroups which occasionally occur
+                bib_entries=[sg for sg in no_span_box_span_groups if (sg.spans and sg.box_group.boxes)],
                 # retain the original model output
                 raw_bib_entry_boxes=[api.SpanGroup(spans=[], box_group=api.BoxGroup.from_mmda(bg), id=bg.id) for bg in original_box_groups]
             )
