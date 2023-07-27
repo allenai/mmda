@@ -44,7 +44,7 @@ class GrobidAugmentExistingDocumentParser(Parser):
         for field in REQUIRED_DOCUMENT_FIELDS:
             assert field in doc.fields
 
-        (_, _, xml) = self.client.process_pdf(
+        (_, status, xml) = self.client.process_pdf(
             "processFulltextDocument",
             input_pdf_path,
             generateIDs=False,
@@ -55,15 +55,19 @@ class GrobidAugmentExistingDocumentParser(Parser):
             tei_coordinates=True,
             segment_sentences=True
         )
-        if xml_out_dir:
-            os.makedirs(xml_out_dir, exist_ok=True)
-            xmlfile = os.path.join(
-                xml_out_dir, os.path.basename(input_pdf_path).replace(".pdf", ".xml")
-            )
-            with open(xmlfile, "w") as f_out:
-                f_out.write(xml)
-
-        self._parse_xml_onto_doc(xml, doc)
+        if status == 200:
+            if xml_out_dir:
+                os.makedirs(xml_out_dir, exist_ok=True)
+                xmlfile = os.path.join(
+                    xml_out_dir, os.path.basename(input_pdf_path).replace(".pdf", ".xml")
+                )
+                with open(xmlfile, "w") as f_out:
+                    f_out.write(xml)
+            self._parse_xml_onto_doc(xml, doc)
+        elif status == 408:
+            raise TimeoutError("Grobid client timed out")
+        else:
+            raise RuntimeError(f"Grobid client failed with status {status}")
         return doc
 
     def _parse_xml_onto_doc(self, xml: str, doc: Document) -> Document:
