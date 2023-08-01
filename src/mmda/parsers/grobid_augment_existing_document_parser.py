@@ -6,6 +6,7 @@
 from grobid_client.grobid_client import GrobidClient
 from typing import List, Optional
 
+import logging
 import os
 import xml.etree.ElementTree as et
 
@@ -104,13 +105,17 @@ class GrobidAugmentExistingDocumentParser(Parser):
         coords_list = coords_attribute.split(";")
         boxes = []
         for coords in coords_list:
-            pg, x, y, w, h = coords.split(",")
-            proper_page = int(pg) - 1
-            boxes.append(
-                Box(
-                    l=float(x), t=float(y), w=float(w), h=float(h), page=proper_page
-                ).get_relative(*self.page_sizes[proper_page])
-            )
+            try:
+                pg, x, y, w, h = coords.split(",")
+                proper_page = int(pg) - 1
+                boxes.append(
+                    Box(
+                        l=float(x), t=float(y), w=float(w), h=float(h), page=proper_page
+                    ).get_relative(*self.page_sizes[proper_page])
+                )
+            except ValueError:
+                logging.warning(f"Could not parse coords: '{coords}'")
+                pass
         return boxes
 
     def _cache_page_sizes(self, root: et.Element):
