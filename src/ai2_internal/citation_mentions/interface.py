@@ -57,17 +57,15 @@ def merge_boxes(boxes):
     return [calc_bounding_box(line_boxes) for line_boxes in boxes_by_line]
 
 def merge_boxes_of_sg(sg):
-    boxes = merge_boxes([span.box for span in sg.spans])
-    sg.box_group = api.BoxGroup(boxes=[api.Box.from_mmda(box) for box in boxes]).to_mmda()
+    sg.box_group.boxes = merge_boxes(sg.box_group.boxes)
 
 def all_spans_close(sg):
     spans = sorted(sg.spans, key=lambda span: span.start)
     return all(span.end <= next_span.start <= span.end + 5 for span, next_span in zip(spans, spans[1:]))
 
-def merge_citation_mention_boxes(citation_mentions):
-    for sg in citation_mentions:
-        if all_spans_close(sg):
-            merge_boxes_of_sg(sg)
+def build_box_group(sg):
+    boxes = [span.box for span in sg.spans]
+    return api.BoxGroup(boxes=[api.Box.from_mmda(box) for box in boxes]).to_mmda()
 
 
 class Predictor:
@@ -95,7 +93,15 @@ class Predictor:
         doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
 
         prediction_span_groups = self._predictor.predict(doc)
-        merge_citation_mention_boxes(prediction_span_groups)
+        box_groups = [build_box_group(sg) for sg in prediction_span_groups]
+        # set box_groups and delete span boxes
+        for sg, bg in zip(prediction_span_groups, box_groups):
+            sg.box_group = bg
+            for span in sg.spans:
+                span.box = None
+        for sg in prediction_span_groups:
+            if all_spans_close(sg):
+                merge_boxes_of_sg(sg)
         doc.annotate(citation_mentions=prediction_span_groups)
 
         return Prediction(mentions=[api.SpanGroup.from_mmda(sg) for sg in doc.citation_mentions])
