@@ -7,12 +7,14 @@ as a definition of the objects it expects, and those it returns.
 """
 
 from typing import List
+from itertools import groupby
 
 from pydantic import BaseModel, BaseSettings
 
 from ai2_internal import api
 from mmda.predictors.hf_predictors.mention_predictor import MentionPredictor
 from mmda.types.document import Document
+from mmda.types.box import Box
 
 
 class Instance(BaseModel):
@@ -48,14 +50,15 @@ def calc_bounding_box(boxes):
     t = min(b.t for b in boxes)
     w = max(b.l + b.w for b in boxes) - l
     h = max(b.t + b.h for b in boxes) - t
-    return mmda.types.box.Box(l=l, t=t, w=w, h=h, page=boxes[0].page)
+    return Box(l=l, t=t, w=w, h=h, page=boxes[0].page)
 
 def merge_boxes(boxes):
     boxes_by_line = group_by_line(boxes)
     return [calc_bounding_box(line_boxes) for line_boxes in boxes_by_line]
 
 def merge_boxes_of_sg(sg):
-    sg.box_group.boxes = merge_boxes(sg.box_group.boxes)
+    boxes = merge_boxes([span.box for span in sg.spans])
+    sg.box_group = api.BoxGroup(boxes=[api.Box.from_mmda(box) for box in boxes]).to_mmda()
 
 def all_spans_close(sg):
     spans = sorted(sg.spans, key=lambda span: span.start)
