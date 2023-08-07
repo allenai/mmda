@@ -95,7 +95,6 @@ class Predictor:
         merge_citation_mention_boxes(prediction_span_groups)
         doc.annotate(citation_mentions=prediction_span_groups)
 
-
         return Prediction(mentions=[api.SpanGroup.from_mmda(sg) for sg in doc.citation_mentions])
 
     def predict_batch(self, instances: List[Instance]) -> List[Prediction]:
