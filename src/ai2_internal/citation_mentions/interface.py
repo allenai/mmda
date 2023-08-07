@@ -7,12 +7,15 @@ as a definition of the objects it expects, and those it returns.
 """
 
 from typing import List
+from itertools import groupby
 
 from pydantic import BaseModel, BaseSettings
 
 from ai2_internal import api
 from mmda.predictors.hf_predictors.mention_predictor import MentionPredictor
 from mmda.types.document import Document
+from mmda.types.box import Box
+from mmda.types.annotation import BoxGroup as MMDABoxGroup
 
 
 class Instance(BaseModel):
@@ -37,6 +40,30 @@ class PredictorConfig(BaseSettings):
     Uninitialized fields will be set via Environment variables.
     """
     pass
+
+
+def group_by_line(boxes):
+    boxes = sorted(boxes, key=lambda box: box.t)
+    return [list(line_boxes) for t, line_boxes in groupby(boxes, key=lambda box: box.t)]
+
+def calc_bounding_box(boxes):
+    l = min(b.l for b in boxes)
+    t = min(b.t for b in boxes)
+    w = max(b.l + b.w for b in boxes) - l
+    h = max(b.t + b.h for b in boxes) - t
+    return Box(l=l, t=t, w=w, h=h, page=boxes[0].page)
+
+def merge_boxes(boxes):
+    boxes_by_line = group_by_line(boxes)
+    return [calc_bounding_box(line_boxes) for line_boxes in boxes_by_line]
+
+def all_spans_close(sg):
+    spans = sorted(sg.spans, key=lambda span: span.start)
+    return all(span.end <= next_span.start <= span.end + 5 for span, next_span in zip(spans, spans[1:]))
+
+def build_box_group(sg):
+    boxes = [span.box for span in sg.spans]
+    return MMDABoxGroup(boxes=boxes)
 
 
 class Predictor:
@@ -64,6 +91,15 @@ class Predictor:
         doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
 
         prediction_span_groups = self._predictor.predict(doc)
+        box_groups = [build_box_group(sg) for sg in prediction_span_groups]
+        # set box_groups and delete span boxes
+        for sg, bg in zip(prediction_span_groups, box_groups):
+            sg.box_group = bg
+            for span in sg.spans:
+                span.box = None
+        for sg in prediction_span_groups:
+            if all_spans_close(sg):
+                sg.box_group.boxes = merge_boxes(sg.box_group.boxes)
         doc.annotate(citation_mentions=prediction_span_groups)
 
         return Prediction(mentions=[api.SpanGroup.from_mmda(sg) for sg in doc.citation_mentions])
