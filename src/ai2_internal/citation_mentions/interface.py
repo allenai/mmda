@@ -15,6 +15,7 @@ from ai2_internal import api
 from mmda.predictors.hf_predictors.mention_predictor import MentionPredictor
 from mmda.types.document import Document
 from mmda.types.box import Box
+from mmda.types.annotation import BoxGroup as MMDABoxGroup
 
 
 class Instance(BaseModel):
@@ -56,16 +57,13 @@ def merge_boxes(boxes):
     boxes_by_line = group_by_line(boxes)
     return [calc_bounding_box(line_boxes) for line_boxes in boxes_by_line]
 
-def merge_boxes_of_sg(sg):
-    sg.box_group.boxes = merge_boxes(sg.box_group.boxes)
-
 def all_spans_close(sg):
     spans = sorted(sg.spans, key=lambda span: span.start)
     return all(span.end <= next_span.start <= span.end + 5 for span, next_span in zip(spans, spans[1:]))
 
 def build_box_group(sg):
     boxes = [span.box for span in sg.spans]
-    return api.BoxGroup(boxes=[api.Box.from_mmda(box) for box in boxes]).to_mmda()
+    return MMDABoxGroup(boxes=boxes)
 
 
 class Predictor:
@@ -101,7 +99,7 @@ class Predictor:
                 span.box = None
         for sg in prediction_span_groups:
             if all_spans_close(sg):
-                merge_boxes_of_sg(sg)
+                sg.box_group.boxes = merge_boxes(sg.box_group.boxes)
         doc.annotate(citation_mentions=prediction_span_groups)
 
         return Prediction(mentions=[api.SpanGroup.from_mmda(sg) for sg in doc.citation_mentions])
