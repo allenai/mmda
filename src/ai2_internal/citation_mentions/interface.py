@@ -42,9 +42,8 @@ class PredictorConfig(BaseSettings):
     pass
 
 
-def group_by_line(boxes):
-    boxes = sorted(boxes, key=lambda box: box.t)
-    return [list(line_boxes) for t, line_boxes in groupby(boxes, key=lambda box: box.t)]
+def box_to_line(box):
+    return round(box.t, 3)
 
 def calc_bounding_box(boxes):
     l = min(b.l for b in boxes)
@@ -53,17 +52,30 @@ def calc_bounding_box(boxes):
     h = max(b.t + b.h for b in boxes) - t
     return Box(l=l, t=t, w=w, h=h, page=boxes[0].page)
 
-def merge_boxes(boxes):
-    boxes_by_line = group_by_line(boxes)
-    return [calc_bounding_box(line_boxes) for line_boxes in boxes_by_line]
-
-def all_spans_close(sg):
-    spans = sorted(sg.spans, key=lambda span: span.start)
+def spans_close(s1, s2):
+    spans = sorted([s1, s2], key=lambda span: span.start)
     return all(span.end <= next_span.start <= span.end + 5 for span, next_span in zip(spans, spans[1:]))
+
+def on_same_line(b1, b2):
+    return box_to_line(b1) == box_to_line(b2)
 
 def build_box_group(sg):
     boxes = [span.box for span in sg.spans]
     return MMDABoxGroup(boxes=boxes)
+
+def merge_span_group_boxes(sg):
+    boxes = []
+    last_span, last_box = None, None
+    for span, box in zip(sg.spans, sg.box_group.boxes):
+        if last_span is not None and spans_close(last_span, span) and on_same_line(last_box, box):
+            last_box = calc_bounding_box([last_box, box])
+            last_span = span
+        else:
+            if last_box is not None:
+                boxes.append(last_box)
+            last_span, last_box = span, box
+    boxes.append(last_box)
+    return boxes
 
 
 class Predictor:
@@ -98,8 +110,8 @@ class Predictor:
             for span in sg.spans:
                 span.box = None
         for sg in prediction_span_groups:
-            if all_spans_close(sg):
-                sg.box_group.boxes = merge_boxes(sg.box_group.boxes)
+            boxes = merge_span_group_boxes(sg)
+            sg.box_group.boxes = boxes
         doc.annotate(citation_mentions=prediction_span_groups)
 
         return Prediction(mentions=[api.SpanGroup.from_mmda(sg) for sg in doc.citation_mentions])
