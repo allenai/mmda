@@ -113,7 +113,7 @@ class GrobidAugmentExistingDocumentParser(Parser):
         )
         doc.annotate(
             headings=box_groups_to_span_groups(
-                heading_box_groups, doc, center=False
+                heading_box_groups, doc, center=True
             )
         )
         doc.annotate(
