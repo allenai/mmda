@@ -89,6 +89,29 @@ class TestGrobidAugmentExistingDocumentParser(unittest.TestCase):
                 assert m.box_group.metadata.target_id in bib_entry_grobid_ids
         assert mentions_with_targets == 66
 
+        # structured body text (sections, paragraphs, sentences)
+        assert len(augmented_doc.sections) is 20
+        assert len(augmented_doc.paragraphs) is 40
+        assert len(augmented_doc.sentences) is 249
+
+        for section in augmented_doc.sections:
+            assert len(section.headings) == 1
+            if section.id == 0:
+                assert section.headings[0].text == "1. Introduction"
+                assert section.headings[0].box_group.metadata.number == "1."
+                assert section.headings[0].box_group.metadata.title == "Introduction"
+            for paragraph in section.paragraphs:
+                if paragraph.id == 0:
+                    assert paragraph.text.startswith(
+                        "Research in remote sensing has been steadily increasing"
+                    )
+                    assert paragraph.sentences[-1].text.endswith(", etc.")
+                for sentence in paragraph.sentences:
+                    if sentence.id == 0:
+                        assert sentence.text.startswith(
+                            "Research in remote sensing has been steadily increasing"
+                        )
+
     @um.patch("requests.request", side_effect=mock_request)
     def test_passes_if_xml_missing_authors(self, mock_request):
         with open(PDFPLUMBER_DOC_PATH) as f_in:
