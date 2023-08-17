@@ -8,6 +8,7 @@ as a definition of the objects it expects, and those it returns.
 
 from typing import List
 from itertools import groupby
+from bisect import bisect
 
 from pydantic import BaseModel, BaseSettings
 
@@ -25,6 +26,7 @@ class Instance(BaseModel):
     symbols: str
     tokens: List[api.SpanGroup]
     pages: List[api.SpanGroup]
+    rows: List[api.SpanGroup]
 
 
 class Prediction(BaseModel):
@@ -42,8 +44,12 @@ class PredictorConfig(BaseSettings):
     pass
 
 
-def box_to_line(box):
-    return round(box.t, 3)
+def span_to_row_idx(doc, span):
+    """
+    assumes spans do not cross rows (meaning that span.start and
+    span.end are assumed to be on the same row)
+    """
+    return bisect([r.start for r in doc.rows], span.start) - 1
 
 def calc_bounding_box(boxes):
     l = min(b.l for b in boxes)
@@ -56,18 +62,18 @@ def spans_close(s1, s2):
     spans = sorted([s1, s2], key=lambda span: span.start)
     return all(span.end <= next_span.start <= span.end + 5 for span, next_span in zip(spans, spans[1:]))
 
-def on_same_line(b1, b2):
-    return box_to_line(b1) == box_to_line(b2)
+def on_same_line(doc, s1, s2):
+    return span_to_row_idx(doc, s1) == span_to_row_idx(doc, s2)
 
 def build_box_group(sg):
     boxes = [span.box for span in sg.spans]
     return MMDABoxGroup(boxes=boxes)
 
-def merge_span_group_boxes(sg):
+def merge_span_group_boxes(doc, sg):
     boxes = []
     last_span, last_box = None, None
     for span, box in zip(sg.spans, sg.box_group.boxes):
-        if last_span is not None and spans_close(last_span, span) and on_same_line(last_box, box):
+        if last_span is not None and spans_close(last_span, span) and on_same_line(doc, last_span, span):
             last_box = calc_bounding_box([last_box, box])
             last_span = span
         else:
@@ -101,6 +107,7 @@ class Predictor:
         doc = Document(symbols=inst.symbols)
         doc.annotate(tokens=[sg.to_mmda() for sg in inst.tokens])
         doc.annotate(pages=[sg.to_mmda() for sg in inst.pages])
+        doc.annotate(rows=[sg.to_mmda() for sg in inst.rows])
 
         prediction_span_groups = self._predictor.predict(doc)
         box_groups = [build_box_group(sg) for sg in prediction_span_groups]
@@ -110,7 +117,7 @@ class Predictor:
             for span in sg.spans:
                 span.box = None
         for sg in prediction_span_groups:
-            boxes = merge_span_group_boxes(sg)
+            boxes = merge_span_group_boxes(doc, sg)
             sg.box_group.boxes = boxes
         doc.annotate(citation_mentions=prediction_span_groups)
 

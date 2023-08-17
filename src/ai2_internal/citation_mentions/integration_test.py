@@ -67,8 +67,9 @@ class TestInterfaceIntegration(unittest.TestCase):
 
         tokens = [api.SpanGroup.from_mmda(sg) for sg in doc.tokens]
         pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
+        rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
 
-        instances = [Instance(symbols=doc.symbols, tokens=tokens, pages=pages)]
+        instances = [Instance(symbols=doc.symbols, tokens=tokens, pages=pages, rows=rows)]
         predictions = container.predict_batch(instances)
 
         mmda_mentions = [mention.to_mmda() for mention in predictions[0].mentions]
@@ -77,3 +78,24 @@ class TestInterfaceIntegration(unittest.TestCase):
         mentions_text = [m.text for m in doc.mentions]
 
         self.assertEqual(mentions_text, expected_mentions_text)
+
+    def test__multi_row_predictions(self, container):
+        pdf_path = pathlib.Path(__file__).resolve().parent / "data" / "arxiv-2201.05673-page1.pdf"
+        doc = PDFPlumberParser(split_at_punctuation=True).parse(str(pdf_path))
+
+        tokens = [api.SpanGroup.from_mmda(sg) for sg in doc.tokens]
+        pages = [api.SpanGroup.from_mmda(sg) for sg in doc.pages]
+        rows = [api.SpanGroup.from_mmda(sg) for sg in doc.rows]
+
+        instances = [Instance(symbols=doc.symbols, tokens=tokens, pages=pages, rows=rows)]
+        predictions = container.predict_batch(instances)
+
+        mmda_mentions = [mention.to_mmda() for mention in predictions[0].mentions]
+        doc.annotate(mentions=mmda_mentions)
+
+        self.assertEqual(doc.mentions[0].text, "Silver and Veness 2010")
+        self.assertEqual(doc.mentions[1].text, "Browne et al . 2012")
+        self.assertEqual(doc.mentions[2].text, "Somani et al . 2013")
+        self.assertEqual(len(doc.mentions[0].box_group.boxes), 1)
+        self.assertEqual(len(doc.mentions[1].box_group.boxes), 2)
+        self.assertEqual(len(doc.mentions[2].box_group.boxes), 1)
