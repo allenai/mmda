@@ -16,6 +16,9 @@ from mmda.types.span import Span
 from mmda.utils.stringify import stringify_span_group
 
 
+fixture_path = pathlib.Path(__file__).parent.parent / "fixtures" / "utils"
+
+
 class TestStringify(unittest.TestCase):
     def test_stringify(self):
         doc = Document.from_json(
@@ -385,4 +388,22 @@ class TestStringify(unittest.TestCase):
         self.assertEqual(
             stringify_span_group(span_group=query_span_group, document=doc),
             "Symbols IN clude HYPH ENS",
+        )
+
+    def test_include_symbols_between_disjoint_spans(self):
+        with open(fixture_path / "121e30c48546e671dc5e16c694c5e69b392cf8fb_0.0.23.json", "r") as f:
+            doc = Document.from_json(json.loads(f.read()))
+
+        # make sure test fixture is defined correctly
+        query_span_group = doc.citation_mentions[0]
+        assert query_span_group.text == "Takase et al . 2018"
+        assert query_span_group.symbols == ['Takase', 'et', 'al', '.', '2018']
+
+        self.assertEqual(
+            stringify_span_group(span_group=query_span_group, document=doc),
+            "Takase et al. 2018",
+        )
+        self.assertEqual(
+            stringify_span_group(span_group=query_span_group, document=doc, include_symbols_between_disjoint_spans=True),
+            "Takase et al., 2018"
         )
