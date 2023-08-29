@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import itertools
 import logging
 from collections import defaultdict
 from itertools import groupby
-import itertools
-from typing import List, Dict, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -14,7 +14,12 @@ from mmda.types.span import Span
 
 
 def allocate_overlapping_tokens_for_box(
-        tokens: List[SpanGroup], box, token_box_in_box_group: bool = False, x: float = 0.0, y: float = 0.0, center: bool = False
+    tokens: List[SpanGroup],
+    box,
+    token_box_in_box_group: bool = False,
+    x: float = 0.0,
+    y: float = 0.0,
+    center: bool = False,
 ) -> Tuple[List[Span], List[Span]]:
     """Finds overlap of tokens for given box
     Args
@@ -29,10 +34,14 @@ def allocate_overlapping_tokens_for_box(
     """
     allocated_tokens, remaining_tokens = [], []
     for token in tokens:
-        if token_box_in_box_group and token.box_group.boxes[0].is_overlap(other=box, x=x, y=y, center=center):
+        if token_box_in_box_group and token.box_group.boxes[0].is_overlap(
+            other=box, x=x, y=y, center=center
+        ):
             # The token "box" is stored within the SpanGroup's .box_group
             allocated_tokens.append(token)
-        elif token.spans[0].box is not None and token.spans[0].box.is_overlap(other=box, x=x, y=y, center=center):
+        elif token.spans[0].box is not None and token.spans[0].box.is_overlap(
+            other=box, x=x, y=y, center=center
+        ):
             # default to assuming the token "box" is stored in the SpanGroup .box
             allocated_tokens.append(token)
         else:
@@ -41,7 +50,7 @@ def allocate_overlapping_tokens_for_box(
 
 
 def box_groups_to_span_groups(
-        box_groups: List[BoxGroup], doc: Document, pad_x: bool = False, center: bool = False
+    box_groups: List[BoxGroup], doc: Document, pad_x: bool = False, center: bool = False
 ) -> List[SpanGroup]:
     """Generate SpanGroups from BoxGroups.
     Args
@@ -60,23 +69,22 @@ def box_groups_to_span_groups(
     token_box_in_box_group = None
 
     for box_id, box_group in enumerate(box_groups):
-
         all_tokens_overlapping_box_group = []
 
         for box in box_group.boxes:
-
             # Caching the page tokens to avoid duplicated search
             if box.page not in all_page_tokens:
-                cur_page_tokens = all_page_tokens[box.page] = doc.pages[
-                    box.page
-                ].tokens
+                cur_page_tokens = all_page_tokens[box.page] = doc.pages[box.page].tokens
                 if token_box_in_box_group is None:
                     # Determine whether box is stored on token SpanGroup span.box or in the box_group
                     token_box_in_box_group = all(
                         [
                             (
-                                    (hasattr(token.box_group, "boxes") and len(token.box_group.boxes) == 1)
-                                    and token.spans[0].box is None
+                                (
+                                    hasattr(token.box_group, "boxes")
+                                    and len(token.box_group.boxes) == 1
+                                )
+                                and token.spans[0].box is None
                             )
                             for token in cur_page_tokens
                         ]
@@ -84,9 +92,16 @@ def box_groups_to_span_groups(
                     # Determine average width of tokens on this page if we are going to pad x
                     if pad_x:
                         if token_box_in_box_group and box.page not in avg_token_widths:
-                            avg_token_widths[box.page] = np.average([t.box_group.boxes[0].w for t in cur_page_tokens])
-                        elif not token_box_in_box_group and box.page not in avg_token_widths:
-                            avg_token_widths[box.page] = np.average([t.spans[0].box.w for t in cur_page_tokens])
+                            avg_token_widths[box.page] = np.average(
+                                [t.box_group.boxes[0].w for t in cur_page_tokens]
+                            )
+                        elif (
+                            not token_box_in_box_group
+                            and box.page not in avg_token_widths
+                        ):
+                            avg_token_widths[box.page] = np.average(
+                                [t.spans[0].box.w for t in cur_page_tokens]
+                            )
 
             else:
                 cur_page_tokens = all_page_tokens[box.page]
@@ -99,7 +114,7 @@ def box_groups_to_span_groups(
                 # optionally pad x a small amount so that extra narrow token boxes (when split at punctuation) are not missed
                 x=avg_token_widths.get(box.page, 0.0) * 0.5 if pad_x else 0.0,
                 y=0.0,
-                center=center
+                center=center,
             )
             all_page_tokens[box.page] = remaining_tokens
 
@@ -113,7 +128,8 @@ def box_groups_to_span_groups(
             else MergeSpans(
                 list_of_spans=list(
                     itertools.chain.from_iterable(
-                        span_group.spans for span_group in all_tokens_overlapping_box_group
+                        span_group.spans
+                        for span_group in all_tokens_overlapping_box_group
                     )
                 ),
                 index_distance=1,
@@ -131,9 +147,11 @@ def box_groups_to_span_groups(
         )
 
     if not token_box_in_box_group:
-        logging.warning("tokens with box stored in SpanGroup span.box will be deprecated (that is, "
-                        "future Spans wont contain box). Ensure Document is annotated with tokens "
-                        "having box stored in SpanGroup box_group.boxes")
+        logging.warning(
+            "tokens with box stored in SpanGroup span.box will be deprecated (that is, "
+            "future Spans wont contain box). Ensure Document is annotated with tokens "
+            "having box stored in SpanGroup box_group.boxes"
+        )
 
     del all_page_tokens
 
@@ -149,6 +167,7 @@ def box_groups_to_span_groups(
     #     span_groups=derived_span_groups, field_name=field_name
     # )
     return derived_span_groups
+
 
 class MergeSpans:
     """
@@ -201,20 +220,24 @@ class MergeSpans:
         """
         starts_matrix = np.full(
             (len(self.list_of_spans), len(self.list_of_spans)),
-            [span.start for span in self.list_of_spans]
+            [span.start for span in self.list_of_spans],
         )
         ends_matrix = np.full(
             (len(self.list_of_spans), len(self.list_of_spans)),
-            [span.end for span in self.list_of_spans]
+            [span.end for span in self.list_of_spans],
         )
 
         starts_minus_ends = np.abs(starts_matrix - ends_matrix.T)
         ends_minus_starts = np.abs(ends_matrix - starts_matrix.T)
-        are_neighboring_spans = np.minimum(starts_minus_ends, ends_minus_starts) <= self.index_distance
-        neighboring_spans =  np.transpose(are_neighboring_spans.nonzero())
+        are_neighboring_spans = (
+            np.minimum(starts_minus_ends, ends_minus_starts) <= self.index_distance
+        )
+        neighboring_spans = np.transpose(are_neighboring_spans.nonzero())
 
         if len(neighboring_spans) > 0:
-            neighboring_spans_no_dupes = neighboring_spans[np.where(neighboring_spans[:,1] < neighboring_spans[:,0])]
+            neighboring_spans_no_dupes = neighboring_spans[
+                np.where(neighboring_spans[:, 1] < neighboring_spans[:, 0])
+            ]
 
             for j, i in neighboring_spans_no_dupes:
                 span_i = self.list_of_spans[i]
@@ -305,14 +328,8 @@ class MergeSpans:
                     for span in page_spans:
                         spans_by_page[pg].append(span)
                 for page_spans in spans_by_page.values():
-                    merged_box = Box.small_boxes_to_big_box(
-                        [span.box for span in page_spans]
+                    merged_span = Span.small_spans_to_big_span(
+                        spans=page_spans, merge_boxes=True
                     )
-                    merged_spans.append(
-                        Span(
-                            start=min([span.start for span in page_spans]),
-                            end=max([span.end for span in page_spans]),
-                            box=merged_box,
-                        )
-                    )
+                    merged_spans.append(merged_span)
         return merged_spans

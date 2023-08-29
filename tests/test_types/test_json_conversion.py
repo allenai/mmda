@@ -1,16 +1,15 @@
-'''
+"""
 Description: Test whether all properties for an mmda doc are preserved when
              converting to json and back.
 Author:      @soldni
 
-'''
+"""
 
 import json
 from pathlib import Path
 
-from mmda.types import BoxGroup, SpanGroup, Document, Metadata
 from mmda.parsers import PDFPlumberParser
-
+from mmda.types import BoxGroup, Document, Metadata, SpanGroup
 
 PDFFILEPATH = Path(__file__).parent / "../fixtures/1903.10676.pdf"
 
@@ -45,10 +44,7 @@ def test_doc_conversion():
 
     for field_name in orig_doc.fields:
         # this iterates over all span group for this field in both docs
-        field_it = zip(
-            getattr(orig_doc, field_name),
-            getattr(new_doc, field_name)
-        )
+        field_it = zip(getattr(orig_doc, field_name), getattr(new_doc, field_name))
 
         # type annotations to keep mypy quiet
         orig_sg: SpanGroup
@@ -58,4 +54,7 @@ def test_doc_conversion():
             # for each pair, they should have same metadata (type, id,
             # and optionally, text) and same spans.
             assert orig_sg.metadata == new_sg.metadata
-            assert orig_sg.spans == new_sg.spans
+            for orig_span, new_span in zip(orig_sg.spans, new_sg.spans):
+                assert orig_span.start == new_span.start
+                assert orig_span.end == new_span.end
+                assert orig_span.box.coordinates == new_span.box.coordinates

@@ -274,7 +274,7 @@ class TestSVMWordPredictor(unittest.TestCase):
             else:
                 tokens = [self.doc.tokens[token_id] for token_id in token_ids]
                 spans = [span for token in tokens for span in token.spans]
-                big_span = Span.small_spans_to_big_span(spans=spans)
+                big_span = Span.small_spans_to_big_span(spans=spans, merge_boxes=False)
                 self.assertEqual(
                     self.doc.symbols[big_span.start : big_span.end],
                     "".join([token.text for token in tokens]),

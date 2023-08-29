@@ -75,11 +75,11 @@ def levenshtein(
 
 def box_overlap(box: Box, container: Box) -> float:
     """Returns the percentage of area of a box inside of a container."""
-    bl, bt, bw, bh = box.xywh
+    bl, bt, bw, bh = box.l, box.t, box.w, box.h
     br = bl + bw
     bb = bt + bh
 
-    cl, ct, cw, ch = container.xywh
+    cl, ct, cw, ch = container.l, container.t, container.w, container.h
     cr = cl + cw
     cb = ct + ch
 
