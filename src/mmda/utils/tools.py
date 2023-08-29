@@ -121,8 +121,7 @@ def box_groups_to_span_groups(
         derived_spans = merge_spans.merge_neighbor_spans_by_symbol_distance()
 
         # tokens overlapping with derived spans:
-        doc.annotate(derived_span_group=[SpanGroup(spans=derived_spans)])
-        sg_tokens = doc.derived_span_group[0].tokens
+        sg_tokens = doc.find_overlapping(SpanGroup(spans=derived_spans), "tokens")
 
         # remove any additional tokens added to the spangroup via MergeSpans from the list of available page tokens
         # (this can happen if the MergeSpans algorithm merges tokens that are not adjacent, e.g. if `center` is True and
@@ -133,7 +132,6 @@ def box_groups_to_span_groups(
                     all_page_tokens[sg_token.box_group.boxes[0].page].remove(sg_token)
                 else:
                     all_page_tokens[sg_token.spans[0].box.page].remove(sg_token)
-        doc.remove("derived_span_group")
 
         derived_span_groups.append(
             SpanGroup(
