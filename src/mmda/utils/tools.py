@@ -15,7 +15,7 @@ from mmda.types.span import Span
 
 def allocate_overlapping_tokens_for_box(
         tokens: List[SpanGroup], box, token_box_in_box_group: bool = False, x: float = 0.0, y: float = 0.0, center: bool = False
-) -> Tuple[List[Span], List[Span]]:
+) -> Tuple[List[SpanGroup], List[SpanGroup]]:
     """Finds overlap of tokens for given box
     Args
         `tokens` (List[SpanGroup])
@@ -102,7 +102,6 @@ def box_groups_to_span_groups(
                 center=center
             )
             all_page_tokens[box.page] = remaining_tokens
-
             all_tokens_overlapping_box_group.extend(tokens_in_box)
 
         merge_spans = (
@@ -119,10 +118,24 @@ def box_groups_to_span_groups(
                 index_distance=1,
             )
         )
+        derived_spans = merge_spans.merge_neighbor_spans_by_symbol_distance()
+
+        # tokens overlapping with derived spans:
+        sg_tokens = doc.find_overlapping(SpanGroup(spans=derived_spans), "tokens")
+
+        # remove any additional tokens added to the spangroup via MergeSpans from the list of available page tokens
+        # (this can happen if the MergeSpans algorithm merges tokens that are not adjacent, e.g. if `center` is True and
+        # a token is not found to be overlapping with the box, but MergeSpans decides it is close enough to be merged)
+        for sg_token in sg_tokens:
+            if sg_token not in all_tokens_overlapping_box_group:
+                if token_box_in_box_group:
+                    all_page_tokens[sg_token.box_group.boxes[0].page].remove(sg_token)
+                else:
+                    all_page_tokens[sg_token.spans[0].box.page].remove(sg_token)
 
         derived_span_groups.append(
             SpanGroup(
-                spans=merge_spans.merge_neighbor_spans_by_symbol_distance(),
+                spans=derived_spans,
                 box_group=box_group,
                 # id = box_id,
             )
