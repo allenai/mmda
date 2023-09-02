@@ -128,9 +128,9 @@ def box_groups_to_span_groups(
         # a token is not found to be overlapping with the box, but MergeSpans decides it is close enough to be merged)
         for sg_token in sg_tokens:
             if sg_token not in all_tokens_overlapping_box_group:
-                if token_box_in_box_group:
+                if token_box_in_box_group and sg_token in all_page_tokens[sg_token.box_group.boxes[0].page]:
                     all_page_tokens[sg_token.box_group.boxes[0].page].remove(sg_token)
-                else:
+                elif not token_box_in_box_group and sg_token in all_page_tokens[sg_token.spans[0].box.page]:
                     all_page_tokens[sg_token.spans[0].box.page].remove(sg_token)
 
         derived_span_groups.append(
