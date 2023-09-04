@@ -76,12 +76,10 @@ def stringify_span_group(
             )
         else:
             logger.debug(f"span_group {span_group} has disjoint spans")
-            if include_symbols_between_disjoint_spans:
-                # TODO: easiest is probably to convert disjoint spans into a single longer span
-                raise NotImplementedError
 
     # if matched words are disjoint, what should we do with the in-between symbols when stringifying?
-    if Span.are_disjoint(spans=[span for word in matched_words for span in word.spans]):
+    word_spans = [span for word in matched_words for span in word.spans]
+    if Span.are_disjoint(spans=word_spans):
         if not allow_disjoint_spans:
             raise ValueError(
                 f"span_group {span_group} intersects words {matched_words} which have disjoint spans but allow_disjoint_spans is False"
@@ -91,8 +89,16 @@ def stringify_span_group(
                 f"span_group {span_group} intersects words {matched_words} which have disjoint spans"
             )
             if include_symbols_between_disjoint_spans:
-                # TODO: easiest is probably to convert disjoint spans into a single longer span
-                raise NotImplementedError
+                matched_words = document.find_overlapping(
+                    SpanGroup(
+                        spans=[
+                            Span(
+                                start=matched_words[0].start, end=matched_words[-1].end
+                            )
+                        ]
+                    ),
+                    "words",
+                )
 
     # TODO: actually, maybe refactor this. it doesnt matter if query spangroup is disjoint
     #       the actual handling should just happen if it's disjoint words.
