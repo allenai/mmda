@@ -88,7 +88,7 @@ hf_predictors = [
 ]
 vila_predictors = [
     'vila>=0.5,<0.6',
-    'transformers',
+    'transformers<4.34.0',
 ]
 mention_predictor = [
     'transformers[torch]',
