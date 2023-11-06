@@ -209,7 +209,11 @@ class GrobidAugmentExistingDocumentParser(Parser):
             elements = item_list_root.findall(f".//tei:{item_tag}", NS)
 
         for e in elements:
-            coords_string = e.attrib["coords"]
+            try:
+                coords_string = e.attrib["coords"]
+            except KeyError:
+                logging.warning(f"Element with '{item_tag}' tag missing 'coords' attribute")
+                continue
             boxes = self._xml_coords_to_boxes(coords_string)
 
             grobid_id = e.attrib[ID_ATTR_KEY] if ID_ATTR_KEY in e.keys() else None
@@ -241,7 +245,11 @@ class GrobidAugmentExistingDocumentParser(Parser):
         box_group = None
         heading_element = section_div.find(f".//tei:head", NS)
         if heading_element is not None:  # elements evaluate as False if no children
-            coords_string = heading_element.attrib["coords"]
+            try:
+                coords_string = heading_element.attrib["coords"]
+            except KeyError:
+                logging.warning(f"Heading element missing 'coords' attribute")
+                return None
             boxes = self._xml_coords_to_boxes(coords_string)
             number = heading_element.attrib["n"] if "n" in heading_element.keys() else None
             section_title = heading_element.text
@@ -265,7 +273,12 @@ class GrobidAugmentExistingDocumentParser(Parser):
             for p in div.findall(f"./tei:p", NS):
                 sentence_box_groups: List[BoxGroup] = []
                 for s in p.findall(f"./tei:s", NS):
-                    sentence_boxes = self._xml_coords_to_boxes(s.attrib["coords"])
+                    try:
+                        coords_string = s.attrib["coords"]
+                    except KeyError:
+                        logging.warning(f"Sentence element missing 'coords' attribute")
+                        continue
+                    sentence_boxes = self._xml_coords_to_boxes(coords_string)
                     sentence_box_groups.append(BoxGroup(boxes=sentence_boxes))
                 paragraphs.append(sentence_box_groups)
                 
