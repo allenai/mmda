@@ -147,7 +147,13 @@ class GrobidAugmentExistingDocumentParser(Parser):
                 section_spans.extend(sg.spans)
             # TODO add boxes to section spangroups
             section_span_groups.append(SpanGroup(spans=section_spans))
-            
+
+        # ensure unique IDs within annotations
+        all_section_span_groups = [heading_span_groups, sentence_span_groups, paragraph_span_groups, section_span_groups]
+        for span_groups in all_section_span_groups:
+            for i, span_group in enumerate(span_groups):
+                span_group.id = i
+
         doc.annotate(headings=heading_span_groups)
         doc.annotate(sentences=sentence_span_groups)
         doc.annotate(paragraphs=paragraph_span_groups)
