@@ -4,7 +4,7 @@ import logging
 from collections import defaultdict
 from itertools import groupby
 import itertools
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional, Union
 
 import numpy as np
 
@@ -41,20 +41,33 @@ def allocate_overlapping_tokens_for_box(
 
 
 def box_groups_to_span_groups(
-        box_groups: List[BoxGroup], doc: Document, pad_x: bool = False, center: bool = False
-) -> List[SpanGroup]:
-    """Generate SpanGroups from BoxGroups.
+        box_groups: List[BoxGroup],
+        doc,
+        pad_x: bool = False,
+        center: bool = False,
+        unallocated_tokens_dict:  Optional[Dict[int, SpanGroup]] = None
+) -> Union[List[SpanGroup], Tuple[List[SpanGroup], Dict[int, SpanGroup]]]:
+    """Generate SpanGroups from BoxGroups given they can only generate spans of tokens not already allocated
     Args
         `box_groups` (List[BoxGroup])
         `doc` (Document) base document annotated with pages, tokens, rows to
         `center` (bool) if True, considers tokens to be overlapping with boxes only if their centers overlap
+        `unallocated_tokens` (Optional[Dict]) of token spangroups keyed by page. If provided, will use as starting
+        point for determining if token is already allocated. Assumes the tokens within are of the same type as the `doc`
+        (i.e., tokens from both doc and the dict both have their box data in either Span.box or SpanGroup.boxgroup)
     Returns
-        List[SpanGroup] with each SpanGroup.spans corresponding to spans (sans boxes) of allocated tokens per box_group,
+        Union (either) of:
+         -List[SpanGroup] with each SpanGroup.spans corresponding to spans (sans boxes) of allocated tokens per box_group,
         and each SpanGroup.box_group containing original box_groups
+        or Tuple of:
+         -List[SpanGroup] as described above, and
+         -Dictionary of unallocated tokens keyed by page
     """
     assert all([isinstance(group, BoxGroup) for group in box_groups])
 
-    all_page_tokens = dict()
+    return_unallocated_tokens = unallocated_tokens_dict is not None
+
+    unallocated_tokens = unallocated_tokens_dict if return_unallocated_tokens else dict()
     avg_token_widths = dict()
     derived_span_groups = []
     token_box_in_box_group = None
@@ -66,8 +79,8 @@ def box_groups_to_span_groups(
         for box in box_group.boxes:
 
             # Caching the page tokens to avoid duplicated search
-            if box.page not in all_page_tokens:
-                cur_page_tokens = all_page_tokens[box.page] = doc.pages[
+            if box.page not in unallocated_tokens:
+                cur_page_tokens = unallocated_tokens[box.page] = doc.pages[
                     box.page
                 ].tokens
                 if token_box_in_box_group is None:
@@ -89,7 +102,7 @@ def box_groups_to_span_groups(
                             avg_token_widths[box.page] = np.average([t.spans[0].box.w for t in cur_page_tokens])
 
             else:
-                cur_page_tokens = all_page_tokens[box.page]
+                cur_page_tokens = unallocated_tokens[box.page]
 
             # Find all the tokens within the box
             tokens_in_box, remaining_tokens = allocate_overlapping_tokens_for_box(
@@ -101,7 +114,7 @@ def box_groups_to_span_groups(
                 y=0.0,
                 center=center
             )
-            all_page_tokens[box.page] = remaining_tokens
+            unallocated_tokens[box.page] = remaining_tokens
             all_tokens_overlapping_box_group.extend(tokens_in_box)
 
         merge_spans = (
@@ -128,10 +141,12 @@ def box_groups_to_span_groups(
         # a token is not found to be overlapping with the box, but MergeSpans decides it is close enough to be merged)
         for sg_token in sg_tokens:
             if sg_token not in all_tokens_overlapping_box_group:
-                if token_box_in_box_group and sg_token in all_page_tokens[sg_token.box_group.boxes[0].page]:
-                    all_page_tokens[sg_token.box_group.boxes[0].page].remove(sg_token)
-                elif not token_box_in_box_group and sg_token in all_page_tokens[sg_token.spans[0].box.page]:
-                    all_page_tokens[sg_token.spans[0].box.page].remove(sg_token)
+                if token_box_in_box_group and sg_token in unallocated_tokens[sg_token.box_group.boxes[0].page]:
+                    unallocated_tokens[sg_token.box_group.boxes[0].page].remove(sg_token)
+                elif not token_box_in_box_group and sg_token in unallocated_tokens[sg_token.spans[0].box.page]:
+                    unallocated_tokens[sg_token.spans[0].box.page].remove(sg_token)
+
+
 
         derived_span_groups.append(
             SpanGroup(
@@ -148,20 +163,15 @@ def box_groups_to_span_groups(
                         "future Spans wont contain box). Ensure Document is annotated with tokens "
                         "having box stored in SpanGroup box_group.boxes")
 
-    del all_page_tokens
-
     derived_span_groups = sorted(
         derived_span_groups, key=lambda span_group: span_group.start
     )
     # ensure they are ordered based on span indices
-
     for box_id, span_group in enumerate(derived_span_groups):
         span_group.id = box_id
 
-    # return self._annotate_span_group(
-    #     span_groups=derived_span_groups, field_name=field_name
-    # )
-    return derived_span_groups
+    return (derived_span_groups, unallocated_tokens) if return_unallocated_tokens else derived_span_groups
+
 
 class MergeSpans:
     """
