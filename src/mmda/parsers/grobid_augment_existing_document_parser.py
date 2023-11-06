@@ -115,8 +115,9 @@ class GrobidAugmentExistingDocumentParser(Parser):
         unallocated_section_tokens_dict: Dict[int, SpanGroup] = dict()
 
         for heading_box_group, paragraphs in section_headings_and_sentence_box_groups_in_paragraphs:
+            section_spans = []
             if heading_box_group:
-                heading_span_group, unallocated_section_tokens_dict = (
+                heading_span_group_in_list, unallocated_section_tokens_dict = (
                     box_groups_to_span_groups(
                         [heading_box_group],
                         doc,
@@ -124,7 +125,9 @@ class GrobidAugmentExistingDocumentParser(Parser):
                         unallocated_tokens_dict=unallocated_section_tokens_dict
                     )
                 )
-                heading_span_groups.extend(heading_span_group)
+                heading_span_group = heading_span_group_in_list[0]
+                heading_span_groups.append(heading_span_group)
+                section_spans.extend(heading_span_group.spans)
             this_section_paragraph_span_groups = []
             for sentence_box_groups in paragraphs:
                 this_paragraph_sentence_span_groups, unallocated_section_tokens_dict = box_groups_to_span_groups(
@@ -137,11 +140,12 @@ class GrobidAugmentExistingDocumentParser(Parser):
                 paragraph_spans = []
                 for sg in this_paragraph_sentence_span_groups:
                     paragraph_spans.extend(sg.spans)
+                # TODO add boxes to paragraph spangroups
                 this_section_paragraph_span_groups.append(SpanGroup(spans=paragraph_spans))
             paragraph_span_groups.extend(this_section_paragraph_span_groups)
-            section_spans = []
             for sg in this_section_paragraph_span_groups:
                 section_spans.extend(sg.spans)
+            # TODO add boxes to section spangroups
             section_span_groups.append(SpanGroup(spans=section_spans))
             
         doc.annotate(headings=heading_span_groups)
