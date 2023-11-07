@@ -137,7 +137,8 @@ class GrobidAugmentExistingDocumentParser(Parser):
                     pad_x=True,
                     unallocated_tokens_dict=unallocated_section_tokens_dict
                     ) 
-                sentence_span_groups.extend(this_paragraph_sentence_span_groups)
+                if all([sg.spans for sg in this_paragraph_sentence_span_groups]):
+                    sentence_span_groups.extend(this_paragraph_sentence_span_groups)
                 paragraph_spans = []
                 for sg in this_paragraph_sentence_span_groups:
                     paragraph_spans.extend(sg.spans)
