@@ -12,7 +12,7 @@ import xml.etree.ElementTree as et
 
 from mmda.parsers.parser import Parser
 from mmda.types import Metadata
-from mmda.types.annotation import BoxGroup, Box, SpanGroup
+from mmda.types.annotation import BoxGroup, Box, SpanGroup, Span
 from mmda.types.document import Document
 from mmda.types.names import PagesField, RowsField, TokensField
 from mmda.utils.tools import box_groups_to_span_groups
@@ -134,6 +134,7 @@ class GrobidAugmentExistingDocumentParser(Parser):
                     sentence_box_groups, 
                     doc, 
                     center=True,
+                    pad_x=True,
                     unallocated_tokens_dict=unallocated_section_tokens_dict
                     ) 
                 sentence_span_groups.extend(this_paragraph_sentence_span_groups)
