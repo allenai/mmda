@@ -136,18 +136,49 @@ def box_groups_to_span_groups(
         # tokens overlapping with derived spans:
         sg_tokens = doc.find_overlapping(SpanGroup(spans=derived_spans), "tokens")
 
+        def update_derived_spans(t_span):
+            # if the sg_token is in the derived_span, cut it out by updating derived_spans.
+            # this can happen because merge_spans finds min number of spans and can merge spans that 
+            # cover tokens that were already allocated. We update this to avoid spangroup overlap errors.
+            for i, d_span in enumerate(derived_spans):
+                if d_span.start == t_span.start and t_span.end < d_span.end:
+                    # unusable token_span is at start of derived_span
+                    d_span.start = t_span.end
+                elif d_span.end == t_span.end and d_span.start < t_span.start < d_span.end:
+                    # unusable token_span is at end of derived_span
+                    d_span.end = t_span.end
+                elif d_span.start < t_span.start < d_span.end and t_span.end < d_span.end:
+                    # unusable token_span is encompassed by derived_span
+                    d_span.end = t_span.start
+                    derived_spans.insert(i+1, Span(t_span.end, d_span.end))
+                elif d_span.start == t_span.start and d_span.end == t_span.end:
+                    # unusable token_span is equal to derived_span
+                    derived_spans.remove(d_span)
+
         # remove any additional tokens added to the spangroup via MergeSpans from the list of available page tokens
         # (this can happen if the MergeSpans algorithm merges tokens that are not adjacent, e.g. if `center` is True and
         # a token is not found to be overlapping with the box, but MergeSpans decides it is close enough to be merged)
         for sg_token in sg_tokens:
             if sg_token not in all_tokens_overlapping_box_group:
-                if token_box_in_box_group and sg_token in unallocated_tokens[sg_token.box_group.boxes[0].page]:
-                    unallocated_tokens[sg_token.box_group.boxes[0].page].remove(sg_token)
-                elif not token_box_in_box_group and sg_token in unallocated_tokens[sg_token.spans[0].box.page]:
-                    unallocated_tokens[sg_token.spans[0].box.page].remove(sg_token)
+                # if token not removed from unallocated_tokens yet, do it now
+                if token_box_in_box_group:
+                    if sg_token in unallocated_tokens[sg_token.box_group.boxes[0].page]:
+                        unallocated_tokens[sg_token.box_group.boxes[0].page].remove(sg_token)
+                    # otherwise, if it is in neither all_tokens_overlapping_box_group nor unallocated_tokens, the assumption
+                    # is that the token has already been allocated by a different box_group, so, we need to remove it from our
+                    # derived spans to avoid 'SpanGroup overlap' error.
+                    else:
+                        update_derived_spans(sg_token.spans[0])
+                else:
+                    if sg_token in unallocated_tokens[sg_token.spans[0].box.page]:
+                        unallocated_tokens[sg_token.spans[0].box.page].remove(sg_token)
+                    # same scenario as above.
+                    else:
+                        update_derived_spans(sg_token.spans[0]) 
 
 
-
+        # if derived_span_group encompasses any tokens that were NOT in unallocated_tokens, we need to REMOVE 
+        # that spangroup here... wait maybe not.
         derived_span_groups.append(
             SpanGroup(
                 spans=derived_spans,
