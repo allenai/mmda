@@ -136,7 +136,7 @@ def box_groups_to_span_groups(
         # tokens overlapping with derived spans:
         sg_tokens = doc.find_overlapping(SpanGroup(spans=derived_spans), "tokens")
 
-        def update_derived_spans(t_span):
+        def omit_span_from_derived_spans(t_span):
             # if the sg_token is in the derived_span, cut it out by updating derived_spans.
             # this can happen because merge_spans finds min number of spans and can merge spans that 
             # cover tokens that were already allocated. We update this to avoid spangroup overlap errors.
@@ -168,13 +168,13 @@ def box_groups_to_span_groups(
                     # is that the token has already been allocated by a different box_group, so, we need to remove it from our
                     # derived spans to avoid 'SpanGroup overlap' error.
                     else:
-                        update_derived_spans(sg_token.spans[0])
+                        omit_span_from_derived_spans(sg_token.spans[0])
                 else:
                     if sg_token in unallocated_tokens[sg_token.spans[0].box.page]:
                         unallocated_tokens[sg_token.spans[0].box.page].remove(sg_token)
                     # same scenario as above.
                     else:
-                        update_derived_spans(sg_token.spans[0]) 
+                        omit_span_from_derived_spans(sg_token.spans[0]) 
 
 
         # if derived_span_group encompasses any tokens that were NOT in unallocated_tokens, we need to REMOVE 
