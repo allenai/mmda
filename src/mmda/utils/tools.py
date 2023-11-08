@@ -46,7 +46,7 @@ def box_groups_to_span_groups(
         pad_x: bool = False,
         center: bool = False,
         unallocated_tokens_dict:  Optional[Dict[int, SpanGroup]] = None
-) -> Union[List[SpanGroup], Tuple[List[SpanGroup], Dict[int, SpanGroup]]]:
+) -> List[SpanGroup]:
     """Generate SpanGroups from BoxGroups given they can only generate spans of tokens not already allocated
     Args
         `box_groups` (List[BoxGroup])
@@ -65,9 +65,7 @@ def box_groups_to_span_groups(
     """
     assert all([isinstance(group, BoxGroup) for group in box_groups])
 
-    return_unallocated_tokens = unallocated_tokens_dict is not None
-
-    unallocated_tokens = unallocated_tokens_dict if return_unallocated_tokens else dict()
+    unallocated_tokens = unallocated_tokens_dict if unallocated_tokens_dict else dict()
     avg_token_widths = dict()
     derived_span_groups = []
     token_box_in_box_group = None
@@ -201,7 +199,7 @@ def box_groups_to_span_groups(
     for box_id, span_group in enumerate(derived_span_groups):
         span_group.id = box_id
 
-    return (derived_span_groups, unallocated_tokens) if return_unallocated_tokens else derived_span_groups
+    return derived_span_groups
 
 
 class MergeSpans:
