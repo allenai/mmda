@@ -65,7 +65,7 @@ def box_groups_to_span_groups(
     """
     assert all([isinstance(group, BoxGroup) for group in box_groups])
 
-    unallocated_tokens = unallocated_tokens_dict if unallocated_tokens_dict else dict()
+    unallocated_tokens = unallocated_tokens_dict if unallocated_tokens_dict is not None else dict()
     avg_token_widths = dict()
     derived_span_groups = []
     token_box_in_box_group = None
