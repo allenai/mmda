@@ -45,16 +45,23 @@ def box_groups_to_span_groups(
         doc,
         pad_x: bool = False,
         center: bool = False,
-        unallocated_tokens_dict:  Optional[Dict[int, SpanGroup]] = None
+        unallocated_tokens_dict:  Optional[Dict[int, SpanGroup]] = None,
+        fix_overlaps: bool = False,
 ) -> List[SpanGroup]:
     """Generate SpanGroups from BoxGroups given they can only generate spans of tokens not already allocated
     Args
         `box_groups` (List[BoxGroup])
         `doc` (Document) base document annotated with pages, tokens, rows to
-        `center` (bool) if True, considers tokens to be overlapping with boxes only if their centers overlap
+            `center` (bool) if True, considers tokens to be overlapping with boxes only if their centers overlap
         `unallocated_tokens` (Optional[Dict]) of token spangroups keyed by page. If provided, will use as starting
-        point for determining if token is already allocated. Assumes the tokens within are of the same type as the `doc`
-        (i.e., tokens from both doc and the dict both have their box data in either Span.box or SpanGroup.boxgroup)
+            point for determining if token is already allocated. Assumes the tokens within are of the same type as the
+            `doc` (i.e., tokens from both doc and the dict both have their box data in either Span.box or
+            SpanGroup.boxgroup)
+        `fix_overlaps` (bool) if True, will attempt to fix overlapping spans within a SpanGroup by omitting
+            spans from already allocated tokens that end up contained in the derived_spans that come from MergeSpans.
+            This allows for the possibility of a BoxGroup that covers text to end up with a SpanGroup that is missing
+            spans or even has no spans since a previous BoxGroup already allocated all the underlying tokens. This
+            reduces the possibility of SpanGroup overlap errors, but may not return the desired SpanGroups.
     Returns
         Union (either) of:
          -List[SpanGroup] with each SpanGroup.spans corresponding to spans (sans boxes) of allocated tokens per box_group,
@@ -162,17 +169,19 @@ def box_groups_to_span_groups(
                 if token_box_in_box_group:
                     if sg_token in unallocated_tokens[sg_token.box_group.boxes[0].page]:
                         unallocated_tokens[sg_token.box_group.boxes[0].page].remove(sg_token)
-                    # otherwise, if it is in neither all_tokens_overlapping_box_group nor unallocated_tokens, the assumption
-                    # is that the token has already been allocated by a different box_group, so, we need to remove it from our
-                    # derived spans to avoid 'SpanGroup overlap' error.
+                    # otherwise, if it is in neither all_tokens_overlapping_box_group nor unallocated_tokens,
+                    # the assumption is that the token has already been allocated by a different box_group, so, we need
+                    # to remove it from our derived spans to avoid 'SpanGroup overlap' error.
                     else:
-                        omit_span_from_derived_spans(sg_token.spans[0])
+                        if fix_overlaps:
+                            omit_span_from_derived_spans(sg_token.spans[0])
                 else:
                     if sg_token in unallocated_tokens[sg_token.spans[0].box.page]:
                         unallocated_tokens[sg_token.spans[0].box.page].remove(sg_token)
                     # same scenario as above.
                     else:
-                        omit_span_from_derived_spans(sg_token.spans[0]) 
+                        if fix_overlaps:
+                            omit_span_from_derived_spans(sg_token.spans[0])
 
         derived_span_groups.append(
             SpanGroup(

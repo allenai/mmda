@@ -117,12 +117,13 @@ class GrobidAugmentExistingDocumentParser(Parser):
         for heading_box_group, paragraphs in section_headings_and_sentence_box_groups_in_paragraphs:
             section_spans = []
             if heading_box_group:
-                heading_span_group_in_list, unallocated_section_tokens_dict = (
+                heading_span_group_in_list = (
                     box_groups_to_span_groups(
                         [heading_box_group],
                         doc,
                         center=True,
-                        unallocated_tokens_dict=unallocated_section_tokens_dict
+                        unallocated_tokens_dict=unallocated_section_tokens_dict,
+                        fix_overlaps=True,
                     )
                 )
                 heading_span_group = heading_span_group_in_list[0]
@@ -130,12 +131,13 @@ class GrobidAugmentExistingDocumentParser(Parser):
                 section_spans.extend(heading_span_group.spans)
             this_section_paragraph_span_groups = []
             for sentence_box_groups in paragraphs:
-                this_paragraph_sentence_span_groups, unallocated_section_tokens_dict = box_groups_to_span_groups(
+                this_paragraph_sentence_span_groups = box_groups_to_span_groups(
                     sentence_box_groups, 
                     doc, 
                     center=True,
                     pad_x=True,
-                    unallocated_tokens_dict=unallocated_section_tokens_dict
+                    unallocated_tokens_dict=unallocated_section_tokens_dict,
+                    fix_overlaps=True,
                     ) 
                 if all([sg.spans for sg in this_paragraph_sentence_span_groups]):
                     sentence_span_groups.extend(this_paragraph_sentence_span_groups)
