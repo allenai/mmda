@@ -174,9 +174,6 @@ def box_groups_to_span_groups(
                     else:
                         omit_span_from_derived_spans(sg_token.spans[0]) 
 
-
-        # if derived_span_group encompasses any tokens that were NOT in unallocated_tokens, we need to REMOVE 
-        # that spangroup here... wait maybe not.
         derived_span_groups.append(
             SpanGroup(
                 spans=derived_spans,
