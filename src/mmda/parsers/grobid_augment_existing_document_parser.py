@@ -4,7 +4,7 @@
 
 """
 from grobid_client.grobid_client import GrobidClient
-from typing import List, Optional
+from typing import List, Optional, Tuple, Dict
 
 import logging
 import os
@@ -12,7 +12,7 @@ import xml.etree.ElementTree as et
 
 from mmda.parsers.parser import Parser
 from mmda.types import Metadata
-from mmda.types.annotation import BoxGroup, Box, SpanGroup
+from mmda.types.annotation import BoxGroup, Box, SpanGroup, Span
 from mmda.types.document import Document
 from mmda.types.names import PagesField, RowsField, TokensField
 from mmda.utils.tools import box_groups_to_span_groups
@@ -104,32 +104,69 @@ class GrobidAugmentExistingDocumentParser(Parser):
         # sentences within the body text, also tagged by paragraphs.
         # We use these to annotate the document in order to provide a hierarchical structure:
         # e.g. doc.sections.header, doc.sections[0].paragraphs[0].sentences[0]
-        section_box_groups, heading_box_groups, paragraph_box_groups, sentence_box_groups = \
-            self._get_structured_body_text_box_groups(xml_root)
-        doc.annotate(
-            sections=box_groups_to_span_groups(
-                section_box_groups, doc, center=True
-            )
-        )
-        doc.annotate(
-            headings=box_groups_to_span_groups(
-                heading_box_groups, doc, center=True
-            )
-        )
-        doc.annotate(
-            paragraphs=box_groups_to_span_groups(
-                paragraph_box_groups, doc, center=True
-            )
-        )
-        doc.annotate(
-            sentences=box_groups_to_span_groups(
-                sentence_box_groups, doc, center=True
-            )
-        )
+        section_headings_and_sentence_box_groups_in_paragraphs = \
+            self._get_structured_sentence_box_groups(xml_root)
+        
+        heading_span_groups = []
+        paragraph_span_groups = []
+        section_span_groups = []
+        sentence_span_groups = []
+
+        unallocated_section_tokens_dict: Dict[int, SpanGroup] = dict()
+
+        for heading_box_group, paragraphs in section_headings_and_sentence_box_groups_in_paragraphs:
+            section_spans = []
+            if heading_box_group:
+                heading_span_group_in_list = (
+                    box_groups_to_span_groups(
+                        [heading_box_group],
+                        doc,
+                        center=True,
+                        unallocated_tokens_dict=unallocated_section_tokens_dict,
+                        fix_overlaps=True,
+                    )
+                )
+                heading_span_group = heading_span_group_in_list[0]
+                heading_span_groups.append(heading_span_group)
+                section_spans.extend(heading_span_group.spans)
+            this_section_paragraph_span_groups = []
+            for sentence_box_groups in paragraphs:
+                this_paragraph_sentence_span_groups = box_groups_to_span_groups(
+                    sentence_box_groups, 
+                    doc, 
+                    center=True,
+                    pad_x=True,
+                    unallocated_tokens_dict=unallocated_section_tokens_dict,
+                    fix_overlaps=True,
+                    ) 
+                if all([sg.spans for sg in this_paragraph_sentence_span_groups]):
+                    sentence_span_groups.extend(this_paragraph_sentence_span_groups)
+                paragraph_spans = []
+                for sg in this_paragraph_sentence_span_groups:
+                    paragraph_spans.extend(sg.spans)
+                # TODO add boxes to paragraph spangroups
+                this_section_paragraph_span_groups.append(SpanGroup(spans=paragraph_spans))
+            paragraph_span_groups.extend(this_section_paragraph_span_groups)
+            for sg in this_section_paragraph_span_groups:
+                section_spans.extend(sg.spans)
+            # TODO add boxes to section spangroups
+            section_span_groups.append(SpanGroup(spans=section_spans))
+
+        # ensure unique IDs within annotations
+        all_section_span_groups = [heading_span_groups, sentence_span_groups, paragraph_span_groups, section_span_groups]
+        for span_groups in all_section_span_groups:
+            for i, span_group in enumerate(span_groups):
+                span_group.id = i
+
+        doc.annotate(headings=heading_span_groups)
+        doc.annotate(sentences=sentence_span_groups)
+        doc.annotate(paragraphs=paragraph_span_groups)
+        doc.annotate(sections=section_span_groups)
+
 
         return doc
 
-    def _xml_coords_to_boxes(self, coords_attribute: str):
+    def _xml_coords_to_boxes(self, coords_attribute: str) -> List[Box]:
         coords_list = coords_attribute.split(";")
         boxes = []
         for coords in coords_list:
@@ -176,7 +213,11 @@ class GrobidAugmentExistingDocumentParser(Parser):
             elements = item_list_root.findall(f".//tei:{item_tag}", NS)
 
         for e in elements:
-            coords_string = e.attrib["coords"]
+            try:
+                coords_string = e.attrib["coords"]
+            except KeyError:
+                logging.warning(f"Element with '{item_tag}' tag missing 'coords' attribute")
+                continue
             boxes = self._xml_coords_to_boxes(coords_string)
 
             grobid_id = e.attrib[ID_ATTR_KEY] if ID_ATTR_KEY in e.keys() else None
@@ -208,7 +249,11 @@ class GrobidAugmentExistingDocumentParser(Parser):
         box_group = None
         heading_element = section_div.find(f".//tei:head", NS)
         if heading_element is not None:  # elements evaluate as False if no children
-            coords_string = heading_element.attrib["coords"]
+            try:
+                coords_string = heading_element.attrib["coords"]
+            except KeyError:
+                logging.warning(f"Heading element missing 'coords' attribute")
+                return None
             boxes = self._xml_coords_to_boxes(coords_string)
             number = heading_element.attrib["n"] if "n" in heading_element.keys() else None
             section_title = heading_element.text
@@ -218,34 +263,29 @@ class GrobidAugmentExistingDocumentParser(Parser):
             )
         return box_group
 
-    def _get_structured_body_text_box_groups(
+    def _get_structured_sentence_box_groups(
             self,
             root: et.Element
-    ) -> (List[BoxGroup], List[BoxGroup], List[BoxGroup], List[BoxGroup]):
+    ) -> List[Tuple[Optional[BoxGroup], List[List[BoxGroup]]]]:
         section_list_root = root.find(f".//tei:body", NS)
-
-        body_sections: List[BoxGroup] = []
-        body_headings: List[BoxGroup] = []
-        body_paragraphs: List[BoxGroup] = []
-        body_sentences: List[BoxGroup] = []
-
         section_divs = section_list_root.findall(f"./tei:div", NS)
-        for div in section_divs:
-            section_boxes: List[Box] = []
-            heading_box_group = self._get_heading_box_group(div)
-            if heading_box_group:
-                body_headings.append(heading_box_group)
-                section_boxes.extend(heading_box_group.boxes)
-            for p in div.findall(f"./tei:p", NS):
-                paragraph_boxes: List[Box] = []
-                paragraph_sentences: List[BoxGroup] = []
-                for s in p.findall(f"./tei:s", NS):
-                    sentence_boxes = self._xml_coords_to_boxes(s.attrib["coords"])
-                    paragraph_sentences.append(BoxGroup(boxes=sentence_boxes))
-                    paragraph_boxes.extend(sentence_boxes)
-                body_paragraphs.append(BoxGroup(boxes=paragraph_boxes))
-                section_boxes.extend(paragraph_boxes)
-                body_sentences.extend(paragraph_sentences)
-            body_sections.append(BoxGroup(boxes=section_boxes))
 
-        return body_sections, body_headings, body_paragraphs, body_sentences
+        section_structures = []
+        for div in section_divs:
+            heading_box_group = self._get_heading_box_group(div)
+            paragraphs: List[List[BoxGroup]] = []
+            for p in div.findall(f"./tei:p", NS):
+                sentence_box_groups: List[BoxGroup] = []
+                for s in p.findall(f"./tei:s", NS):
+                    try:
+                        coords_string = s.attrib["coords"]
+                    except KeyError:
+                        logging.warning(f"Sentence element missing 'coords' attribute")
+                        continue
+                    sentence_boxes = self._xml_coords_to_boxes(coords_string)
+                    sentence_box_groups.append(BoxGroup(boxes=sentence_boxes))
+                paragraphs.append(sentence_box_groups)
+                
+            section_structures.append([heading_box_group, paragraphs])
+
+        return section_structures
