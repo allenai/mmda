@@ -139,13 +139,15 @@ class GrobidAugmentExistingDocumentParser(Parser):
                     unallocated_tokens_dict=unallocated_section_tokens_dict,
                     fix_overlaps=True,
                     ) 
+                # check that conversion to spangroups resulted in actual spans before adding them to the section
                 if all([sg.spans for sg in this_paragraph_sentence_span_groups]):
                     sentence_span_groups.extend(this_paragraph_sentence_span_groups)
-                paragraph_spans = []
-                for sg in this_paragraph_sentence_span_groups:
-                    paragraph_spans.extend(sg.spans)
-                # TODO add boxes to paragraph spangroups
-                this_section_paragraph_span_groups.append(SpanGroup(spans=paragraph_spans))
+                    paragraph_spans = []
+                    for sg in this_paragraph_sentence_span_groups:
+                        paragraph_spans.extend(sg.spans)
+                    # TODO add boxes to paragraph spangroups
+                    this_section_paragraph_span_groups.append(SpanGroup(spans=paragraph_spans))
+                    
             paragraph_span_groups.extend(this_section_paragraph_span_groups)
             for sg in this_section_paragraph_span_groups:
                 section_spans.extend(sg.spans)
