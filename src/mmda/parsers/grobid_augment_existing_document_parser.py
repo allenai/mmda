@@ -81,6 +81,12 @@ class GrobidAugmentExistingDocumentParser(Parser):
             authors=box_groups_to_span_groups(author_box_groups, doc, center=True)
         )
 
+        # formulas
+        formula_box_groups = self._get_box_groups(xml_root, "body", "formula")
+        doc.annotate(
+            formulas=box_groups_to_span_groups(formula_box_groups, doc, center=True)
+        )
+
         # bibliography entries
         bib_entry_box_groups = self._get_box_groups(xml_root, "listBibl", "biblStruct")
         doc.annotate(
