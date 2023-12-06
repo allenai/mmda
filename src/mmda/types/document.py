@@ -11,10 +11,14 @@ from typing import Dict, Iterable, List, Optional
 
 from mmda.types.annotation import Annotation, BoxGroup, SpanGroup
 from mmda.types.image import PILImage
-from mmda.types.indexers import Indexer, SpanGroupIndexer
+from mmda.types.indexers import BoxGroupIndexer, SpanGroupIndexer
 from mmda.types.metadata import Metadata
 from mmda.types.names import ImagesField, MetadataField, SymbolsField
-from mmda.utils.tools import MergeSpans, allocate_overlapping_tokens_for_box, box_groups_to_span_groups
+from mmda.utils.tools import (
+    MergeSpans,
+    allocate_overlapping_tokens_for_box,
+    box_groups_to_span_groups,
+)
 
 
 class Document:
@@ -25,20 +29,21 @@ class Document:
         self.symbols = symbols
         self.images = []
         self.__fields = []
-        self.__indexers: Dict[str, Indexer] = {}
+        self.__sg_indexers: Dict[str, SpanGroupIndexer] = {}
+        self.__bg_indexers: Dict[str, BoxGroupIndexer] = {}
         self.metadata = metadata if metadata else Metadata()
 
     @property
     def fields(self) -> List[str]:
         return self.__fields
 
-    # TODO: extend implementation to support DocBoxGroup
     def find_overlapping(self, query: Annotation, field_name: str) -> List[Annotation]:
-        if not isinstance(query, SpanGroup):
-            raise NotImplementedError(
-                f"Currently only supports query of type SpanGroup"
-            )
-        return self.__indexers[field_name].find(query=query)
+        if isinstance(query, SpanGroup):
+            return self.__sg_indexers[field_name].find(query=query)
+        elif isinstance(query, BoxGroup):
+            return self.__bg_indexers[field_name].find(query=query)
+        else:
+            raise NotImplementedError(f"Only supports query SpanGroup or BoxGroup")
 
     def add_metadata(self, **kwargs):
         """Copy kwargs into the document metadata"""
@@ -46,7 +51,7 @@ class Document:
             self.metadata.set(k, value)
 
     def annotate(
-            self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
+        self, is_overwrite: bool = False, **kwargs: Iterable[Annotation]
     ) -> None:
         """Annotate the fields for document symbols (correlating the annotations with the
         symbols) and store them into the papers.
@@ -54,7 +59,7 @@ class Document:
         # 1) check validity of field names
         for field_name in kwargs.keys():
             assert (
-                    field_name not in self.SPECIAL_FIELDS
+                field_name not in self.SPECIAL_FIELDS
             ), f"The field_name {field_name} should not be in {self.SPECIAL_FIELDS}."
 
             if field_name in self.fields:
@@ -83,7 +88,7 @@ class Document:
 
             annotation_types = {type(a) for a in annotations}
             assert (
-                    len(annotation_types) == 1
+                len(annotation_types) == 1
             ), f"Annotations in field_name {field_name} more than 1 type: {annotation_types}"
             annotation_type = annotation_types.pop()
 
@@ -94,7 +99,8 @@ class Document:
             elif annotation_type == BoxGroup:
                 # TODO: not good. BoxGroups should be stored on their own, not auto-generating SpanGroups.
                 span_groups = self._annotate_span_group(
-                    span_groups=box_groups_to_span_groups(annotations, self), field_name=field_name
+                    span_groups=box_groups_to_span_groups(annotations, self),
+                    field_name=field_name,
                 )
             else:
                 raise NotImplementedError(
@@ -108,10 +114,10 @@ class Document:
     def remove(self, field_name: str):
         delattr(self, field_name)
         self.__fields = [f for f in self.__fields if f != field_name]
-        del self.__indexers[field_name]
+        del self.__sg_indexers[field_name]
 
     def annotate_images(
-            self, images: Iterable[PILImage], is_overwrite: bool = False
+        self, images: Iterable[PILImage], is_overwrite: bool = False
     ) -> None:
         if not is_overwrite and len(self.images) > 0:
             raise AssertionError(
@@ -133,21 +139,133 @@ class Document:
         self.images = images
 
     def _annotate_span_group(
-            self, span_groups: List[SpanGroup], field_name: str
+        self, span_groups: List[SpanGroup], field_name: str
     ) -> List[SpanGroup]:
         """Annotate the Document using a bunch of span groups.
         It will associate the annotations with the document symbols.
         """
         assert all([isinstance(group, SpanGroup) for group in span_groups])
 
-        # 1) add Document to each SpanGroup
+        # 1) Build fast overlap lookup index
+        self.__sg_indexers[field_name] = SpanGroupIndexer(span_groups)
+
+        # 2) add Document to each SpanGroup
         for span_group in span_groups:
             span_group.attach_doc(doc=self)
 
-        # 2) Build fast overlap lookup index
-        self.__indexers[field_name] = SpanGroupIndexer(span_groups)
-
         return span_groups
+
+    def _annotate_box_group(
+        self, box_groups: List[BoxGroup], field_name: str
+    ) -> List[BoxGroup]:
+        """Annotate the Document using a bunch of box groups.
+        It will associate the annotations with the document's pixel coords.
+        """
+        assert all([isinstance(group, BoxGroup) for group in box_groups])
+
+        # 1) Build fast overlap lookup index
+        self.__bg_indexers[field_name] = BoxGroupIndexer(box_groups)
+
+        # 2) add Document to each BoxGroup
+        for box_group in box_groups:
+            box_group.attach_doc(doc=self)
+
+        return box_groups
+
+    def _convert_box_group_to_span_group(
+        self, box_groups: List[BoxGroup], field_name: str
+    ) -> List[SpanGroup]:
+        """Convert a BoxGroup to a SpanGroup.
+        It will associate the annotations with the document symbols.
+        """
+        assert all([isinstance(group, BoxGroup) for group in box_groups])
+
+        all_page_tokens = dict()
+        derived_span_groups = []
+        token_box_in_box_group = None
+
+        for box_id, box_group in enumerate(box_groups):
+            all_tokens_overlapping_box_group = []
+
+            for box in box_group.boxes:
+                # Caching the page tokens to avoid duplicated search
+                if box.page not in all_page_tokens:
+                    cur_page_tokens = all_page_tokens[box.page] = self.pages[
+                        box.page
+                    ].tokens
+                    if token_box_in_box_group is None:
+                        # Determine whether box is stored on token SpanGroup span.box or in the box_group
+                        token_box_in_box_group = all(
+                            [
+                                (
+                                    (
+                                        hasattr(token.box_group, "boxes")
+                                        and len(token.box_group.boxes) == 1
+                                    )
+                                    and token.spans[0].box is None
+                                )
+                                for token in cur_page_tokens
+                            ]
+                        )
+                else:
+                    cur_page_tokens = all_page_tokens[box.page]
+
+                # Find all the tokens within the box
+                tokens_in_box, remaining_tokens = allocate_overlapping_tokens_for_box(
+                    tokens=cur_page_tokens,
+                    box=box,
+                    token_box_in_box_group=token_box_in_box_group,
+                )
+                all_page_tokens[box.page] = remaining_tokens
+
+                all_tokens_overlapping_box_group.extend(tokens_in_box)
+
+            merge_spans = (
+                MergeSpans.from_span_groups_with_box_groups(
+                    span_groups=all_tokens_overlapping_box_group, index_distance=1
+                )
+                if token_box_in_box_group
+                else MergeSpans(
+                    list_of_spans=list(
+                        itertools.chain.from_iterable(
+                            span_group.spans
+                            for span_group in all_tokens_overlapping_box_group
+                        )
+                    ),
+                    index_distance=1,
+                )
+            )
+
+            derived_span_groups.append(
+                SpanGroup(
+                    spans=merge_spans.merge_neighbor_spans_by_symbol_distance(),
+                    box_group=box_group,
+                    # id = box_id,
+                )
+                # TODO Right now we cannot assign the box id, or otherwise running doc.blocks will
+                # generate blocks out-of-the-specified order.
+            )
+
+        if not token_box_in_box_group:
+            logging.warning(
+                "tokens with box stored in SpanGroup span.box will be deprecated (that is, "
+                "future Spans wont contain box). Ensure Document is annotated with tokens "
+                "having box stored in SpanGroup box_group.boxes"
+            )
+
+        del all_page_tokens
+
+        derived_span_groups = sorted(
+            derived_span_groups, key=lambda span_group: span_group.start
+        )
+        # ensure they are ordered based on span indices
+
+        for box_id, span_group in enumerate(derived_span_groups):
+            span_group.id = box_id
+
+        return self._annotate_span_group(
+            span_groups=derived_span_groups, field_name=field_name
+        )
 
     #
     #   to & from JSON

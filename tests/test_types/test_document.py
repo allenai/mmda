@@ -1,12 +1,11 @@
 import json
-import unittest
 import os
+import unittest
 
+from ai2_internal import api
 from mmda.types.annotation import SpanGroup
 from mmda.types.document import Document
 from mmda.types.names import MetadataField, SymbolsField
-
-from ai2_internal import api
 
 
 def resolve(file: str) -> str:
@@ -58,10 +57,15 @@ class TestDocument(unittest.TestCase):
             spp_doc = Document.from_json(json.load(f))
 
         with open(resolve("test_document_box_groups.json")) as f:
-            box_groups = [api.BoxGroup(**bg).to_mmda() for bg in json.load(f)["grobid_bibs_box_groups"]]
+            box_groups = [
+                api.BoxGroup(**bg).to_mmda()
+                for bg in json.load(f)["grobid_bibs_box_groups"]
+            ]
 
         spp_doc.annotate(new_span_groups=box_groups)
-        assert spp_doc.new_span_groups[0].text.startswith("Gutman G, Rosenzweig D, Golan J")
+        assert spp_doc.new_span_groups[0].text.startswith(
+            "Gutman G, Rosenzweig D, Golan J"
+        )
 
         # when token boxes are on spans
         plumber_doc = "c8b53e2d9cd247e2d42719e337bfb13784d22bd2.json"
@@ -70,7 +74,10 @@ class TestDocument(unittest.TestCase):
             doc = Document.from_json(json.load(f))
 
         with open(resolve("test_document_box_groups.json")) as f:
-            box_groups = [api.BoxGroup(**bg).to_mmda() for bg in json.load(f)["grobid_bibs_box_groups"]]
+            box_groups = [
+                api.BoxGroup(**bg).to_mmda()
+                for bg in json.load(f)["grobid_bibs_box_groups"]
+            ]
 
         doc.annotate(new_span_groups=box_groups)
         assert doc.new_span_groups[0].text.startswith("Gutman G, Rosenzweig D, Golan J")
@@ -80,7 +87,10 @@ class TestDocument(unittest.TestCase):
         a last-known-good fixture
         """
         # basic doc annotated with pages and tokens, from pdfplumber parser split at punctuation
-        with open(resolve("20fdafb68d0e69d193527a9a1cbe64e7e69a3798__pdfplumber_doc.json"), "r") as f:
+        with open(
+            resolve("20fdafb68d0e69d193527a9a1cbe64e7e69a3798__pdfplumber_doc.json"),
+            "r",
+        ) as f:
             raw_json = f.read()
             fixture_doc_json = json.loads(raw_json)
             doc = Document.from_json(fixture_doc_json)
@@ -88,9 +98,16 @@ class TestDocument(unittest.TestCase):
         # spangroups derived from boxgroups of boxes drawn neatly around bib entries by calling `.annotate` on
         # list of BoxGroups
         fixture_span_groups = []
-        with open(resolve("20fdafb68d0e69d193527a9a1cbe64e7e69a3798__bib_entry_span_groups_from_box_groups.json"), "r") as f:
+        with open(
+            resolve(
+                "20fdafb68d0e69d193527a9a1cbe64e7e69a3798__bib_entry_span_groups_from_box_groups.json"
+            ),
+            "r",
+        ) as f:
             raw_json = f.read()
-            fixture_bib_entries_json = json.loads(raw_json)["bib_entry_span_groups_from_box_groups"]
+            fixture_bib_entries_json = json.loads(raw_json)[
+                "bib_entry_span_groups_from_box_groups"
+            ]
 
         # make box_groups to annotate from test fixture bib entry span groups, and save the
         for bib_entry in fixture_bib_entries_json:
@@ -108,3 +125,30 @@ class TestDocument(unittest.TestCase):
             assert sg1.spans == sg2.spans
             assert sg1.text == sg2.text
 
+    def test_indexing_and_find_overlapping(self):
+        # this doc only has pages, tokens, rows
+        spp_plumber_doc = "spp-dag-0-0-4-doc.json"
+        doc_file = resolve(spp_plumber_doc)
+        with open(doc_file) as f:
+            spp_doc = Document.from_json(json.load(f))
+
+        # tokens & rows have box groups that can be indexed
+        for token in spp_doc.tokens:
+            assert token.box_group
+        for row in spp_doc.rows:
+            assert row.box_group
+
+        # index
+        spp_doc._annotate_box_group(
+            box_groups=[token.box_group for token in spp_doc.tokens],
+            field_name="tokens",
+        )
+        spp_doc._annotate_box_group(
+            box_groups=[row.box_group for row in spp_doc.rows], field_name="rows"
+        )
+
+        # for every row, find the tokens that have visual overlap
+        for row in spp_doc.rows:
+            overlap_tokens = spp_doc.find_overlapping(
+                query=row.box_group, field_name="tokens"
+            )
