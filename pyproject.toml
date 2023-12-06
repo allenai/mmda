@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.9.16'
+version = '0.9.17'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
