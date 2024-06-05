@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel
 import re
 from thefuzz import fuzz
 from typing import List, Tuple, Dict
@@ -49,7 +48,7 @@ def featurize(possible_links: List[CitationLink]) -> pd.DataFrame:
     df[JACCARD_ALPHA] = df.apply(lambda row: jaccard_alpha(row['source_text'], row['target_text']), axis=1)
     df[MATCH_FIRST_TOKEN] = df.apply(lambda row: match_first_token(row['source_text'], row['target_text']), axis=1)
     df[FIRST_POSITION] = df.apply(lambda row: first_position(row['source_text'], row['target_text']), axis=1)
-    
+
     # drop text columns
     X_features = df.drop(columns=['source_text', 'target_text'])
     return X_features
@@ -106,7 +105,7 @@ def match_numeric(source: str, target: str) -> float:
     for number in source_numerics:
         found = number in target_numerics
         token_found.append(found)
-    
+
     if False not in token_found:
         return 1
     else:
@@ -149,7 +148,7 @@ def match_source_tokens(source: str, target: str) -> float:
             if token != 'et' and token != 'al' and token != 'and':
                 found = token in target_tokens
                 token_found.append(found)
-        
+
         if False not in token_found:
             return 1
         else:

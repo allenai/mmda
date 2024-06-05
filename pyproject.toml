@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.9.17'
+version = '0.9.18'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -14,7 +14,7 @@ dependencies = [
         'pdfplumber==0.7.4',
         'requests',
         'pandas<2',
-        'pydantic<2',
+        'pydantic[settings]>=1,<3',
         'ncls==0.0.66',
         'necessary>=0.3.2',
 ]
@@ -73,13 +73,15 @@ pysbd_predictors = [
     'pysbd',
 ]
 heuristic_predictors = [
-    'tokenizers'
+    'tokenizers',
+    'pydantic>=1,<2',
 ]
 lp_predictors = [
     'layoutparser',
     'torch',
     'torchvision',
     'effdet',
+    'pydantic>=1,<2'
 ]
 hf_predictors = [
     'torch',
@@ -89,38 +91,45 @@ hf_predictors = [
 vila_predictors = [
     'vila>=0.5,<0.6',
     'transformers<4.34.0',
+    'pydantic>=1,<2',
 ]
 mention_predictor = [
     'transformers[torch]',
-    'optimum[onnxruntime]'
+    'optimum[onnxruntime]',
+    'pydantic>=1,<2',
 ]
 mention_predictor_gpu = [
     'transformers[torch]',
     'optimum[onnxruntime-gpu]',
+    'pydantic>=1,<2',
 ]
 bibentry_predictor = [
     'transformers',
     'unidecode',
     'torch',
     'optimum[onnxruntime]',
+    'pydantic>=1,<2',
 ]
 bibentry_predictor_gpu = [
     'transformers',
     'unidecode',
     'torch',
     'optimum[onnxruntime-gpu]',
+    'pydantic>=1,<2'
 ]
 bibentry_detection_predictor = [
     'Pillow<10',
     'layoutparser',
     'torch==1.8.0+cu111',
     'torchvision==0.9.0+cu111',
+    'pydantic<=1,<2',
 ]
 citation_links = [
     'numpy',
     'thefuzz[speedup]',
     'scikit-learn',
     'xgboost',
+    'pydantic>=1,<2',
 ]
 section_nesting = [
     'numpy',
@@ -129,12 +138,14 @@ section_nesting = [
 ]
 figure_table_predictors = [
     'scipy',
+    'pydantic>=1,<2',
 ]
 svm_word_predictor = [
     'scikit-learn',
     'scipy',
     'numpy',
-    'tokenizers'
+    'tokenizers',
+    'pydantic>=1,<2',
 ]
 recipes = [
     'layoutparser',
@@ -147,7 +158,8 @@ recipes = [
     'scikit-learn',
     'scipy',
     'numpy',
-    'tokenizers'
+    'tokenizers',
+    'xgboost',
 ]
 
 
