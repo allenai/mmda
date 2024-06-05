@@ -1,9 +1,9 @@
-from typing import List, Optional, Type
+from typing import Any, List, Optional, Type
 
 from pydantic import BaseModel, Extra, Field
-from pydantic.fields import ModelField
 
 import mmda.types.annotation as mmda_ann
+
 
 __all__ = ["BoxGroup", "SpanGroup"]
 
@@ -34,7 +34,7 @@ class Box(BaseModel):
 class Span(BaseModel):
     start: int
     end: int
-    box: Optional[Box]
+    box: Optional[Box] = None
 
     @classmethod
     def from_mmda(cls, span: mmda_ann.Span) -> "Span":
@@ -72,14 +72,20 @@ class Annotation(BaseModel, extra=Extra.ignore):
 
     @classmethod
     def get_metadata_cls(cls) -> Type[Attributes]:
-        attrs_field: ModelField = cls.__fields__["attributes"]
+        attrs_field = cls.__fields__["attributes"]
+
+        # pydantic v2
+        if hasattr(attrs_field, "annotation"):
+            return attrs_field.annotation
+
+        # pydantic v1
         return attrs_field.type_
 
 
 class BoxGroup(Annotation):
     boxes: List[Box]
-    id: Optional[int]
-    type: Optional[str]
+    id: Optional[int] = None
+    type: Optional[str] = None
 
     @classmethod
     def from_mmda(cls, box_group: mmda_ann.BoxGroup) -> "BoxGroup":
@@ -109,10 +115,10 @@ class BoxGroup(Annotation):
 
 class SpanGroup(Annotation):
     spans: List[Span]
-    box_group: Optional[BoxGroup]
-    id: Optional[int]
-    type: Optional[str]
-    text: Optional[str]
+    box_group: Optional[BoxGroup] = None
+    id: Optional[int] = None
+    type: Optional[str] = None
+    text: Optional[str] = None
 
     @classmethod
     def from_mmda(cls, span_group: mmda_ann.SpanGroup) -> "SpanGroup":
