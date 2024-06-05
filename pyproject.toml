@@ -158,7 +158,8 @@ recipes = [
     'scikit-learn',
     'scipy',
     'numpy',
-    'tokenizers'
+    'tokenizers',
+    'xgboost',
 ]
 
 
