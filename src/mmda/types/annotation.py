@@ -9,6 +9,7 @@ Iterable of Group-type objects within the Document
 import warnings
 from abc import abstractmethod
 from copy import deepcopy
+from itertools import combinations
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
 
 from mmda.types.box import Box
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
 __all__ = ["Annotation", "BoxGroup", "SpanGroup", "Relation"]
 
 
-
 def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
     """Warns when a deepcopy is performed on an Annotation."""
 
@@ -34,15 +34,14 @@ def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
     warnings.warn(msg, UserWarning, stacklevel=2)
 
 
-
 class Annotation:
     """Annotation is intended for storing model predictions for a document."""
 
     def __init__(
-            self,
-            id: Optional[int] = None,
-            doc: Optional['Document'] = None,
-            metadata: Optional[Metadata] = None
+        self,
+        id: Optional[int] = None,
+        doc: Optional["Document"] = None,
+        metadata: Optional[Metadata] = None,
     ):
         self.id = id
         self.doc = doc
@@ -77,23 +76,30 @@ class Annotation:
         return self.__getattribute__(field)
 
 
-
 class BoxGroup(Annotation):
     def __init__(
-            self,
-            boxes: List[Box],
-            id: Optional[int] = None,
-            doc: Optional['Document'] = None,
-            metadata: Optional[Metadata] = None,
+        self,
+        boxes: List[Box],
+        id: Optional[int] = None,
+        doc: Optional["Document"] = None,
+        metadata: Optional[Metadata] = None,
+        allow_overlap: Optional[bool] = False,
     ):
         self.boxes = boxes
+        if not allow_overlap:
+            clusters = Box.cluster_boxes(boxes=boxes)
+            if any([len(cluster) > 1 for cluster in clusters]):
+                raise ValueError(
+                    "BoxGroup does not allow overlapping boxes. "
+                    "Consider setting allow_overlap=True."
+                )
         super().__init__(id=id, doc=doc, metadata=metadata)
 
     def to_json(self) -> Dict:
         box_group_dict = dict(
             boxes=[box.to_json() for box in self.boxes],
             id=self.id,
-            metadata=self.metadata.to_json()
+            metadata=self.metadata.to_json(),
         )
         return {
             key: value for key, value in box_group_dict.items() if value
@@ -101,16 +107,13 @@ class BoxGroup(Annotation):
 
     @classmethod
     def from_json(cls, box_group_dict: Dict) -> "BoxGroup":
-
         if "metadata" in box_group_dict:
             metadata_dict = box_group_dict["metadata"]
         else:
             # this fallback is necessary to ensure compatibility with box
             # groups that were create before the metadata migration and
             # therefore have "type" in the root of the json dict instead.
-            metadata_dict = {
-                "type": box_group_dict.get("type", None)
-            }
+            metadata_dict = {"type": box_group_dict.get("type", None)}
 
         return cls(
             boxes=[
@@ -132,7 +135,7 @@ class BoxGroup(Annotation):
         box_group = BoxGroup(
             boxes=deepcopy(self.boxes, memo),
             id=self.id,
-            metadata=deepcopy(self.metadata, memo)
+            metadata=deepcopy(self.metadata, memo),
         )
 
         # Don't copy an attached document
@@ -150,25 +153,30 @@ class BoxGroup(Annotation):
 
 
 class SpanGroup(Annotation):
-
     def __init__(
-            self,
-            spans: List[Span],
-            box_group: Optional[BoxGroup] = None,
-            id: Optional[int] = None,
-            doc: Optional['Document'] = None,
-            metadata: Optional[Metadata] = None,
+        self,
+        spans: List[Span],
+        box_group: Optional[BoxGroup] = None,
+        id: Optional[int] = None,
+        doc: Optional["Document"] = None,
+        metadata: Optional[Metadata] = None,
+        allow_overlap: Optional[bool] = False,
     ):
         self.spans = spans
+        if not allow_overlap:
+            clusters = Span.cluster_spans(spans=spans)
+            if any([len(cluster) > 1 for cluster in clusters]):
+                raise ValueError(
+                    "SpanGroup does not allow overlapping spans. "
+                    "Consider setting allow_overlap=True."
+                )
         self.box_group = box_group
         super().__init__(id=id, doc=doc, metadata=metadata)
 
     @property
     def symbols(self) -> List[str]:
         if self.doc is not None:
-            return [
-                self.doc.symbols[span.start: span.end] for span in self.spans
-            ]
+            return [self.doc.symbols[span.start : span.end] for span in self.spans]
         else:
             return []
 
@@ -187,12 +195,10 @@ class SpanGroup(Annotation):
             spans=[span.to_json() for span in self.spans],
             id=self.id,
             metadata=self.metadata.to_json(),
-            box_group=self.box_group.to_json() if self.box_group else None
+            box_group=self.box_group.to_json() if self.box_group else None,
         )
         return {
-            key: value
-            for key, value in span_group_dict.items()
-            if value is not None
+            key: value for key, value in span_group_dict.items() if value is not None
         }  # only serialize non-null values
 
     @classmethod
@@ -211,7 +217,7 @@ class SpanGroup(Annotation):
             # therefore have "id", "type" in the root of the json dict instead.
             metadata_dict = {
                 "type": span_group_dict.get("type", None),
-                "text": span_group_dict.get("text", None)
+                "text": span_group_dict.get("text", None),
             }
 
         return cls(
@@ -256,7 +262,7 @@ class SpanGroup(Annotation):
             spans=deepcopy(self.spans, memo),
             id=self.id,
             metadata=deepcopy(self.metadata, memo),
-            box_group=deepcopy(self.box_group, memo)
+            box_group=deepcopy(self.box_group, memo),
         )
 
         # Don't copy an attached document
@@ -282,7 +288,6 @@ class SpanGroup(Annotation):
     @text.setter
     def text(self, text: Union[str, None]) -> None:
         self.metadata.text = text
-
 
 
 class Relation(Annotation):

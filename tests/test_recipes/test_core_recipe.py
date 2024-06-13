@@ -142,3 +142,28 @@ class TestCoreRecipe(unittest.TestCase):
             == doc_json["blocks"]
             == [b.to_json() for b in self.doc.blocks]
         )
+
+    def test_no_fail_pdfs_in_fixtures(self):
+        pdfpath = os.path.join(
+            os.path.dirname(__file__),
+            "../fixtures/56c0a25e7bd3f220df8f9939f23c1982c2cb5fc4.pdf",
+        )
+        doc = self.recipe.from_path(pdfpath=pdfpath)
+
+        pdfpath = os.path.join(
+            os.path.dirname(__file__),
+            "../fixtures/72b37044a17c9210ed56c2cc7b9a737b1385311b.pdf",
+        )
+        doc = self.recipe.from_path(pdfpath=pdfpath)
+
+        pdfpath = os.path.join(
+            os.path.dirname(__file__),
+            "../fixtures/faa06090392e9633e608516b8c35f163f4a8f38a.pdf",
+        )
+        doc = self.recipe.from_path(pdfpath=pdfpath)
+
+        assert (
+            [b.to_json() for b in doc2.blocks]
+            == doc_json["blocks"]
+            == [b.to_json() for b in self.doc.blocks]
+        )

@@ -6,6 +6,7 @@ identifying section headers in the PDF body.
 @rauthur
 
 """
+import logging
 from dataclasses import asdict, dataclass
 from io import BytesIO
 from typing import Any, Dict, List, Union
@@ -15,6 +16,10 @@ import pdfminer.pdfpage as pp
 import pdfminer.pdfparser as ps
 import pdfminer.pdftypes as pt
 import pdfminer.psparser as pr
+
+# set logging level to ERROR
+logging.getLogger("pdfminer").propagate = False
+logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
 from mmda.types.document import Document
 from mmda.types.metadata import Metadata
