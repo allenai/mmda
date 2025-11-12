@@ -1,6 +1,6 @@
 from typing import Any, List, Optional, Type
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 import mmda.types.annotation as mmda_ann
 
@@ -64,10 +64,11 @@ class Attributes(BaseModel):
         return cls(**metadata.to_json())
 
     def to_mmda(self) -> mmda_ann.Metadata:
-        return mmda_ann.Metadata.from_json(self.dict())
+        return mmda_ann.Metadata.from_json(self.model_dump())
 
 
-class Annotation(BaseModel, extra=Extra.ignore):
+class Annotation(BaseModel):
+    model_config = ConfigDict(extra='ignore')
     attributes: Attributes = Attributes()
 
     @classmethod
@@ -103,7 +104,7 @@ class BoxGroup(Annotation):
         )
 
     def to_mmda(self) -> mmda_ann.BoxGroup:
-        metadata = mmda_ann.Metadata.from_json(self.attributes.dict())
+        metadata = mmda_ann.Metadata.from_json(self.attributes.model_dump())
         if self.type:
             metadata.type=self.type
         return mmda_ann.BoxGroup(
@@ -153,7 +154,7 @@ class SpanGroup(Annotation):
         return ret
 
     def to_mmda(self) -> mmda_ann.SpanGroup:
-        metadata = mmda_ann.Metadata.from_json(self.attributes.dict())
+        metadata = mmda_ann.Metadata.from_json(self.attributes.model_dump())
         if self.type:
             metadata.type = self.type
         if self.text:

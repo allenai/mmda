@@ -10,7 +10,8 @@ import logging
 from typing import List
 
 import torch
-from pydantic import BaseModel, BaseSettings, Field
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings
 
 from ai2_internal import api
 from mmda.predictors.hf_predictors.token_classification_predictor import (

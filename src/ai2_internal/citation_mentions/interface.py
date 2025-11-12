@@ -10,7 +10,8 @@ from typing import List
 from itertools import groupby
 from bisect import bisect
 
-from pydantic import BaseModel, BaseSettings
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings
 
 from ai2_internal import api
 from mmda.predictors.hf_predictors.mention_predictor import MentionPredictor
