@@ -8,7 +8,8 @@ as a definition of the objects it expects, and those it returns.
 
 from typing import List
 
-from pydantic import BaseModel, BaseSettings
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings
 
 from mmda.predictors.heuristic_predictors.figure_table_predictors import FigureTablePredictions
 from mmda.types.document import Document

@@ -10,7 +10,8 @@ import logging
 from typing import List
 
 import torch
-from pydantic import BaseModel, BaseSettings, Field
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings
 
 from ai2_internal.api import BoxGroup
 from mmda.predictors.lp_predictors import LayoutParserPredictor
