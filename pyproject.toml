@@ -9,15 +9,15 @@ license = {text = 'Apache-2.0'}
 readme = 'README.md'
 requires-python = '>=3.7'
 dependencies = [
-        'tqdm',
-        'pdf2image',
+        'tqdm<5',
+        'pdf2image<2',
         'pdfplumber==0.7.4',
-        'requests',
+        'requests<3',
         'pandas<2',
         'numpy<2',
         'pydantic[settings]>=1,<3',
         'ncls==0.0.70',
-        'necessary>=0.3.2',
+        'necessary>=0.3.2,<1',
 ]
 
 [project.urls]
@@ -60,33 +60,33 @@ requires = [
 
 [project.optional-dependencies]
 dev = [
-    'pytest',
-    'pytest-xdist',
-    'pytest-cov',
+    'pytest<10',
+    'pytest-xdist<4',
+    'pytest-cov<8',
 ]
 grobid_augment_existing_document_parser = [
     'grobid-client-python==0.0.5'
 ]
 spacy_predictors = [
-    'spacy',
+    'spacy<4',
 ]
 pysbd_predictors = [
-    'pysbd',
+    'pysbd<1',
 ]
 heuristic_predictors = [
-    'tokenizers',
+    'tokenizers<1',
     'pydantic>=1,<2',
 ]
 lp_predictors = [
-    'layoutparser',
-    'torch',
-    'torchvision',
-    'effdet',
+    'layoutparser<1',
+    'torch<3',
+    'torchvision<1',
+    'effdet<1',
     'pydantic>=1,<2'
 ]
 hf_predictors = [
-    'torch',
-    'transformers',
+    'torch<3',
+    'transformers<6',
     'smashed==0.1.10',
 ]
 vila_predictors = [
@@ -95,70 +95,70 @@ vila_predictors = [
     'pydantic>=1,<2',
 ]
 mention_predictor = [
-    'transformers[torch]',
-    'optimum[onnxruntime]',
+    'transformers[torch]<6',
+    'optimum[onnxruntime]<3',
     'pydantic>=1,<2',
 ]
 mention_predictor_gpu = [
-    'transformers[torch]',
-    'optimum[onnxruntime-gpu]',
+    'transformers[torch]<6',
+    'optimum[onnxruntime-gpu]<3',
     'pydantic>=1,<2',
 ]
 bibentry_predictor = [
-    'transformers',
-    'unidecode',
-    'torch',
-    'optimum[onnxruntime]',
+    'transformers<6',
+    'unidecode<2',
+    'torch<3',
+    'optimum[onnxruntime]<3',
     'pydantic>=1,<2',
 ]
 bibentry_predictor_gpu = [
-    'transformers',
-    'unidecode',
-    'torch',
-    'optimum[onnxruntime-gpu]',
+    'transformers<6',
+    'unidecode<2',
+    'torch<3',
+    'optimum[onnxruntime-gpu]<3',
     'pydantic>=1,<2'
 ]
 bibentry_detection_predictor = [
-    'Pillow',
-    'layoutparser',
+    'Pillow<13',
+    'layoutparser<1',
     'pydantic>=1,<2',
 ]
 citation_links = [
-    'numpy',
-    'thefuzz[speedup]',
+    'numpy<2',
+    'thefuzz[speedup]<1',
     'scikit-learn<1.3',
-    'xgboost',
+    'xgboost<3',
     'pydantic>=1,<2',
 ]
 section_nesting = [
-    'numpy',
-    'scipy',
-    'xgboost',
+    'numpy<2',
+    'scipy<2',
+    'xgboost<3',
 ]
 figure_table_predictors = [
-    'scipy',
+    'scipy<2',
     'pydantic>=1,<2',
 ]
 svm_word_predictor = [
     'scikit-learn<1.3',
-    'scipy',
-    'numpy',
-    'tokenizers',
+    'scipy<2',
+    'numpy<2',
+    'tokenizers<1',
     'pydantic>=1,<2',
 ]
 recipes = [
-    'layoutparser',
-    'transformers',
-    'torch',
-    'torchvision',
-    'effdet',
+    'layoutparser<1',
+    'transformers<6',
+    'torch<3',
+    'torchvision<1',
+    'effdet<1',
     'vila>=0.5,<0.6',
     'smashed==0.1.10',
     'scikit-learn<1.3',
-    'scipy',
-    'numpy',
-    'tokenizers',
-    'xgboost',
+    'scipy<2',
+    'numpy<2',
+    'tokenizers<1',
+    'xgboost<3',
 ]
 
 
