@@ -126,7 +126,7 @@ bibentry_detection_predictor = [
 citation_links = [
     'numpy',
     'thefuzz[speedup]',
-    'scikit-learn',
+    'scikit-learn<1.3',
     'xgboost',
     'pydantic>=1,<2',
 ]
@@ -140,7 +140,7 @@ figure_table_predictors = [
     'pydantic>=1,<2',
 ]
 svm_word_predictor = [
-    'scikit-learn',
+    'scikit-learn<1.3',
     'scipy',
     'numpy',
     'tokenizers',
@@ -154,7 +154,7 @@ recipes = [
     'effdet',
     'vila>=0.5,<0.6',
     'smashed==0.1.10',
-    'scikit-learn',
+    'scikit-learn<1.3',
     'scipy',
     'numpy',
     'tokenizers',
