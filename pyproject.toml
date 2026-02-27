@@ -133,6 +133,7 @@ citation_links = [
 section_nesting = [
     'numpy<2',
     'scipy<2',
+    'scikit-learn<1.3',
     'xgboost<2',
 ]
 figure_table_predictors = [
@@ -170,7 +171,7 @@ pythonpath = [
 ]
 python_classes = ['Test*', '*Test']
 log_format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
-log_level = 'DEBUG'
+log_level = 'WARNING'
 markers = []
 filterwarnings = []
 
