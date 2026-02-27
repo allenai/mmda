@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.9.18'
+version = '0.9.25'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -15,7 +15,7 @@ dependencies = [
         'requests',
         'pandas<2',
         'pydantic[settings]>=1,<3',
-        'ncls==0.0.66',
+        'ncls==0.0.70',
         'necessary>=0.3.2',
 ]
 
@@ -118,11 +118,9 @@ bibentry_predictor_gpu = [
     'pydantic>=1,<2'
 ]
 bibentry_detection_predictor = [
-    'Pillow<10',
+    'Pillow',
     'layoutparser',
-    'torch==1.8.0+cu111',
-    'torchvision==0.9.0+cu111',
-    'pydantic<=1,<2',
+    'pydantic>=1,<2',
 ]
 citation_links = [
     'numpy',
