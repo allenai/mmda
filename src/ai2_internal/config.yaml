@@ -24,7 +24,7 @@ model_variants:
     artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/vila/ivila-row-layoutlm-finetuned-s2vl-v2.tar.gz
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
-    python_version: 3.8
+    python_version: "3.11"
 
     cuda: True
 
@@ -51,7 +51,7 @@ model_variants:
     extras_require: ["dev", "lp_predictors"]
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
-    python_version: 3.8
+    python_version: "3.11"
 
     # Whether this model supports CUDA GPU acceleration
     cuda: True
@@ -88,7 +88,7 @@ model_variants:
     artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/bibentryparser/v0.onnx.tar.gz
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
-    python_version: 3.8
+    python_version: "3.11"
 
     # Whether this model supports CUDA GPU acceleration
     cuda: False
@@ -125,7 +125,7 @@ model_variants:
     artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/bibentryparser/v0.onnx.tar.gz
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
-    python_version: 3.8
+    python_version: "3.11"
 
     # Whether this model supports CUDA GPU acceleration
     cuda: True
@@ -163,7 +163,7 @@ model_variants:
     artifacts_s3_path: s3://ai2-s2-mmda/models/citation-mentions/2022-07-27-minilm-10k/model/artifacts-onnx16.tar.gz
 
     # Version of python required for model runtime
-    python_version: "3.8"
+    python_version: "3.11"
 
     # Whether this model supports CUDA GPU acceleration
     cuda: True
@@ -194,7 +194,7 @@ model_variants:
     artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/citationlinks/v1.tar.gz
 
     # Version of python required for model runtime
-    python_version: "3.8"
+    python_version: "3.11"
 
     # Whether this model supports CUDA GPU acceleration
     cuda: False
@@ -222,14 +222,14 @@ model_variants:
     artifacts_s3_path: s3://ai2-s2-analytics/danyh/extract-stuff-from-pdfs/artifacts/anchor/archive.tar.gz
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
-    python_version: "3.8"
+    python_version: "3.11"
 
     # Whether this model supports CUDA GPU acceleration
     cuda: true
 
-    # One of the versions here: https://gitlab.com/nvidia/container-images/cuda/blob/master/doc/supported-tags.md#ubuntu2004, but less than 11.4.3.
-    # If cuda=True and cuda_version is unspecified, defaults to 11.4.2.
-    cuda_version: "11.1.1"
+    # One of the versions here: https://gitlab.com/nvidia/container-images/cuda/blob/master/doc/supported-tags.md#ubuntu2204
+    # If cuda=True and cuda_version is unspecified, defaults to 11.8.0.
+    cuda_version: "11.8.0"
 
     # Python path to a fn in <model_package_name>==<model_package_version> that
     # returns a unittest.TestCase. Builder function receives a model container
@@ -243,9 +243,9 @@ model_variants:
 
     # pip installing dependencies listed in setup.py so that detectron2 installs successfully
     docker_run_commands: [ "apt-get update && apt-get install -y poppler-utils libgl1",
-                           "pip install layoutparser",
-                           "pip install torch==1.8.0+cu111 torchvision==0.9.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html",
-                           "pip install 'detectron2@git+https://github.com/facebookresearch/detectron2.git@v0.6#egg=detectron2'"]
+                           "pip install torch==2.4.1+cu118 torchvision==0.19.1+cu118 --index-url https://download.pytorch.org/whl/cu118",
+                           "pip install https://github.com/miropsota/torch_packages_builder/releases/download/detectron2-0.6%2Bfd27788/detectron2-0.6%2Bfd27788pt2.4.1cu118-cp311-cp311-linux_x86_64.whl",
+                           "pip install layoutparser"]
 
     # Any additional sets of dependencies required by the model.
     # These are the 'extras_require' keys in your setup.py.
@@ -267,7 +267,7 @@ model_variants:
     integration_test: ai2_internal.figure_table_predictors.integration_test.TestInterfaceIntegration
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
-    python_version: 3.8
+    python_version: "3.11"
 
     cuda: False
 
@@ -305,7 +305,7 @@ model_variants:
     artifacts_s3_path: null
 
     # Version of python required for model runtime, e.g. 3.7, 3.8, 3.9
-    python_version: 3.8
+    python_version: "3.11"
 
     # Whether this model supports CUDA GPU acceleration
     cuda: false
