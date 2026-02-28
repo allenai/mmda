@@ -78,14 +78,14 @@ heuristic_predictors = [
     'pydantic>=1,<2',
 ]
 lp_predictors = [
-    'layoutparser<1',
-    'torch<3',
-    'torchvision<1',
-    'effdet<1',
+    'layoutparser>=0.3,<0.4',
+    'torch>=2.0,<2.1',
+    'torchvision>=0.15,<0.16',
+    'effdet>=0.3,<0.4',
     'pydantic>=1,<2'
 ]
 hf_predictors = [
-    'torch<3',
+    'torch>=2.0,<2.1',
     'transformers<6',
     'smashed==0.1.10',
 ]
@@ -107,20 +107,20 @@ mention_predictor_gpu = [
 bibentry_predictor = [
     'transformers<6',
     'unidecode<2',
-    'torch<3',
+    'torch>=2.0,<2.1',
     'optimum[onnxruntime]<3',
     'pydantic>=1,<2',
 ]
 bibentry_predictor_gpu = [
     'transformers<6',
     'unidecode<2',
-    'torch<3',
+    'torch>=2.0,<2.1',
     'optimum[onnxruntime-gpu]<3',
     'pydantic>=1,<2'
 ]
 bibentry_detection_predictor = [
-    'Pillow<13',
-    'layoutparser<1',
+    'Pillow>=9.3,<10',
+    'layoutparser>=0.3,<0.4',
     'pydantic>=1,<2',
 ]
 citation_links = [
@@ -148,11 +148,11 @@ svm_word_predictor = [
     'pydantic>=1,<2',
 ]
 recipes = [
-    'layoutparser<1',
+    'layoutparser>=0.3,<0.4',
     'transformers<6',
-    'torch<3',
-    'torchvision<1',
-    'effdet<1',
+    'torch>=2.0,<2.1',
+    'torchvision>=0.15,<0.16',
+    'effdet>=0.3,<0.4',
     'vila>=0.5,<0.6',
     'smashed==0.1.10',
     'scikit-learn<1.3',
