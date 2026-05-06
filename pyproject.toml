@@ -79,7 +79,7 @@ heuristic_predictors = [
 lp_predictors = [
     'layoutparser',
     'timm==0.9.12',
-    'torch',
+    'torch==2.2.0',
     'torchvision',
     'effdet',
     'pydantic>=1,<2'
