@@ -56,6 +56,9 @@ model_variants:
     # Whether this model supports CUDA GPU acceleration
     cuda: True
 
+    # Full S3 path to tar.gz'ed artifacts archive, nullable
+    artifacts_s3_path: s3://ai2-timo-registry/model-artifacts/layout-parser2/hopefully-what-was-in-dropbox-pulled-from-ecs-april-2026.tar.gz
+
     # Python path to a fn in <model_package_name>==<model_package_version> that
     # returns a unittest.TestCase. Builder function receives a model container
     # as its sole argument.

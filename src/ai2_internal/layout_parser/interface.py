@@ -8,6 +8,7 @@ as a definition of the objects it expects, and those it returns.
 
 import logging
 from typing import List
+from pathlib import Path
 
 import torch
 from pydantic import BaseModel, BaseSettings, Field
@@ -39,7 +40,10 @@ class PredictorConfig(BaseSettings):
     Configuration required by the model to do its work.
     Uninitialized fields will be set via Environment variables.
     """
-    weights_paths = ["lp://efficientdet/PubLayNet", "lp://efficientdet/MFD"]
+    weights_config_to_file = {
+        "lp://efficientdet/PubLayNet": "ukbw5s673633hsw-publaynet-tf_efficientdet_d0.pth.tar",
+        "lp://efficientdet/MFD": "dkr22iux7thlhel-mfd-tf_efficientdet_d0.pth.tar",
+    }
 
 class Predictor:
     """
@@ -79,8 +83,8 @@ class Predictor:
             logger.info("No CUDA device detected, running model on CPU.")
 
         self._lp_predictors = [
-            LayoutParserPredictor.from_pretrained(weights_path, device=device)
-            for weights_path in self._config.weights_paths
+            LayoutParserPredictor.from_pretrained(config_file, model_path=str(Path(self._artifacts_dir) / weights_file), device=device)
+            for config_file, weights_file in self._config.weights_config_to_file.items()
         ]
 
     def predict_one(self, instance: Instance) -> Prediction:
