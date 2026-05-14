@@ -1,6 +1,6 @@
 [project]
 name = 'mmda'
-version = '0.9.18'
+version = '0.9.27'
 description = 'MMDA - multimodal document analysis'
 authors = [
     {name = 'Allen Institute for Artificial Intelligence', email = 'contact@allenai.org'},
@@ -78,6 +78,7 @@ heuristic_predictors = [
 ]
 lp_predictors = [
     'layoutparser',
+    'timm==0.9.12',
     'torch',
     'torchvision',
     'effdet',
