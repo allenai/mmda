@@ -1,6 +1,6 @@
 # MMDA - multimodal document analysis
 
-This is work in progress... 
+This is work in progress...  
 
 ## Setup
 
