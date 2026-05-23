@@ -1,6 +1,6 @@
 import itertools
 import string
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Tuple, Union
 
 import pdfplumber
 
@@ -201,24 +201,28 @@ class PDFPlumberParser(Parser):
                 )
                 assert len(word_ids_of_fine_tokens) == len(fine_tokens)
                 # 4) normalize / clean tokens & boxes
+                boxes = [
+                    Box.from_coordinates(
+                        x1=float(token["x0"]),
+                        y1=float(token["top"]),
+                        x2=float(token["x1"]),
+                        y2=float(token["bottom"]),
+                        page=int(page_id),
+                    ).get_relative(
+                        page_width=float(page.width), page_height=float(page.height)
+                    )
+                    for token in fine_tokens
+                ]
+                # 4.5) reformat
+                # TODO: remove tokens that are 'off page'
                 fine_tokens = [
                     {
                         "text": token["text"],
                         "fontname": token["fontname"],
                         "size": token["size"],
-                        "bbox": Box.from_pdf_coordinates(
-                            x1=float(token["x0"]),
-                            y1=float(token["top"]),
-                            x2=float(token["x1"]),
-                            y2=float(token["bottom"]),
-                            page_width=float(page.width),
-                            page_height=float(page.height),
-                            page=int(page_id),
-                        ).get_relative(
-                            page_width=float(page.width), page_height=float(page.height)
-                        ),
+                        "bbox": box,
                     }
-                    for token in fine_tokens
+                    for box, token in zip(boxes, fine_tokens)
                 ]
                 # 5) group tokens into lines
                 # TODO - doesnt belong in parser; should be own predictor
