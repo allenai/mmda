@@ -10,6 +10,7 @@ import warnings
 from abc import abstractmethod
 from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
+import weakref
 
 from mmda.types.box import Box
 from mmda.types.metadata import Metadata
@@ -20,7 +21,6 @@ if TYPE_CHECKING:
 
 
 __all__ = ["Annotation", "BoxGroup", "SpanGroup", "Relation"]
-
 
 
 def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
@@ -34,9 +34,56 @@ def warn_deepcopy_of_annotation(obj: "Annotation") -> None:
     warnings.warn(msg, UserWarning, stacklevel=2)
 
 
+class MagicLookup:
+    '''WIP
+
+    Benchmark with
+    https://gist.github.com/soldni/4b3e4b97f6f8e86df6b82cdfcd292bc6
+
+    Results on @soldni's laptop:
+
+    $ python magic_v2.py
+        try_new: 7.94e-03 +/- 4.70e-04 s
+        try_old: 7.36e-03 +/- 3.82e-04 s
+    '''
+    __slots__ = '_entity', '_query'
+
+    _entity: Optional["Annotation"]
+
+    def __init__(self, query: str, entity: Optional["Annotation"] = None):
+        self._entity = weakref.proxy(entity) if entity else None
+        self._query = query
+
+    def __get__(self, _obj, _obj_type):
+        return type(self)(query=self._query, entity=_obj)
+
+    def __getattr__(self, field):
+        if (ent := self._entity) is None:
+            raise RuntimeError(
+                "An entity is not attached to this Lookup; "
+                "please report this error"
+            )
+
+        if (doc := ent.doc) is None:
+            raise RuntimeError(
+                "This entity is not attached to any document"
+            )
+
+        if self._query == 'intersects':
+            if field not in doc.fields:
+                raise ValueError(f'Field {field} does not exist')
+            return doc.find_overlapping(ent, field)     # pyright: ignore
+
+        else:
+            raise NotImplementedError(f'Query {self._query} not recognized')
+
 
 class Annotation:
     """Annotation is intended for storing model predictions for a document."""
+
+    intersects = MagicLookup('intersects')
+    refers_to = MagicLookup('refers_to')
+    parent_of = MagicLookup('parent_of')
 
     def __init__(
             self,
@@ -61,21 +108,9 @@ class Annotation:
         if not self.doc:
             self.doc = doc
         else:
-            raise AttributeError("This annotation already has an attached document")
-
-    # TODO[kylel] - comment explaining
-    def __getattr__(self, field: str) -> List["Annotation"]:
-        if self.doc is None:
-            raise ValueError("This annotation is not attached to a document")
-
-        if field in self.doc.fields:
-            return self.doc.find_overlapping(self, field)
-
-        if field in self.doc.fields:
-            return self.doc.find_overlapping(self, field)
-
-        return self.__getattribute__(field)
-
+            raise AttributeError(
+                "This annotation already has an attached document"
+            )
 
 
 class BoxGroup(Annotation):
@@ -282,7 +317,6 @@ class SpanGroup(Annotation):
     @text.setter
     def text(self, text: Union[str, None]) -> None:
         self.metadata.text = text
-
 
 
 class Relation(Annotation):
