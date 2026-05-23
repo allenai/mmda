@@ -1,6 +1,7 @@
 from typing import List
 
-from pydantic import BaseModel, BaseSettings, Field
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings
 
 from ai2_internal.api import SpanGroup
 from mmda.predictors.sklearn_predictors.svm_word_predictor import SVMWordPredictor

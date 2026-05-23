@@ -8,7 +8,8 @@ as a definition of the objects it expects, and those it returns.
 
 from typing import List, Tuple
 
-from pydantic import BaseModel, BaseSettings, Field
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings
 
 from ai2_internal import api
 from mmda.predictors.xgb_predictors.citation_link_predictor import CitationLinkPredictor
